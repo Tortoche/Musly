@@ -55,174 +55,176 @@ class SongOptionsModal extends StatefulWidget {
           color: Colors.transparent,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(sheetContext)!.addToPlaylist,
-                    style: Theme.of(sheetContext).textTheme.titleLarge,
-                  ),
-                ],
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Text(
+                      AppLocalizations.of(sheetContext)!.addToPlaylist,
+                      style: Theme.of(sheetContext).textTheme.titleLarge,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Flexible(
-              child: Consumer<LibraryProvider>(
-                builder: (context, libProvider, _) {
-                  if (libProvider.playlists.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(AppLocalizations.of(context)!.noPlaylists),
-                    );
-                  }
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: libProvider.playlists.length,
-                    itemBuilder: (context, index) {
-                      final playlist = libProvider.playlists[index];
-                      return ListTile(
-                        leading: const Icon(Icons.queue_music_rounded),
-                        title: Text(playlist.name),
-                        subtitle: Text(AppLocalizations.of(context)!
-                            .songsCount(playlist.songCount ?? 0)),
-                        onTap: () async {
-                          Navigator.pop(context);
-
-                          final subsonicService = Provider.of<SubsonicService>(
-                            context,
-                            listen: false,
-                          );
-                          final l10n = AppLocalizations.of(context)!;
-                          final messenger = ScaffoldMessenger.of(context);
-
-                          bool isDuplicate = false;
-                          try {
-                            final fullPlaylist =
-                                await subsonicService.getPlaylist(playlist.id);
-                            final existingSongs =
-                                fullPlaylist.songs ?? playlist.songs ?? [];
-                            isDuplicate = existingSongs.any(
-                              (s) =>
-                                  s.id == song.id ||
-                                  (s.title.trim().toLowerCase() ==
-                                          song.title.trim().toLowerCase() &&
-                                      (s.artist ?? '').trim().toLowerCase() ==
-                                          (song.artist ?? '')
-                                              .trim()
-                                              .toLowerCase()),
-                            );
-                          } catch (_) {
-                            if (playlist.songs != null) {
-                              isDuplicate =
-                                  playlist.songs!.any((s) => s.id == song.id);
-                            }
-                          }
-
-                          if (isDuplicate) {
-                            if (!context.mounted) return;
-                            final confirmed = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text(l10n.alreadyInPlaylist),
-                                content: Text(
-                                  l10n.alreadyInPlaylistConfirm(
-                                      song.title, playlist.name),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, false),
-                                    child: Text(l10n.cancel),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, true),
-                                    child: Text(l10n.addAnyway),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirmed != true) return;
-                          }
-
-                          try {
-                            debugPrint(
-                              'Attempting to add song ${song.id} (${song.title}) to playlist ${playlist.id} (${playlist.name})',
-                            );
-
-                            await subsonicService.updatePlaylist(
-                              playlistId: playlist.id,
-                              songIdsToAdd: [song.id],
-                            );
-
-                            debugPrint(
-                                'Successfully added song to playlist via API');
-
-                            await libProvider.loadPlaylists();
-
-                            debugPrint('Playlists refreshed');
-
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Added "${song.title}" to ${playlist.name}',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                duration: const Duration(seconds: 2),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          } catch (e) {
-                            debugPrint('Error adding song to playlist: $e');
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    const Icon(
-                                        Icons.error, color: Colors.white),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child:
-                                          Text(l10n.errorAddingToPlaylist(e)),
-                                    ),
-                                  ],
-                                ),
-                                duration: const Duration(seconds: 3),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
+              const SizedBox(height: 16),
+              Flexible(
+                child: Consumer<LibraryProvider>(
+                  builder: (context, libProvider, _) {
+                    if (libProvider.playlists.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text(AppLocalizations.of(context)!.noPlaylists),
                       );
-                    },
-                  );
-                },
+                    }
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: libProvider.playlists.length,
+                      itemBuilder: (context, index) {
+                        final playlist = libProvider.playlists[index];
+                        return ListTile(
+                          leading: const Icon(Icons.queue_music_rounded),
+                          title: Text(playlist.name),
+                          subtitle: Text(AppLocalizations.of(context)!
+                              .songsCount(playlist.songCount ?? 0)),
+                          onTap: () async {
+                            Navigator.pop(context);
+
+                            final subsonicService =
+                                Provider.of<SubsonicService>(
+                              context,
+                              listen: false,
+                            );
+                            final l10n = AppLocalizations.of(context)!;
+                            final messenger = ScaffoldMessenger.of(context);
+
+                            bool isDuplicate = false;
+                            try {
+                              final fullPlaylist = await subsonicService
+                                  .getPlaylist(playlist.id);
+                              final existingSongs =
+                                  fullPlaylist.songs ?? playlist.songs ?? [];
+                              isDuplicate = existingSongs.any(
+                                (s) =>
+                                    s.id == song.id ||
+                                    (s.title.trim().toLowerCase() ==
+                                            song.title.trim().toLowerCase() &&
+                                        (s.artist ?? '').trim().toLowerCase() ==
+                                            (song.artist ?? '')
+                                                .trim()
+                                                .toLowerCase()),
+                              );
+                            } catch (_) {
+                              if (playlist.songs != null) {
+                                isDuplicate =
+                                    playlist.songs!.any((s) => s.id == song.id);
+                              }
+                            }
+
+                            if (isDuplicate) {
+                              if (!context.mounted) return;
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(l10n.alreadyInPlaylist),
+                                  content: Text(
+                                    l10n.alreadyInPlaylistConfirm(
+                                        song.title, playlist.name),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: Text(l10n.cancel),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: Text(l10n.addAnyway),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed != true) return;
+                            }
+
+                            try {
+                              debugPrint(
+                                'Attempting to add song ${song.id} (${song.title}) to playlist ${playlist.id} (${playlist.name})',
+                              );
+
+                              await subsonicService.updatePlaylist(
+                                playlistId: playlist.id,
+                                songIdsToAdd: [song.id],
+                              );
+
+                              debugPrint(
+                                  'Successfully added song to playlist via API');
+
+                              await libProvider.loadPlaylists();
+
+                              debugPrint('Playlists refreshed');
+
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.check_circle,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Added "${song.title}" to ${playlist.name}',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } catch (e) {
+                              debugPrint('Error adding song to playlist: $e');
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(Icons.error,
+                                          color: Colors.white),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child:
+                                            Text(l10n.errorAddingToPlaylist(e)),
+                                      ),
+                                    ],
+                                  ),
+                                  duration: const Duration(seconds: 3),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -269,172 +271,172 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 36,
-              height: 5,
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkDivider : AppTheme.lightDivider,
-                borderRadius: BorderRadius.circular(2.5),
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkDivider : AppTheme.lightDivider,
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  AlbumArtwork(coverArt: widget.song.coverArt, size: 60),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.song.title,
-                          style: theme.textTheme.titleMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (widget.song.artist != null)
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    AlbumArtwork(coverArt: widget.song.coverArt, size: 60),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            widget.song.artist!,
-                            style: theme.textTheme.bodySmall,
+                            widget.song.title,
+                            style: theme.textTheme.titleMedium,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _OptionTile(
-                      icon: _isStarred
-                          ? CupertinoIcons.heart_fill
-                          : CupertinoIcons.heart,
-                      title: _isStarred
-                          ? 'Remove from Liked Songs'
-                          : 'Add to Liked Songs',
-                      iconColor: _isStarred
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                      onTap: () async {
-                        await _toggleFavorite(context);
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                        }
-                      },
-                    ),
-                    _OptionTile(
-                      icon: Icons.play_arrow_rounded,
-                      title: 'Play Next',
-                      onTap: () {
-                        playerProvider.addToQueueNext(widget.song);
-                        Navigator.pop(context);
-                      },
-                    ),
-                    _OptionTile(
-                      icon: Icons.queue_music_rounded,
-                      title: 'Add to Queue',
-                      onTap: () {
-                        playerProvider.addToQueue(widget.song);
-                        Navigator.pop(context);
-                      },
-                    ),
-                    Builder(
-                      builder: (context) {
-                        final jukebox = Provider.of<JukeboxService>(
-                          context,
-                          listen: false,
-                        );
-                        final subsonic = Provider.of<SubsonicService>(
-                          context,
-                          listen: false,
-                        );
-                        if (!jukebox.enabled) return const SizedBox.shrink();
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _OptionTile(
-                              icon: Icons.speaker_rounded,
-                              title: AppLocalizations.of(
-                                context,
-                              )!
-                                  .playOnJukebox,
-                              onTap: () {
-                                Navigator.pop(context);
-                                jukebox.setQueue(
-                                    subsonic,
-                                    [
-                                      widget.song,
-                                    ],
-                                    startIndex: 0);
-                              },
+                          if (widget.song.artist != null)
+                            Text(
+                              widget.song.artist!,
+                              style: theme.textTheme.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            _OptionTile(
-                              icon: Icons.queue_rounded,
-                              title: AppLocalizations.of(
-                                context,
-                              )!
-                                  .addToJukeboxQueue,
-                              onTap: () {
-                                Navigator.pop(context);
-                                jukebox.addToQueue(subsonic, [widget.song]);
-                              },
-                            ),
-                          ],
-                        );
-                      },
+                        ],
+                      ),
                     ),
-                    _OptionTile(
-                      icon: Icons.playlist_add_rounded,
-                      title: AppLocalizations.of(context)!.addToPlaylist,
-                      onTap: () {
-                        Navigator.pop(context);
-                        SongOptionsModal.showPlaylistPicker(
-                            context, widget.song);
-                      },
-                    ),
-                    _OptionTile(
-                      icon: Icons.album_rounded,
-                      title: 'Go to Album',
-                      onTap: () {
-                        Navigator.pop(context);
-                        if (widget.song.albumId != null) {
-                          NavigationHelper.push(
-                            context,
-                            AlbumScreen(albumId: widget.song.albumId!),
-                          );
-                        }
-                      },
-                    ),
-                    _OptionTile(
-                      icon: Icons.person_rounded,
-                      title: 'Go to Artist',
-                      onTap: () {
-                        final nav = Navigator.of(context);
-                        nav.pop();
-                        _navigateToArtist(nav);
-                      },
-                    ),
-                    _buildRatingTile(context),
-                    _buildDownloadTile(context),
-                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _OptionTile(
+                        icon: _isStarred
+                            ? CupertinoIcons.heart_fill
+                            : CupertinoIcons.heart,
+                        title: _isStarred
+                            ? 'Retirer des favoris'
+                            : 'Ajouter aux favoris',
+                        iconColor: _isStarred
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                        onTap: () async {
+                          await _toggleFavorite(context);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                        },
+                      ),
+                      _OptionTile(
+                        icon: Icons.play_arrow_rounded,
+                        title: 'Lire ensuite',
+                        onTap: () {
+                          playerProvider.addToQueueNext(widget.song);
+                          Navigator.pop(context);
+                        },
+                      ),
+                      _OptionTile(
+                        icon: Icons.queue_music_rounded,
+                        title: 'Ajouter à la file d\'attente',
+                        onTap: () {
+                          playerProvider.addToQueue(widget.song);
+                          Navigator.pop(context);
+                        },
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final jukebox = Provider.of<JukeboxService>(
+                            context,
+                            listen: false,
+                          );
+                          final subsonic = Provider.of<SubsonicService>(
+                            context,
+                            listen: false,
+                          );
+                          if (!jukebox.enabled) return const SizedBox.shrink();
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _OptionTile(
+                                icon: Icons.speaker_rounded,
+                                title: AppLocalizations.of(
+                                  context,
+                                )!
+                                    .playOnJukebox,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  jukebox.setQueue(
+                                      subsonic,
+                                      [
+                                        widget.song,
+                                      ],
+                                      startIndex: 0);
+                                },
+                              ),
+                              _OptionTile(
+                                icon: Icons.queue_rounded,
+                                title: AppLocalizations.of(
+                                  context,
+                                )!
+                                    .addToJukeboxQueue,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  jukebox.addToQueue(subsonic, [widget.song]);
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      _OptionTile(
+                        icon: Icons.playlist_add_rounded,
+                        title: AppLocalizations.of(context)!.addToPlaylist,
+                        onTap: () {
+                          Navigator.pop(context);
+                          SongOptionsModal.showPlaylistPicker(
+                              context, widget.song);
+                        },
+                      ),
+                      _OptionTile(
+                        icon: Icons.album_rounded,
+                        title: 'Aller à l\'album',
+                        onTap: () {
+                          Navigator.pop(context);
+                          if (widget.song.albumId != null) {
+                            NavigationHelper.push(
+                              context,
+                              AlbumScreen(albumId: widget.song.albumId!),
+                            );
+                          }
+                        },
+                      ),
+                      _OptionTile(
+                        icon: Icons.person_rounded,
+                        title: 'Aller à l\'artiste',
+                        onTap: () {
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          _navigateToArtist(nav);
+                        },
+                      ),
+                      _buildRatingTile(context),
+                      _buildDownloadTile(context),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -531,7 +533,8 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
     });
 
     try {
-      Provider.of<LibraryProvider>(context, listen: false).cacheSongLocally(widget.song);
+      Provider.of<LibraryProvider>(context, listen: false)
+          .cacheSongLocally(widget.song);
       final success = await _offlineService.downloadSong(
         widget.song,
         subsonicService,
@@ -586,8 +589,8 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
     return _OptionTile(
       icon: Icons.star_rounded,
       title: rating > 0
-          ? 'Rate Song ($rating ${rating == 1 ? "star" : "stars"})'
-          : 'Rate Song',
+          ? 'Noter ($rating ${rating == 1 ? "étoile" : "étoiles"})'
+          : 'Noter le titre',
       iconColor: rating > 0 ? Colors.amber : null,
       onTap: () => _showRatingDialog(context),
     );
@@ -670,7 +673,7 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
             content: Text(
               rating > 0
                   ? 'Rated $rating ${rating == 1 ? "star" : "stars"}'
-                  : 'Rating removed',
+                  : 'Note supprimée',
             ),
             duration: const Duration(seconds: 2),
           ),
@@ -809,7 +812,6 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
       }
     }
   }
-
 }
 
 class _OptionTile extends StatelessWidget {

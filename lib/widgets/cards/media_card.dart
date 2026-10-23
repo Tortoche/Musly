@@ -1,3 +1,4 @@
+import 'package:musly/services/player_ui_settings_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musly/theme/app_theme.dart';
 import 'package:provider/provider.dart';
@@ -48,7 +49,8 @@ class _MediaCardState extends State<MediaCard> {
         onShowFocusHighlight: (focused) {
           setState(() => _isFocused = focused);
           if (focused && isTv) {
-            Scrollable.ensureVisible(context, alignment: 0.5, duration: const Duration(milliseconds: 300));
+            Scrollable.ensureVisible(context,
+                alignment: 0.5, duration: const Duration(milliseconds: 300));
           }
         },
         actions: {
@@ -73,85 +75,90 @@ class _MediaCardState extends State<MediaCard> {
               width: widget.size,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+                color: isDark ? const Color(0xFF1C1C1E) : AppTheme.lightCard,
                 borderRadius: BorderRadius.circular(8),
                 border: isTv && _isFocused
                     ? Border.all(color: Colors.white, width: 3.0)
-                    : Border.all(color: Colors.transparent, width: 3.0),
+                    : Border.all(
+                        color: isDark
+                            ? const Color(0x14FFFFFF)
+                            : Colors.transparent,
+                        width: 0.5,
+                      ),
               ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AnimatedScale(
-                  scale: (_isHovered || _isFocused) ? 1.04 : 1.0,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  child: AnimatedContainer(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedScale(
+                    scale: (_isHovered || _isFocused) ? 1.04 : 1.0,
                     duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(widget.isRound ? 999 : 4),
+                    curve: Curves.easeOut,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular((widget.isRound || PlayerUiSettingsService().getArtworkShape() == 'circle') ? 999 : 4),
                         boxShadow: (_isHovered || _isFocused)
-                          ? [
-                              BoxShadow(
-                                color: isTv 
-                                  ? Colors.white.withValues(alpha: 0.25)
-                                  : Colors.black.withValues(alpha: 0.3),
-                                blurRadius: isTv ? 24 : 16,
-                                offset: Offset(0, isTv ? 0 : 8),
-                              ),
-                            ]
-                          : [],
-                    ),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius:
-                              BorderRadius.circular(widget.isRound ? 999 : 4),
-                          child: widget.artwork ??
-                              AlbumArtwork(
-                                coverArt: widget.coverArt,
-                                size: widget.size - 24,
-                                borderRadius: widget.isRound ? 999 : 4,
-                              ),
-                        ),
-                        if (_isHovered && widget.onPlayPressed != null)
-                          Positioned(
-                            bottom: 8,
-                            right: 8,
-                            child: _PlayButton(
-                              onPressed: widget.onPlayPressed!,
-                            ),
+                            ? [
+                                BoxShadow(
+                                  color: isTv
+                                      ? Colors.white.withValues(alpha: 0.25)
+                                      : Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: isTv ? 24 : 16,
+                                  offset: Offset(0, isTv ? 0 : 8),
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular((widget.isRound || PlayerUiSettingsService().getArtworkShape() == 'circle') ? 999 : 4),
+                            child: widget.artwork ??
+                                AlbumArtwork(
+                                  coverArt: widget.coverArt,
+                                  size: widget.size - 24,
+                                  borderRadius: (widget.isRound || PlayerUiSettingsService().getArtworkShape() == 'circle') ? 999 : 4,
+                                ),
                           ),
-                      ],
+                          if (_isHovered && widget.onPlayPressed != null)
+                            Positioned(
+                              bottom: 8,
+                              right: 8,
+                              child: _PlayButton(
+                                onPressed: widget.onPlayPressed!,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (widget.subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 12),
                   Text(
-                    widget.subtitle!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDark
-                          ? AppTheme.darkSecondaryText
-                          : AppTheme.lightSecondaryText,
+                    widget.title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (widget.subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.subtitle!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark
+                            ? AppTheme.darkSecondaryText
+                            : AppTheme.lightSecondaryText,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
-              ],
-            ),
+              ),
             ),
           ),
         ),

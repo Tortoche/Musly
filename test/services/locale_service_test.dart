@@ -19,7 +19,8 @@ void main() {
       expect(localeService.currentLocale, isNull);
     });
 
-    test('setLocale updates currentLocale and persists to SharedPreferences', () async {
+    test('setLocale updates currentLocale and persists to SharedPreferences',
+        () async {
       await localeService.setLocale(const Locale('it'));
       expect(localeService.currentLocale?.languageCode, 'it');
 
@@ -33,7 +34,8 @@ void main() {
       expect(localeService.currentLocale?.languageCode, 'ar');
     });
 
-    test('setLocale(null) resets to system default and removes from prefs', () async {
+    test('setLocale(null) resets to system default and removes from prefs',
+        () async {
       await localeService.setLocale(const Locale('az'));
       expect(localeService.currentLocale?.languageCode, 'az');
 
@@ -55,14 +57,18 @@ void main() {
       expect(LocaleService.supportedLanguages['nl'], contains('Dutch'));
     });
 
-    test('all AppLocalizations supportedLocales match LocaleService.supportedLanguages', () {
-      final appLocales = AppLocalizations.supportedLocales.map((l) => l.languageCode).toSet();
+    test(
+        'all AppLocalizations supportedLocales match LocaleService.supportedLanguages',
+        () {
+      final appLocales =
+          AppLocalizations.supportedLocales.map((l) => l.languageCode).toSet();
       final serviceLocales = LocaleService.supportedLanguages.keys.toSet();
 
       expect(serviceLocales, equals(appLocales));
     });
 
-    test('getLanguageName returns correct name or uppercase code as fallback', () {
+    test('getLanguageName returns correct name or uppercase code as fallback',
+        () {
       expect(localeService.getLanguageName('en'), 'English');
       expect(localeService.getLanguageName('it'), 'Italiano (Italian)');
       expect(localeService.getLanguageName('ar'), 'العربية (Arabic)');
@@ -81,7 +87,8 @@ void main() {
       expect(LocaleService.getFlagEmoji('unknown_lang'), '🌐');
     });
 
-    test('getCompletionPercentage returns baseline and dynamic OTA percentages', () {
+    test('getCompletionPercentage returns baseline and dynamic OTA percentages',
+        () {
       expect(LocaleService.getCompletionPercentage('en'), 100);
       expect(LocaleService.getCompletionPercentage('az'), 1);
       expect(LocaleService.getCompletionPercentage('it'), 90);

@@ -9,19 +9,22 @@ class TizenJustAudioPlatform extends JustAudioPlatform {
   }
 
   @override
-  Future<DisposePlayerResponse> disposePlayer(DisposePlayerRequest request) async {
+  Future<DisposePlayerResponse> disposePlayer(
+      DisposePlayerRequest request) async {
     return DisposePlayerResponse();
   }
 
   @override
-  Future<DisposeAllPlayersResponse> disposeAllPlayers(DisposeAllPlayersRequest request) async {
+  Future<DisposeAllPlayersResponse> disposeAllPlayers(
+      DisposeAllPlayersRequest request) async {
     return DisposeAllPlayersResponse();
   }
 }
 
 class TizenAudioPlayer extends AudioPlayerPlatform {
   final ap.AudioPlayer _player = ap.AudioPlayer();
-  final StreamController<PlaybackEventMessage> _eventController = StreamController.broadcast();
+  final StreamController<PlaybackEventMessage> _eventController =
+      StreamController.broadcast();
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   ProcessingStateMessage _processingState = ProcessingStateMessage.idle;
@@ -35,7 +38,8 @@ class TizenAudioPlayer extends AudioPlayerPlatform {
     });
     _player.onPositionChanged.listen((p) {
       final now = DateTime.now();
-      if (now.difference(_lastPositionUpdate) >= const Duration(milliseconds: 250)) {
+      if (now.difference(_lastPositionUpdate) >=
+          const Duration(milliseconds: 250)) {
         _lastPositionUpdate = now;
         _position = p;
         _broadcast();
@@ -76,23 +80,24 @@ class TizenAudioPlayer extends AudioPlayerPlatform {
   }
 
   @override
-  Stream<PlaybackEventMessage> get playbackEventMessageStream => _eventController.stream;
+  Stream<PlaybackEventMessage> get playbackEventMessageStream =>
+      _eventController.stream;
 
   @override
   Future<LoadResponse> load(LoadRequest request) async {
     _processingState = ProcessingStateMessage.buffering;
     _broadcast();
-    
+
     final source = request.audioSourceMessage;
     if (source is UriAudioSourceMessage) {
       await _player.setSourceUrl(source.uri);
     } else if (source is ConcatenatingAudioSourceMessage) {
-       if (source.children.isNotEmpty) {
-         final first = source.children.first as UriAudioSourceMessage;
-         await _player.setSourceUrl(first.uri);
-       }
+      if (source.children.isNotEmpty) {
+        final first = source.children.first as UriAudioSourceMessage;
+        await _player.setSourceUrl(first.uri);
+      }
     }
-    
+
     final d = await _player.getDuration();
     if (d != null) _duration = d;
     _processingState = ProcessingStateMessage.ready;
@@ -139,32 +144,39 @@ class TizenAudioPlayer extends AudioPlayerPlatform {
   }
 
   @override
-  Future<SetShuffleModeResponse> setShuffleMode(SetShuffleModeRequest request) async {
+  Future<SetShuffleModeResponse> setShuffleMode(
+      SetShuffleModeRequest request) async {
     // Shuffle is handled at the provider level
     return SetShuffleModeResponse();
   }
+
   @override
   Future<SetPitchResponse> setPitch(SetPitchRequest request) async {
     return SetPitchResponse();
   }
 
   @override
-  Future<SetSkipSilenceResponse> setSkipSilence(SetSkipSilenceRequest request) async {
+  Future<SetSkipSilenceResponse> setSkipSilence(
+      SetSkipSilenceRequest request) async {
     return SetSkipSilenceResponse();
   }
 
   @override
-  Future<SetShuffleOrderResponse> setShuffleOrder(SetShuffleOrderRequest request) async {
+  Future<SetShuffleOrderResponse> setShuffleOrder(
+      SetShuffleOrderRequest request) async {
     return SetShuffleOrderResponse();
   }
 
   @override
-  Future<SetAndroidAudioAttributesResponse> setAndroidAudioAttributes(SetAndroidAudioAttributesRequest request) async {
+  Future<SetAndroidAudioAttributesResponse> setAndroidAudioAttributes(
+      SetAndroidAudioAttributesRequest request) async {
     return SetAndroidAudioAttributesResponse();
   }
 
   @override
-  Future<SetAutomaticallyWaitsToMinimizeStallingResponse> setAutomaticallyWaitsToMinimizeStalling(SetAutomaticallyWaitsToMinimizeStallingRequest request) async {
+  Future<SetAutomaticallyWaitsToMinimizeStallingResponse>
+      setAutomaticallyWaitsToMinimizeStalling(
+          SetAutomaticallyWaitsToMinimizeStallingRequest request) async {
     return SetAutomaticallyWaitsToMinimizeStallingResponse();
   }
 
@@ -175,4 +187,3 @@ class TizenAudioPlayer extends AudioPlayerPlatform {
     return DisposeResponse();
   }
 }
-

@@ -48,32 +48,44 @@ void main() {
 
   group('CastService MIME type resolution', () {
     test('resolves extensions from URLs correctly', () {
-      expect(CastService.mimeTypeFromUrl('https://example.com/music.flac'), 'audio/flac');
-      expect(CastService.mimeTypeFromUrl('https://example.com/music.ogg'), 'audio/ogg');
-      expect(CastService.mimeTypeFromUrl('https://example.com/music.opus'), 'audio/ogg; codecs=opus');
-      expect(CastService.mimeTypeFromUrl('https://example.com/music.wav'), 'audio/wav');
-      expect(CastService.mimeTypeFromUrl('https://example.com/music.aac'), 'audio/aac');
-      expect(CastService.mimeTypeFromUrl('https://example.com/music.m4a'), 'audio/mp4');
-      expect(CastService.mimeTypeFromUrl('https://example.com/music.mp3'), 'audio/mpeg');
+      expect(CastService.mimeTypeFromUrl('https://example.com/music.flac'),
+          'audio/flac');
+      expect(CastService.mimeTypeFromUrl('https://example.com/music.ogg'),
+          'audio/ogg');
+      expect(CastService.mimeTypeFromUrl('https://example.com/music.opus'),
+          'audio/ogg; codecs=opus');
+      expect(CastService.mimeTypeFromUrl('https://example.com/music.wav'),
+          'audio/wav');
+      expect(CastService.mimeTypeFromUrl('https://example.com/music.aac'),
+          'audio/aac');
+      expect(CastService.mimeTypeFromUrl('https://example.com/music.m4a'),
+          'audio/mp4');
+      expect(CastService.mimeTypeFromUrl('https://example.com/music.mp3'),
+          'audio/mpeg');
     });
 
     test('resolves format and suffix from query parameters', () {
       expect(
-        CastService.mimeTypeFromUrl('https://example.com/rest/stream?id=123&format=flac&u=test'),
+        CastService.mimeTypeFromUrl(
+            'https://example.com/rest/stream?id=123&format=flac&u=test'),
         'audio/flac',
       );
       expect(
-        CastService.mimeTypeFromUrl('https://example.com/rest/stream?id=123&suffix=mp3&u=test'),
+        CastService.mimeTypeFromUrl(
+            'https://example.com/rest/stream?id=123&suffix=mp3&u=test'),
         'audio/mpeg',
       );
       expect(
-        CastService.mimeTypeFromUrl('https://example.com/rest/stream?id=123&format=m4a'),
+        CastService.mimeTypeFromUrl(
+            'https://example.com/rest/stream?id=123&format=m4a'),
         'audio/mp4',
       );
     });
 
     test('falls back to audio/mpeg when format is unrecognized', () {
-      expect(CastService.mimeTypeFromUrl('https://example.com/rest/stream?id=123'), 'audio/mpeg');
+      expect(
+          CastService.mimeTypeFromUrl('https://example.com/rest/stream?id=123'),
+          'audio/mpeg');
     });
   });
 }

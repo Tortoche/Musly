@@ -42,7 +42,8 @@ class ImageUrlCache {
         final base = coverArt.split('=')[0];
         return '$base=w$effectiveSize-h$effectiveSize-l90-rj';
       }
-      if (coverArt.contains('i.ytimg.com') || coverArt.contains('img.youtube.com')) {
+      if (coverArt.contains('i.ytimg.com') ||
+          coverArt.contains('img.youtube.com')) {
         final match = RegExp(r'/vi/([a-zA-Z0-9_-]{11})').firstMatch(coverArt);
         if (match != null) {
           final vid = match.group(1);
@@ -83,20 +84,27 @@ class AlbumArtwork extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final svc = PlayerUiSettingsService();
-    return ValueListenableBuilder<String>(
-      valueListenable: svc.artworkResolutionNotifier,
-      builder: (context, resolutionSetting, _) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        svc.artworkResolutionNotifier,
+        svc.artworkShapeNotifier,
+        svc.albumArtCornerRadiusNotifier,
+        svc.artworkShadowNotifier,
+        svc.artworkShadowColorNotifier,
+      ]),
+      builder: (context, _) {
         final shape = svc.getArtworkShape();
         final globalRadius = svc.getAlbumArtCornerRadius();
         final shadowLevel = svc.getArtworkShadow();
         final shadowColor = svc.getArtworkShadowColor();
+        final resolutionSetting = svc.getArtworkResolution();
 
-        final resolvedRadius = borderRadius ??
-            (shape == 'circle'
-                ? 9999.0
-                : shape == 'square'
+        final resolvedRadius = shape == 'circle'
+            ? 9999.0
+            : (borderRadius ??
+                (shape == 'square'
                     ? 0.0
-                    : globalRadius);
+                    : globalRadius));
 
         return _buildContent(
           context,
@@ -170,7 +178,9 @@ class AlbumArtwork extends StatelessWidget {
     } else if (resolutionSetting == 'low') {
       cacheSize = baseSize > 300 ? baseSize.clamp(300, 600) : 300;
     } else {
-      cacheSize = baseSize > 600 ? baseSize.clamp(600, 1000) : 600; // normal (at least 600px)
+      cacheSize = baseSize > 600
+          ? baseSize.clamp(600, 1000)
+          : 600; // normal (at least 600px)
     }
 
     // For small thumbnails (e.g. lists, mini player), decode in memory at device resolution

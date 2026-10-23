@@ -73,7 +73,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
     final text = _urlController.text.trim();
     if (text.isEmpty) {
       setState(() {
-        _errorMessage = 'Inserisci un link o ID playlist';
+        _errorMessage = 'Veuillez entrer un lien ou identifiant de playlist';
       });
       return;
     }
@@ -108,7 +108,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
       _currentStep = _ImportStep.importing;
       _progressCurrent = 0;
       _progressTotal = _preview!.totalTracks;
-      _progressStatus = 'Avvio importazione...';
+      _progressStatus = 'Démarrage de l\'importation...';
       _errorMessage = null;
     });
 
@@ -228,7 +228,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Importa Playlist',
+                    'Importer une playlist',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -236,7 +236,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Spotify o YouTube Music (senza login)',
+                    'Spotify ou YouTube Music (sans compte requis)',
                     style: TextStyle(
                       fontSize: 13,
                       color: isDark ? Colors.white60 : Colors.black54,
@@ -275,7 +275,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
           controller: _urlController,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: 'Incolla link Spotify o YouTube Music...',
+            hintText: 'Coller un lien Spotify ou YouTube Music...',
             hintStyle: TextStyle(
               fontSize: 14,
               color: isDark ? Colors.white38 : Colors.black38,
@@ -303,7 +303,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
                   ),
                 IconButton(
                   icon: const Icon(Icons.content_paste_rounded, size: 20),
-                  tooltip: 'Incolla dagli appunti',
+                  tooltip: 'Coller depuis le presse-papier',
                   onPressed: _pasteClipboard,
                 ),
               ],
@@ -332,7 +332,8 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
                   ),
                 )
               : const Icon(CupertinoIcons.arrow_right_circle),
-          label: Text(_isLoadingPreview ? 'Caricamento...' : 'Carica Anteprima'),
+          label:
+              Text(_isLoadingPreview ? 'Chargement...' : 'Charger l\'aperçu'),
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
@@ -402,7 +403,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
             const SizedBox(width: 6),
             const Expanded(
               child: Text(
-                'Anteprima Playlist',
+                'Aperçu de la playlist',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
@@ -484,7 +485,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 4),
                         border: UnderlineInputBorder(),
-                        labelText: 'Nome playlist',
+                        labelText: 'Nom de la playlist',
                         labelStyle: TextStyle(fontSize: 12),
                       ),
                     ),
@@ -506,7 +507,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Brani inclusi (${p.totalTracks}):',
+          'Titres inclus (${p.totalTracks}) :',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -626,14 +627,14 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
         ),
         const SizedBox(height: 20),
         const Text(
-          'Importazione in corso...',
+          'Importation en cours...',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
           _progressTotal > 0
               ? 'Tracce: $_progressCurrent / $_progressTotal'
-              : 'Preparazione brani...',
+              : 'Préparation des morceaux...',
           style: TextStyle(
             fontSize: 14,
             color: isDark ? Colors.white70 : Colors.black87,
@@ -692,13 +693,13 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
         ),
         const SizedBox(height: 18),
         const Text(
-          'Playlist importata con successo!',
+          'Playlist importée avec succès !',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
         Text(
-          '"${p?.name ?? 'Playlist'}" è pronta per l\'ascolto in Web Stream',
+          '"${p?.name ?? 'Playlist'}" est prête pour l\'écoute',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
@@ -725,7 +726,7 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
               child: ElevatedButton.icon(
                 onPressed: _openImportedPlaylist,
                 icon: const Icon(CupertinoIcons.play_circle_fill),
-                label: const Text('Apri Playlist'),
+                label: const Text('Ouvrir la playlist'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,

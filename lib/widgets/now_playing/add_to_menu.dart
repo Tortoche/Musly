@@ -7,6 +7,7 @@ import '../../services/subsonic_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/offline_service.dart' as musly_offline_service;
 import '../../providers/library_provider.dart' as musly_library_provider;
+import '../../theme/app_theme.dart';
 
 class AddToMenu extends StatelessWidget {
   final Song song;
@@ -26,8 +27,14 @@ class AddToMenu extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.white,
+        color: isDark ? AppTheme.oledCard : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppTheme.oledBorder : const Color(0xFFE5E5EA),
+            width: 0.5,
+          ),
+        ),
       ),
       padding: const EdgeInsets.only(bottom: 32, top: 16),
       child: Column(
@@ -121,20 +128,20 @@ class AddToMenu extends StatelessWidget {
               Navigator.of(context).pop();
               final subsonic =
                   Provider.of<SubsonicService>(context, listen: false);
+              final libraryProvider =
+                  Provider.of<musly_library_provider.LibraryProvider>(context,
+                      listen: false);
               try {
                 if (isStarred) {
                   await subsonic.unstar(id: song.id);
                 } else {
                   await subsonic.star(id: song.id);
-                  // Import LibraryProvider and OfflineService dynamically or manually
                   try {
-                    final libraryProvider =
-                        Provider.of<musly_library_provider.LibraryProvider>(context, listen: false);
-                    await musly_offline_service.OfflineService().autoDownloadIfEnabled(
-                        song, subsonic, libraryProvider);
+                    await musly_offline_service.OfflineService()
+                        .autoDownloadIfEnabled(song, subsonic, libraryProvider);
                   } catch (e) {
-                    await musly_offline_service.OfflineService().autoDownloadIfEnabled(
-                        song, subsonic, null);
+                    await musly_offline_service.OfflineService()
+                        .autoDownloadIfEnabled(song, subsonic, null);
                   }
                 }
                 if (context.mounted) {
@@ -218,8 +225,14 @@ class _PlaylistSelectionBottomSheetState
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.white,
+        color: isDark ? AppTheme.oledCard : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppTheme.oledBorder : const Color(0xFFE5E5EA),
+            width: 0.5,
+          ),
+        ),
       ),
       padding: const EdgeInsets.only(bottom: 32, top: 16),
       constraints: BoxConstraints(

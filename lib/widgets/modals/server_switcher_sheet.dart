@@ -374,7 +374,7 @@ class _ServerSwitcherSheetState extends State<ServerSwitcherSheet> {
                             content: Text(
                               AppLocalizations.of(context)
                                       ?.logoutConfirmation ??
-                                  'Are you sure you want to log out?',
+                                  'Êtes-vous sûr de vouloir vous déconnecter ?',
                             ),
                             actions: [
                               TextButton(
@@ -444,16 +444,16 @@ class _ServerSwitcherSheetState extends State<ServerSwitcherSheet> {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isDark
-            ? (isActive ? const Color(0xFF282828) : AppTheme.darkSurface)
+            ? (isActive ? AppTheme.oledCardHover : AppTheme.oledCard)
             : (isActive ? Colors.white : const Color(0xFFF9FAFB)),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isActive
               ? primaryColor.withValues(alpha: 0.6)
               : (isDark
-                  ? Colors.white10
+                  ? AppTheme.oledDivider
                   : Colors.black.withValues(alpha: 0.06)),
-          width: isActive ? 1.5 : 1,
+          width: isActive ? 1.5 : 0.5,
         ),
         boxShadow: isActive
             ? [
@@ -541,7 +541,7 @@ class _ServerSwitcherSheetState extends State<ServerSwitcherSheet> {
                     const SizedBox(height: 3),
                     Text(
                       profile.isYoutube
-                          ? 'Free Online Streaming'
+                          ? 'Streaming en ligne gratuit'
                           : '${profile.username} • ${profile.displayUrl}',
                       style: TextStyle(
                         fontSize: 12,

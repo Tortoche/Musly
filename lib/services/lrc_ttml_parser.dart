@@ -5,8 +5,7 @@ class LrcParser {
     final lines = content.split('\n');
     final List<LyricLine> parsedLines = [];
 
-    final RegExp tagRegex =
-        RegExp(r'\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]');
+    final RegExp tagRegex = RegExp(r'\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]');
 
     for (var line in lines) {
       final trimmed = line.trim();

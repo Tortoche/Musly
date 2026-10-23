@@ -27,8 +27,9 @@ class SettingsListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasLeading = leading != null || (icon != null && gradientColors != null);
-    
+    final hasLeading =
+        leading != null || (icon != null && gradientColors != null);
+
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -37,7 +38,9 @@ class SettingsListTile extends StatelessWidget {
         child: Row(
           children: [
             if (hasLeading) ...[
-              leading ?? SettingsIconBadge(gradientColors: gradientColors!, icon: icon!),
+              leading ??
+                  SettingsIconBadge(
+                      gradientColors: gradientColors!, icon: icon!),
               const SizedBox(width: 16),
             ],
             Expanded(
@@ -49,7 +52,8 @@ class SettingsListTile extends StatelessWidget {
                     title,
                     style: TextStyle(
                       fontSize: 16,
-                      color: titleColor ?? (context.isDark ? Colors.white : Colors.black),
+                      color: titleColor ??
+                          (context.isDark ? Colors.white : Colors.black),
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -74,7 +78,9 @@ class SettingsListTile extends StatelessWidget {
                 child: DefaultTextStyle(
                   style: TextStyle(
                     fontSize: 16,
-                    color: context.isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                    color: context.isDark
+                        ? AppTheme.darkSecondaryText
+                        : AppTheme.lightSecondaryText,
                   ),
                   child: trailing!,
                 ),

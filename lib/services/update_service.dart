@@ -72,7 +72,8 @@ class ReleaseInfo {
 
     if (!kIsWeb && Platform.isWindows) {
       final exe = assets.firstWhere(
-        (a) => a.name.toLowerCase().endsWith('-setup.exe') ||
+        (a) =>
+            a.name.toLowerCase().endsWith('-setup.exe') ||
             a.name.toLowerCase().endsWith('.exe'),
         orElse: () => assets.first,
       );
@@ -89,7 +90,10 @@ class ReleaseInfo {
 
     if (!kIsWeb && Platform.isLinux) {
       final linux = assets.firstWhere(
-        (a) => a.name.contains('linux') || a.name.endsWith('.tar.gz') || a.name.endsWith('.AppImage'),
+        (a) =>
+            a.name.contains('linux') ||
+            a.name.endsWith('.tar.gz') ||
+            a.name.endsWith('.AppImage'),
         orElse: () => assets.first,
       );
       return linux;

@@ -39,7 +39,9 @@ import '../services/android_auto_service.dart';
 
 enum RepeatMode { off, all, one }
 
-class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implements AndroidAutoDelegate {
+class PlayerProvider extends ChangeNotifier
+    with WidgetsBindingObserver
+    implements AndroidAutoDelegate {
   final SubsonicService _subsonicService;
   late final StorageService _storageService;
   final MuslyAudioHandler _audioHandler;
@@ -50,6 +52,10 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   final ReplayGainService _replayGainService = ReplayGainService();
   final AutoDjService _autoDjService = AutoDjService();
   final CrossfadeService _crossfadeService = CrossfadeService();
+  AudioPlayer get _standbyPlayer => _audioHandler.standbyPlayer;
+  Timer? _crossfadeTimer;
+  bool _isStandbyPreloaded = false;
+  String? _standbyPreloadedSongId;
   late final DiscordRpcService _discordRpcService;
   final CastService _castService;
   late final UpnpService _upnpService;
@@ -62,8 +68,10 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   bool _isPlaying = false;
   bool _isLoading = false;
   bool _shuffleEnabled = false;
-  bool _gaplessEnabled = Platform.operatingSystem != 'tizen' && Platform.environment['TIZEN_API_VERSION'] == null;
+  bool _gaplessEnabled = Platform.operatingSystem != 'tizen' &&
+      Platform.environment['TIZEN_API_VERSION'] == null;
   final List<String> _shuffleHistory = [];
+  int? _nextShuffledIndex;
   RepeatMode _repeatMode = RepeatMode.off;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -438,7 +446,6 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
     }
   }
 
-
   String? _resolveInitialArtworkUrl(Song? song) {
     if (song == null) return null;
     if (song.isLocal) {
@@ -659,8 +666,8 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
     final secondsRemaining = totalSeconds - position.inSeconds;
     final progressRatio = position.inSeconds / totalSeconds;
 
-    final shouldPreload = (secondsRemaining <= 25 && secondsRemaining > 0) ||
-        (progressRatio >= 0.75 && position.inSeconds >= 5);
+    final shouldPreload = (secondsRemaining <= 30 && secondsRemaining > 0) ||
+        (progressRatio >= 0.60 && position.inSeconds >= 10);
 
     if (!shouldPreload) return;
 
@@ -673,15 +680,28 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
 
     _lastPreloadedSongId = nextSong.id;
     _preloadSong(nextSong);
+    if (_crossfadeService.isEnabled && !_isCrossfadingOut && !_isRenderingRemotely) {
+      _prebufferStandbyDeck(nextSong).catchError((e) {
+        debugPrint('[Player] Standby deck pre-buffer error: $e');
+      });
+    }
   }
 
   Song? _getNextSongToPreload() {
     if (_queue.isEmpty || _currentIndex < 0) return null;
     if (_repeatMode == RepeatMode.one) return _currentSong;
     if (_shuffleEnabled && _queue.length > 1) {
-      for (int i = 0; i < _queue.length; i++) {
-        if (i != _currentIndex) return _queue[i];
+      if (_nextShuffledIndex == null ||
+          _nextShuffledIndex == _currentIndex ||
+          _nextShuffledIndex! >= _queue.length) {
+        final random = Random();
+        int candidate;
+        do {
+          candidate = random.nextInt(_queue.length);
+        } while (candidate == _currentIndex);
+        _nextShuffledIndex = candidate;
       }
+      return _queue[_nextShuffledIndex!];
     }
     if (_currentIndex < _queue.length - 1) {
       return _queue[_currentIndex + 1];
@@ -906,6 +926,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   void _initializePlayer() {
     _configureAudioSession();
     _replayGainService.initialize();
+    _crossfadeService.initialize();
 
     _storageService.getVolume().then((savedVolume) {
       _volume = savedVolume;
@@ -934,124 +955,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
       notifyListeners();
     });
 
-    _playerStateSub = _audioPlayer.playerStateStream.listen(
-      (state) {
-        if (_isRenderingRemotely) return;
-
-        final wasPlaying = _isPlaying;
-        _isPlaying = state.playing;
-
-        if (wasPlaying != _isPlaying && !_reactivatingSession) {
-          debugPrint(
-              '[Player] ${_isPlaying ? 'â–¶ Playing' : 'â¸ Paused'} â€” "${_currentSong?.title ?? 'unknown'}" (${state.processingState.name})');
-
-          if (_isPlaying && (Platform.isWindows || Platform.isLinux || Platform.isMacOS) && !_isRenderingRemotely) {
-            _windowsPositionTimer?.cancel();
-            _lastPolledPosition = null;
-            _windowsPositionTimer = Timer.periodic(
-              const Duration(milliseconds: 500),
-              (_) {
-                final pos = _audioPlayer.position;
-                if (_lastPolledPosition == null ||
-                    pos.inMilliseconds != _lastPolledPosition!.inMilliseconds) {
-                  _lastPolledPosition = pos;
-                  _position = pos;
-                  _positionController.add(pos);
-                  _checkAndPreloadNextSong(pos);
-                  notifyListeners();
-                  _updateAllServices();
-                }
-              },
-            );
-          } else {
-            _windowsPositionTimer?.cancel();
-            _windowsPositionTimer = null;
-            _lastPolledPosition = null;
-          }
-        }
-
-        if (state.processingState == ProcessingState.completed) {
-          debugPrint(
-              '[Player] âœ“ Song completed: "${_currentSong?.title ?? 'unknown'}"');
-          _onSongComplete().catchError(
-              (e) => debugPrint('[Player] _onSongComplete error: $e'));
-        }
-
-        if (state.processingState == ProcessingState.buffering && !wasPlaying) {
-          debugPrint(
-              '[Player] âŸ³ Buffering: "${_currentSong?.title ?? 'unknown'}"');
-        }
-
-        if (state.processingState == ProcessingState.ready ||
-            (state.playing && !wasPlaying)) {
-          if (!_isFading) {
-            _applyReplayGain(_currentSong).catchError((_) {});
-          }
-        }
-
-        if (wasPlaying != _isPlaying && !_reactivatingSession) {
-          notifyListeners();
-          _updateAndroidAuto();
-        }
-      },
-      onError: (error) {
-        debugPrint('[Player] State stream error (usually harmless): $error');
-      },
-    );
-
-    Duration? lastSystemUpdate;
-    _positionSub = _audioPlayer.positionStream.listen(
-      (position) {
-        if (_isRenderingRemotely) return;
-
-        _position = position;
-        _positionController.add(position);
-        _checkAndPreloadNextSong(position);
-        _checkCrossfade(position);
-
-        if (lastSystemUpdate == null ||
-            (position.inMilliseconds - lastSystemUpdate!.inMilliseconds).abs() >
-                1000) {
-          lastSystemUpdate = position;
-          _updateAllServices();
-        }
-      },
-      onError: (error) {
-        debugPrint('Position stream error (can be ignored): $error');
-      },
-    );
-
-    _durationSub = _audioPlayer.durationStream.listen(
-      (duration) {
-        if (_isRenderingRemotely) return;
-
-        _duration = duration ?? Duration.zero;
-        notifyListeners();
-        _updateAndroidAuto();
-      },
-      onError: (error) {
-        debugPrint('Duration stream error (can be ignored): $error');
-      },
-    );
-
-    _currentIndexSub = _audioPlayer.currentIndexStream.listen(
-      (index) {
-        if (index != null &&
-            index != _currentIndex &&
-            !_isRenderingRemotely &&
-            _concatenatingSource != null) {
-          if (index >= 0 && index < _queue.length) {
-            _applyReplayGain(_queue[index]).catchError((_) {});
-          }
-          _onCurrentIndexChanged(index).catchError((e) {
-            debugPrint('[Player] _onCurrentIndexChanged error: $e');
-          });
-        }
-      },
-      onError: (error) {
-        debugPrint('Current index stream error (can be ignored): $error');
-      },
-    );
+    _initAudioPlayerListeners();
   }
 
   bool _wasPlayingBeforeInterruption = false;
@@ -1405,6 +1309,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
         }
 
         if (isSameQueue &&
+            !_crossfadeService.isEnabled &&
             _concatenatingSource != null &&
             !_isRenderingRemotely) {
           final targetIndex =
@@ -1427,10 +1332,12 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
             startIndex ?? playlist.indexWhere((s) => s.id == song.id);
         if (_currentIndex == -1) _currentIndex = 0;
         _shuffleHistory.clear();
+        _nextShuffledIndex = null;
       } else if (_queue.isEmpty || !_queue.any((s) => s.id == song.id)) {
         _queue = [song];
         _currentIndex = 0;
         _shuffleHistory.clear();
+        _nextShuffledIndex = null;
       } else {
         _currentIndex = startIndex ?? _queue.indexWhere((s) => s.id == song.id);
       }
@@ -1438,8 +1345,12 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
       _lastPreloadedSongId = null;
       _resolvedArtworkUrl = _resolveInitialArtworkUrl(song);
       _position = Duration.zero;
+      _duration = song.duration != null && song.duration! > 0
+          ? Duration(seconds: song.duration!)
+          : Duration.zero;
 
       _resetScrobbleTracking(song);
+      _resolveCurrentSongLyricsOutro();
       notifyListeners();
       _saveQueueState();
 
@@ -1577,6 +1488,11 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
         return;
       } else {
         _isCrossfadingOut = false;
+        _crossfadeTimer?.cancel();
+        _crossfadeTimer = null;
+        _standbyPlayer.stop().catchError((_) {});
+        _isStandbyPreloaded = false;
+        _standbyPreloadedSongId = null;
 
         final youtubeSource = song.isLocal != true
             ? await _subsonicService.getYoutubeAudioSource(song)
@@ -1603,7 +1519,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
           await _audioPlayer.setUrl(playUrl);
           await _applyReplayGain(song);
           await _ensureAudioFocus(() => _audioPlayer.play());
-        } else if (_gaplessEnabled) {
+        } else if (_gaplessEnabled && !_crossfadeService.isEnabled) {
           try {
             await _buildAndSetConcatenatingSource(initialIndex: _currentIndex);
           } catch (e) {
@@ -1622,42 +1538,9 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
           await _applyReplayGain(song);
           await _ensureAudioFocus(() => _audioPlayer.play());
         } else {
-          final String playUrl;
-          if (song.isLocal == true && song.path != null) {
-            playUrl = Uri.file(song.path!).toString();
-          } else {
-            final offlinePath = _offlineService.getLocalPath(song.id);
-            if (offlinePath != null) {
-              playUrl = 'file://$offlinePath';
-            } else {
-              final maxBitRate = _transcodingService.enabled
-                  ? _transcodingService.currentBitRate
-                  : null;
-              final format = _transcodingService.enabled
-                  ? _transcodingService.format
-                  : null;
-              playUrl = _subsonicService.getStreamUrl(song.id,
-                  maxBitRate: maxBitRate, format: format);
-            }
-          }
-
-          if (song.isLocal == true ||
-              _offlineService.getLocalPath(song.id) != null) {
-            await _audioPlayer.setUrl(playUrl);
-          } else {
-            final cacheDir = await getTemporaryDirectory();
-            final cacheFile = File(
-              '${cacheDir.path}/musly_stream_${song.id.hashCode}.tmp',
-            );
-
-            await _audioPlayer.setAudioSource(
-              LockCachingAudioSource(
-                Uri.parse(playUrl),
-                cacheFile: cacheFile,
-                tag: song.id,
-              ),
-            );
-          }
+          _concatenatingSource = null;
+          final source = await _buildAudioSourceForSong(song);
+          await _audioPlayer.setAudioSource(source);
           await _applyReplayGain(song);
           await _ensureAudioFocus(() => _audioPlayer.play());
         }
@@ -1851,6 +1734,8 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
       await _upnpService.pause();
     }
 
+    _crossfadeTimer?.cancel();
+    _standbyPlayer.pause().catchError((_) {});
     try {
       await _fadeOut(onComplete: () async {
         await _audioPlayer.pause();
@@ -1869,6 +1754,11 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   }
 
   Future<void> stop() async {
+    _crossfadeTimer?.cancel();
+    _crossfadeTimer = null;
+    _isCrossfadingOut = false;
+    _standbyPlayer.stop().catchError((_) {});
+
     if (_castService.isConnected) {
       await _castService.stop();
     } else if (_upnpService.isConnected) {
@@ -1991,6 +1881,13 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
       await _upnpService.seek(position);
       return;
     } else {
+      if (_isCrossfadingOut) {
+        _crossfadeTimer?.cancel();
+        _crossfadeTimer = null;
+        _isCrossfadingOut = false;
+        _standbyPlayer.stop().catchError((_) {});
+        _applyReplayGain(_currentSong).catchError((_) {});
+      }
       await _audioPlayer.seek(position);
     }
   }
@@ -2003,6 +1900,14 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   }
 
   Future<void> skipNext() async {
+    if (_isCrossfadingOut) {
+      _crossfadeTimer?.cancel();
+      _crossfadeTimer = null;
+      _isCrossfadingOut = false;
+      _crossfadeNextSong = null;
+      _standbyPlayer.stop().catchError((_) {});
+    }
+
     if (_currentSong != null && _recommendationService != null) {
       final played = _position.inSeconds;
       final total = _duration.inSeconds;
@@ -2052,10 +1957,13 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
     if (_shuffleEnabled && _queue.length > 1) {
       _shuffleHistory.add(_currentSong!.id);
       if (_shuffleHistory.length > 50) _shuffleHistory.removeAt(0);
-      int next;
-      do {
-        next = Random().nextInt(_queue.length);
-      } while (next == _currentIndex);
+      int next = _nextShuffledIndex ?? -1;
+      if (next == -1 || next == _currentIndex || next >= _queue.length) {
+        do {
+          next = Random().nextInt(_queue.length);
+        } while (next == _currentIndex);
+      }
+      _nextShuffledIndex = null;
       await skipToIndex(next);
     } else if (_currentIndex < _queue.length - 1) {
       _checkAndRefillAutoQueue().catchError((_) {});
@@ -2123,6 +2031,14 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   }
 
   Future<void> skipPrevious() async {
+    if (_isCrossfadingOut) {
+      _crossfadeTimer?.cancel();
+      _crossfadeTimer = null;
+      _isCrossfadingOut = false;
+      _crossfadeNextSong = null;
+      _standbyPlayer.stop().catchError((_) {});
+    }
+
     if (_jukeboxService.enabled) {
       await _jukeboxService.skipPrevious(_subsonicService);
       return;
@@ -2530,47 +2446,12 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
           return;
         }
       }
-      if (_gaplessEnabled && _queue.isNotEmpty) {
+      if (_gaplessEnabled && !_crossfadeService.isEnabled && _queue.isNotEmpty) {
         await _buildAndSetConcatenatingSource(initialIndex: _currentIndex);
       } else {
-        final String playUrl;
-        if (_currentSong!.isLocal == true && _currentSong!.path != null) {
-          playUrl = Uri.file(_currentSong!.path!).toString();
-        } else {
-          final offlinePath = _offlineService.getLocalPath(_currentSong!.id);
-          if (offlinePath != null) {
-            playUrl = 'file://$offlinePath';
-          } else {
-            playUrl =
-                await _subsonicService.resolveStreamUrlAsync(_currentSong!);
-          }
-        }
-        if (_currentSong!.isLocal == true ||
-            _offlineService.getLocalPath(_currentSong!.id) != null) {
-          await _audioPlayer.setUrl(playUrl);
-        } else {
-          if (_transcodingService.enabled) {
-            final cacheDir = await getTemporaryDirectory();
-            final cacheFile = File(
-              '${cacheDir.path}/musly_stream_${_currentSong!.id.hashCode}.tmp',
-            );
-
-            await _audioPlayer.setAudioSource(
-              LockCachingAudioSource(
-                Uri.parse(playUrl),
-                cacheFile: cacheFile,
-                tag: _currentSong!.id,
-              ),
-            );
-          } else {
-            await _audioPlayer.setAudioSource(
-              AudioSource.uri(
-                Uri.parse(playUrl),
-                tag: _currentSong!.id,
-              ),
-            );
-          }
-        }
+        _concatenatingSource = null;
+        final source = await _buildAudioSourceForSong(_currentSong!);
+        await _audioPlayer.setAudioSource(source);
       }
 
       if (_position.inMilliseconds > 0) {
@@ -2646,6 +2527,10 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   @visibleForTesting
   Future<void> adoptTrackAt(int newIndex) async {
     if (newIndex < 0 || newIndex >= _queue.length) return;
+    if (_isCrossfadingOut) {
+      debugPrint('[Player] adoptTrackAt deferred: crossfade handover active');
+      return;
+    }
 
     _isCrossfadingOut = false;
     _currentIndex = newIndex;
@@ -2664,6 +2549,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
     }
 
     _resetScrobbleTracking(_currentSong!);
+    _resolveCurrentSongLyricsOutro();
     notifyListeners();
     _saveQueueState();
 
@@ -2725,41 +2611,371 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
   CrossfadeService get crossfadeService => _crossfadeService;
 
   bool _isCrossfadingOut = false;
+  Song? _crossfadeNextSong;
+  double _crossfadeTargetVol = 1.0;
+  double _crossfadeStartVol = 1.0;
+  double? _currentSongLastLyricSec;
+
+  void _resolveCurrentSongLyricsOutro() {
+    _currentSongLastLyricSec = null;
+    final song = _currentSong;
+    if (song == null) return;
+
+    LrcLibService()
+        .searchLyrics(
+          artist: song.artist,
+          title: song.title,
+          durationSeconds: song.duration,
+        )
+        .then((result) {
+          if (_currentSong?.id == song.id && result != null) {
+            final syncedLyrics = result['syncedLyrics'] as String?;
+            if (syncedLyrics != null && syncedLyrics.isNotEmpty) {
+              _currentSongLastLyricSec =
+                  CrossfadeService.parseLastLyricTimestamp(syncedLyrics);
+              if (_currentSongLastLyricSec != null) {
+                debugPrint(
+                    '[Player DJ] Outro cue point at ${_currentSongLastLyricSec!.toStringAsFixed(1)}s for "${song.title}"');
+              }
+            }
+          }
+        })
+        .catchError((_) {});
+  }
+
+  Future<void> _prebufferStandbyDeck(Song nextSong) async {
+    if (_standbyPreloadedSongId == nextSong.id && _isStandbyPreloaded) return;
+    try {
+      final source = await _buildAudioSourceForSong(nextSong);
+      await _standbyPlayer.setAudioSource(source);
+      await _standbyPlayer.setVolume(0.0);
+      await _standbyPlayer.pause();
+      _isStandbyPreloaded = true;
+      _standbyPreloadedSongId = nextSong.id;
+      debugPrint('[Player] Standby deck pre-buffered for "${nextSong.title}"');
+    } catch (e) {
+      debugPrint('[Player] Standby pre-buffering failed: $e');
+      _isStandbyPreloaded = false;
+      _standbyPreloadedSongId = null;
+    }
+  }
 
   void _checkCrossfade(Duration position) {
     if (!_crossfadeService.isEnabled ||
         _duration == Duration.zero ||
-        _isRenderingRemotely) {
+        _isRenderingRemotely ||
+        _isCrossfadingOut ||
+        !_isPlaying ||
+        !hasNext) {
       return;
     }
-    final crossfadeSec = _crossfadeService.getCrossfadeSeconds();
+    final nextSong = _getNextSongToPreload();
+    if (nextSong == null) {
+      return;
+    }
+    int crossfadeSec = _crossfadeService.calculateTransitionSeconds(
+      currentSong: _currentSong,
+      nextSong: nextSong,
+      lastLyricSeconds: _currentSongLastLyricSec,
+      duration: _duration,
+    );
     if (crossfadeSec <= 0) {
       return;
     }
-    final threshold = _duration - Duration(seconds: crossfadeSec);
-    if (position >= threshold && !_isCrossfadingOut && _isPlaying && hasNext) {
-      _startCrossfadeAttenuation(crossfadeSec);
+    if (_duration.inSeconds > 2 && crossfadeSec >= _duration.inSeconds) {
+      crossfadeSec = _duration.inSeconds - 1;
+    }
+
+    final threshold = _crossfadeService.calculateTriggerThreshold(
+      duration: _duration,
+      crossfadeSec: crossfadeSec,
+      lastLyricSeconds: _currentSongLastLyricSec,
+    );
+
+    if (threshold > Duration.zero && position >= threshold) {
+      _startSimultaneousCrossfade(nextSong, crossfadeSec);
     }
   }
 
-  void _startCrossfadeAttenuation(int crossfadeSec) {
-    _isCrossfadingOut = true;
-    final steps = (crossfadeSec * 4).clamp(4, 40);
-    final stepDurationMs = (crossfadeSec * 1000) ~/ steps;
-    final currentVol = _audioPlayer.volume;
-    final volStep = currentVol / steps;
-    var step = 0;
+  Future<void> _completeCrossfadeHandover(
+      Song nextSong, double targetVol, double startVol) async {
+    if (!_isCrossfadingOut) return;
+    _isCrossfadingOut = false;
+    _crossfadeNextSong = null;
+    _crossfadeTimer?.cancel();
+    _crossfadeTimer = null;
 
-    Timer.periodic(Duration(milliseconds: stepDurationMs), (timer) {
-      if (!_isCrossfadingOut || !_isPlaying || step >= steps) {
-        timer.cancel();
-        _isCrossfadingOut = false;
-        return;
+    // 1. CRITICAL: Unbind listeners from outgoing deck FIRST, so that
+    // stopping it or its end-of-track events NEVER trigger _onSongComplete
+    // or corrupt position streams!
+    _positionSub?.cancel();
+    _positionSub = null;
+    _durationSub?.cancel();
+    _durationSub = null;
+    _playerStateSub?.cancel();
+    _playerStateSub = null;
+    _currentIndexSub?.cancel();
+    _currentIndexSub = null;
+
+    final outgoingPlayer = _audioPlayer;
+
+    // 2. Swap active deck in audio handler: the standby player is now the active player
+    _audioHandler.swapPlayers();
+
+    // 3. Ensure the new active player is at target volume
+    await _audioPlayer.setVolume(targetVol);
+
+    // 4. Safely stop and reset the old deck in background now that it's disconnected
+    outgoingPlayer.stop().catchError((_) {});
+    outgoingPlayer.setVolume(startVol).catchError((_) {});
+
+    retireCurrentTrack();
+
+    final targetIndex = _queue.indexWhere((s) => s.id == nextSong.id);
+    if (targetIndex != -1) {
+      _currentIndex = targetIndex;
+    } else {
+      _currentIndex = (_currentIndex + 1).clamp(0, _queue.length - 1);
+    }
+    _currentSong = nextSong;
+    _duration = nextSong.duration != null && nextSong.duration! > 0
+        ? Duration(seconds: nextSong.duration!)
+        : (_audioPlayer.duration ?? Duration.zero);
+    // Inherit the real playback position of the incoming deck during crossfade
+    _position = _audioPlayer.position;
+    _resolvedArtworkUrl = _resolveInitialArtworkUrl(nextSong);
+    _refreshArtworkUrl().catchError((_) {});
+    _resetScrobbleTracking(nextSong);
+    _resolveCurrentSongLyricsOutro();
+
+    // 5. Rebind streams to the new active player
+    _rebindPlayerStreams();
+
+    _isStandbyPreloaded = false;
+    _standbyPreloadedSongId = null;
+    _nextShuffledIndex = null;
+
+    notifyListeners();
+    _updateAllServices();
+    _updateAndroidAuto();
+    _saveQueueState();
+
+    debugPrint('[Player] DJ Crossfade completed smoothly to "${nextSong.title}" at position ${_position.inSeconds}s');
+
+    // 6. Pre-buffer the NEXT song on the newly freed standby deck
+    final upcoming = _getNextSongToPreload();
+    if (upcoming != null && upcoming.id != nextSong.id) {
+      _prebufferStandbyDeck(upcoming).catchError((e) {
+        debugPrint('[Player] Standby pre-buffering error: $e');
+      });
+    }
+  }
+
+  Future<void> _startSimultaneousCrossfade(Song nextSong, int crossfadeSec) async {
+    if (_isCrossfadingOut) return;
+    _isCrossfadingOut = true;
+    _crossfadeNextSong = nextSong;
+    _crossfadeTimer?.cancel();
+    _crossfadeTimer = null;
+
+    try {
+      if (!_isStandbyPreloaded || _standbyPreloadedSongId != nextSong.id) {
+        debugPrint('[Player] Standby not preloaded, loading now for "${nextSong.title}"');
+        final source = await _buildAudioSourceForSong(nextSong);
+        await _standbyPlayer.setAudioSource(source);
+        _isStandbyPreloaded = true;
+        _standbyPreloadedSongId = nextSong.id;
       }
-      step++;
-      final newVol = (currentVol - (volStep * step)).clamp(0.0, 1.0);
-      _audioPlayer.setVolume(newVol).catchError((_) {});
-    });
+      _standbyPlayer.setVolume(0.0).catchError((_) {});
+      unawaited(_standbyPlayer.play().catchError((e) {
+        debugPrint('[Player] Standby deck play error: $e');
+      }));
+
+      final totalMs = crossfadeSec * 1000;
+      final stepMs = 30; // 30ms for silky smooth 33fps volume curves
+      final steps = (totalMs ~/ stepMs).clamp(10, 300);
+      _crossfadeStartVol = _audioPlayer.volume > 0 ? _audioPlayer.volume : _volume;
+      _crossfadeTargetVol = getEffectiveVolumeForSong(nextSong);
+      final startVol = _crossfadeStartVol;
+      final targetVol = _crossfadeTargetVol;
+      var currentStep = 0;
+
+      _crossfadeTimer = Timer.periodic(Duration(milliseconds: stepMs), (timer) async {
+        if (!_isCrossfadingOut) {
+          timer.cancel();
+          _crossfadeTimer = null;
+          _standbyPlayer.stop().catchError((_) {});
+          return;
+        }
+
+        currentStep++;
+        final progress = (currentStep / steps).clamp(0.0, 1.0);
+        final outVol = (startVol * CrossfadeService.equalPowerFadeOut(progress)).clamp(0.0, 1.0);
+        final inVol = (targetVol * CrossfadeService.equalPowerFadeIn(progress)).clamp(0.0, 1.0);
+
+        _audioPlayer.setVolume(outVol).catchError((_) {});
+        _standbyPlayer.setVolume(inVol).catchError((_) {});
+
+        if (currentStep >= steps) {
+          await _completeCrossfadeHandover(nextSong, targetVol, startVol);
+        }
+      });
+    } catch (e) {
+      debugPrint('[Player] Simultaneous crossfade error: $e');
+      _isCrossfadingOut = false;
+      _crossfadeNextSong = null;
+      _crossfadeTimer?.cancel();
+      _crossfadeTimer = null;
+      _standbyPlayer.stop().catchError((_) {});
+    }
+  }
+
+
+  void _initAudioPlayerListeners() {
+    _playerStateSub?.cancel();
+    _positionSub?.cancel();
+    _durationSub?.cancel();
+    _currentIndexSub?.cancel();
+
+    _playerStateSub = _audioPlayer.playerStateStream.listen(
+      (state) {
+        if (_isRenderingRemotely) return;
+
+        final wasPlaying = _isPlaying;
+        if (_isCrossfadingOut) {
+          _isPlaying = true;
+        } else {
+          _isPlaying = state.playing;
+        }
+
+        if (wasPlaying != _isPlaying && !_reactivatingSession) {
+          debugPrint(
+              '[Player] ${_isPlaying ? 'â–¶ Playing' : 'â¸ Paused'} â€” "${_currentSong?.title ?? 'unknown'}" (${state.processingState.name})');
+
+          if (_isPlaying &&
+              (Platform.isWindows || Platform.isLinux || Platform.isMacOS) &&
+              !_isRenderingRemotely) {
+            _windowsPositionTimer?.cancel();
+            _lastPolledPosition = null;
+            _windowsPositionTimer = Timer.periodic(
+              const Duration(milliseconds: 500),
+              (_) {
+                final pos = _audioPlayer.position;
+                if (_lastPolledPosition == null ||
+                    pos.inMilliseconds != _lastPolledPosition!.inMilliseconds) {
+                  _lastPolledPosition = pos;
+                  _position = pos;
+                  _positionController.add(pos);
+                  _checkAndPreloadNextSong(pos);
+                  notifyListeners();
+                  _updateAllServices();
+                }
+              },
+            );
+          } else {
+            _windowsPositionTimer?.cancel();
+            _windowsPositionTimer = null;
+            _lastPolledPosition = null;
+          }
+        }
+
+        if (state.processingState == ProcessingState.completed) {
+          if (_isCrossfadingOut && _crossfadeNextSong != null) {
+            debugPrint(
+                '[Player] Outgoing deck completed: fast-forwarding handover to "${_crossfadeNextSong!.title}"');
+            _completeCrossfadeHandover(
+                _crossfadeNextSong!, _crossfadeTargetVol, _crossfadeStartVol);
+            return;
+          }
+          debugPrint(
+              '[Player] âœ“ Song completed: "${_currentSong?.title ?? 'unknown'}"');
+          _onSongComplete().catchError(
+              (e) => debugPrint('[Player] _onSongComplete error: $e'));
+        }
+
+        if (state.processingState == ProcessingState.buffering && !wasPlaying) {
+          debugPrint(
+              '[Player] âŸ³ Buffering: "${_currentSong?.title ?? 'unknown'}"');
+        }
+
+        if (state.processingState == ProcessingState.ready ||
+            (state.playing && !wasPlaying)) {
+          if (!_isFading) {
+            _applyReplayGain(_currentSong).catchError((_) {});
+          }
+        }
+
+        if (wasPlaying != _isPlaying && !_reactivatingSession) {
+          notifyListeners();
+          _updateAndroidAuto();
+        }
+      },
+      onError: (error) {
+        debugPrint('[Player] State stream error (usually harmless): $error');
+      },
+    );
+
+    Duration? lastSystemUpdate;
+    _positionSub = _audioPlayer.positionStream.listen(
+      (position) {
+        if (_isRenderingRemotely) return;
+
+        _position = position;
+        _positionController.add(position);
+        _checkAndPreloadNextSong(position);
+        _checkCrossfade(position);
+
+        if (lastSystemUpdate == null ||
+            (position.inMilliseconds - lastSystemUpdate!.inMilliseconds).abs() >
+                1000) {
+          lastSystemUpdate = position;
+          _updateAllServices();
+        }
+      },
+      onError: (error) {
+        debugPrint('Position stream error (can be ignored): $error');
+      },
+    );
+
+    _durationSub = _audioPlayer.durationStream.listen(
+      (duration) {
+        if (_isRenderingRemotely) return;
+
+        _duration = duration ?? Duration.zero;
+        notifyListeners();
+        _updateAndroidAuto();
+      },
+      onError: (error) {
+        debugPrint('Duration stream error (can be ignored): $error');
+      },
+    );
+
+    _currentIndexSub = _audioPlayer.currentIndexStream.listen(
+      (index) {
+        if (index != null &&
+            index != _currentIndex &&
+            !_isRenderingRemotely &&
+            _concatenatingSource != null) {
+          if (index >= 0 && index < _queue.length) {
+            _applyReplayGain(_queue[index]).catchError((_) {});
+          }
+          _onCurrentIndexChanged(index).catchError((e) {
+            debugPrint('[Player] _onCurrentIndexChanged error: $e');
+          });
+        }
+      },
+      onError: (error) {
+        debugPrint('Current index stream error (can be ignored): $error');
+      },
+    );
+  }
+
+  void _rebindPlayerStreams() {
+    _positionSub?.cancel();
+    _durationSub?.cancel();
+    _playerStateSub?.cancel();
+    _currentIndexSub?.cancel();
+    _initAudioPlayerListeners();
   }
 
   Future<void> toggleFavorite() async {
@@ -2869,6 +3085,8 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
       _upnpService.onRendererLost = null;
     }
 
+    _crossfadeTimer?.cancel();
+    _standbyPlayer.stop().catchError((_) {});
     _audioPlayer.stop().catchError((_) {});
     _audioPlayer.dispose().catchError((_) {});
 
@@ -3088,6 +3306,7 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver implemen
 
   bool _upnpWasConnected = false;
   bool _upnpWasPlaying = false;
+
   /// Canonical URIs of the track the renderer is playing and the one pre-queued
   /// via SetNextAVTransportURI. Canonical because renderers echo URIs back with
   /// different escaping than we sent â€” see [UpnpService.canonicalUri].

@@ -22,6 +22,16 @@ class AppTheme {
   static const Color darkSecondaryText = Color(0xFFB3B3B3);
   static const Color darkTertiaryText = Color(0xFF6B6B6B);
 
+  // OLED Constants
+  static const Color oledBackground = Color(0xFF000000);
+  static const Color oledSurface = Color(0xFF09090B);
+  static const Color oledCard = Color(0xFF0C0C0E);
+  static const Color oledCardHover = Color(0xFF141417);
+  static const Color oledDivider = Color(0x14FFFFFF);
+  static const Color oledBorder = Color(0x1AFFFFFF);
+  static const Color oledSecondaryText = Color(0xFF8E8E93);
+  static const Color oledTertiaryText = Color(0xFF636366);
+
   static const Color sidebarBackground = Color(0xFF000000);
   static const Color sidebarCard = Color(0xFF121212);
 
@@ -33,6 +43,8 @@ class AppTheme {
 
   static ThemeData darkThemeWith(Color accent) => _buildDarkTheme(accent);
 
+  static ThemeData oledThemeWith(Color accent) => _buildOledTheme(accent);
+
   static ThemeData lightThemeFromScheme(ColorScheme scheme) =>
       _buildFromScheme(scheme);
 
@@ -42,6 +54,8 @@ class AppTheme {
   static ThemeData get lightTheme => _buildLightTheme(brandRed);
 
   static ThemeData get darkTheme => _buildDarkTheme(brandRed);
+
+  static ThemeData get oledTheme => _buildOledTheme(brandRed);
 
   static ThemeData _buildLightTheme(Color accent) => ThemeData(
         useMaterial3: true,
@@ -222,6 +236,138 @@ class AppTheme {
         ),
       );
 
+  static ThemeData _buildOledTheme(Color accent) => ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        primaryColor: accent,
+        scaffoldBackgroundColor: oledBackground,
+        canvasColor: oledBackground,
+        colorScheme: ColorScheme.dark(
+          primary: accent,
+          secondary: accent.withAlpha(200),
+          surface: oledSurface,
+          onSurface: Colors.white,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: oledBackground,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 34,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          color: oledCard,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(
+              color: oledBorder,
+              width: 0.5,
+            ),
+          ),
+        ),
+        dividerTheme: const DividerThemeData(
+          color: oledDivider,
+          thickness: 0.5,
+        ),
+        textTheme: TextTheme(
+          displayLarge: const TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+            color: Colors.white,
+          ),
+          displayMedium: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+            color: Colors.white,
+          ),
+          headlineLarge: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          headlineMedium: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          titleLarge: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          titleMedium: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+          bodyLarge: const TextStyle(fontSize: 17, color: Colors.white),
+          bodyMedium: const TextStyle(fontSize: 15, color: Colors.white),
+          bodySmall: const TextStyle(fontSize: 13, color: oledSecondaryText),
+          labelLarge: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: accent,
+          ),
+        ),
+        iconTheme: IconThemeData(color: accent),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: oledBackground,
+          selectedItemColor: accent,
+          unselectedItemColor: oledSecondaryText,
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: oledSurface,
+          modalBackgroundColor: oledSurface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            side: BorderSide(
+              color: oledBorder,
+              width: 0.5,
+            ),
+          ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: oledCard,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(
+              color: oledBorder,
+              width: 0.5,
+            ),
+          ),
+        ),
+        popupMenuTheme: PopupMenuThemeData(
+          color: oledCard,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(
+              color: oledBorder,
+              width: 0.5,
+            ),
+          ),
+        ),
+        cupertinoOverrideTheme: CupertinoThemeData(
+          primaryColor: accent,
+          brightness: Brightness.dark,
+        ),
+      );
+
   static ThemeData _buildFromScheme(ColorScheme scheme) {
     final isDark = scheme.brightness == Brightness.dark;
     final accent = scheme.primary;
@@ -304,7 +450,7 @@ class AppTheme {
       ),
       iconTheme: IconThemeData(color: accent),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        backgroundColor: background,
         selectedItemColor: accent,
         unselectedItemColor: secondaryText,
         type: BottomNavigationBarType.fixed,

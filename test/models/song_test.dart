@@ -71,7 +71,9 @@ void main() {
       expect(json['track'], 5);
     });
 
-    test('should parse replayGain values from nested map with numbers or strings', () {
+    test(
+        'should parse replayGain values from nested map with numbers or strings',
+        () {
       final json = {
         'id': '123',
         'title': 'Test Song',

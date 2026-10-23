@@ -46,7 +46,8 @@ void main() {
       expect(lockStateChanges, [true, false]);
     });
 
-    test('multiple reasons keep screen locked until all reasons are removed', () async {
+    test('multiple reasons keep screen locked until all reasons are removed',
+        () async {
       await wakelockService.enable('lyrics_view');
       await wakelockService.enable('offline_download');
       expect(wakelockService.isLocked, isTrue);

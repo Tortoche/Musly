@@ -15,7 +15,8 @@ class FakePlaylistSubsonicService extends SubsonicService {
   String? deletedPlaylistId;
   final bool _isYoutube;
 
-  FakePlaylistSubsonicService({bool isYoutube = false}) : _isYoutube = isYoutube;
+  FakePlaylistSubsonicService({bool isYoutube = false})
+      : _isYoutube = isYoutube;
 
   @override
   bool get isYoutube => _isYoutube;
@@ -66,7 +67,8 @@ void main() {
   initializeTestEnvironment();
 
   group('Playlist Deletion Tests', () {
-    testWidgets('PlaylistOptionsModal displays playlist info and delete option', (
+    testWidgets('PlaylistOptionsModal displays playlist info and delete option',
+        (
       WidgetTester tester,
     ) async {
       final testPlaylist = Playlist(
@@ -134,7 +136,9 @@ void main() {
       expect(find.byIcon(CupertinoIcons.trash), findsOneWidget);
     });
 
-    testWidgets('Deleting playlist removes it from LibraryProvider and calls subsonicService on Web Stream', (
+    testWidgets(
+        'Deleting playlist removes it from LibraryProvider and calls subsonicService on Web Stream',
+        (
       WidgetTester tester,
     ) async {
       final fakeSubsonic = FakePlaylistSubsonicService();
@@ -157,7 +161,8 @@ void main() {
           child: Builder(
             builder: (context) => ElevatedButton(
               onPressed: () async {
-                await PlaylistOptionsModal.confirmAndDelete(context, testPlaylist);
+                await PlaylistOptionsModal.confirmAndDelete(
+                    context, testPlaylist);
               },
               child: const Text('Delete'),
             ),
@@ -180,12 +185,16 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify the playlist is removed from provider and subsonicService was called
-      expect(testLibraryProvider.playlists.any((p) => p.id == 'yt-playlist-123'), isFalse);
+      expect(
+          testLibraryProvider.playlists.any((p) => p.id == 'yt-playlist-123'),
+          isFalse);
       expect(testLibraryProvider.lastDeletedId, equals('yt-playlist-123'));
       expect(fakeSubsonic.deletedPlaylistId, equals('yt-playlist-123'));
     });
 
-    testWidgets('Tapping delete inside PlaylistOptionsModal bottom sheet deletes the playlist on Web Stream', (
+    testWidgets(
+        'Tapping delete inside PlaylistOptionsModal bottom sheet deletes the playlist on Web Stream',
+        (
       WidgetTester tester,
     ) async {
       final fakeSubsonic = FakePlaylistSubsonicService(isYoutube: true);
@@ -236,12 +245,16 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify the playlist is removed from provider and subsonicService was called
-      expect(testLibraryProvider.playlists.any((p) => p.id == 'yt-playlist-456'), isFalse);
+      expect(
+          testLibraryProvider.playlists.any((p) => p.id == 'yt-playlist-456'),
+          isFalse);
       expect(testLibraryProvider.lastDeletedId, equals('yt-playlist-456'));
       expect(fakeSubsonic.deletedPlaylistId, equals('yt-playlist-456'));
     });
 
-    testWidgets('Deleting playlist from PlaylistScreen 3-dots menu removes it and calls subsonicService', (
+    testWidgets(
+        'Deleting playlist from PlaylistScreen 3-dots menu removes it and calls subsonicService',
+        (
       WidgetTester tester,
     ) async {
       final fakeSubsonic = FakePlaylistSubsonicService(isYoutube: true);
@@ -298,10 +311,10 @@ void main() {
       }
       await tester.pumpAndSettle();
 
-      expect(testLibraryProvider.playlists.any((p) => p.id == 'pl-detail-1'), isFalse);
+      expect(testLibraryProvider.playlists.any((p) => p.id == 'pl-detail-1'),
+          isFalse);
       expect(testLibraryProvider.lastDeletedId, equals('pl-detail-1'));
       expect(fakeSubsonic.deletedPlaylistId, equals('pl-detail-1'));
     });
   });
 }
-

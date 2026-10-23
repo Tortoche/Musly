@@ -15,9 +15,9 @@ class RightSidebar extends StatelessWidget {
     return Container(
       width: 320,
       decoration: const BoxDecoration(
-        color: Color(0xFF121212),
+        color: Color(0xFF09090B),
         border: Border(
-          left: BorderSide(color: Color(0xFF282828), width: 1),
+          left: BorderSide(color: Color(0x14FFFFFF), width: 0.5),
         ),
       ),
       child: Column(
@@ -28,7 +28,7 @@ class RightSidebar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: const BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Color(0xFF282828), width: 1),
+                bottom: BorderSide(color: Color(0x14FFFFFF), width: 0.5),
               ),
             ),
             child: Row(
@@ -52,7 +52,7 @@ class RightSidebar extends StatelessWidget {
                     onClose?.call();
                     NavigationHelper.isDesktopQueueOpen.value = false;
                   },
-                  tooltip: 'Close Queue',
+                  tooltip: 'Fermer la file',
                   splashRadius: 18,
                   hoverColor: Colors.white.withValues(alpha: 0.1),
                 ),
@@ -78,7 +78,7 @@ class RightSidebar extends StatelessWidget {
                         ),
                         SizedBox(height: 12),
                         Text(
-                          'Queue is empty',
+                          'File d\'attente vide',
                           style: TextStyle(
                             color: Color(0xFF6B7280),
                             fontSize: 14,
@@ -100,7 +100,7 @@ class RightSidebar extends StatelessWidget {
                       const Padding(
                         padding: EdgeInsets.fromLTRB(8, 4, 8, 8),
                         child: Text(
-                          'NOW PLAYING',
+                          'EN COURS DE LECTURE',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -164,7 +164,7 @@ class RightSidebar extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
                         child: Text(
-                          'NEXT UP · $upcomingCount songs',
+                          'À SUIVRE · $upcomingCount titres',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,

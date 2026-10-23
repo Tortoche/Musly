@@ -6,6 +6,7 @@ import 'package:musly/providers/player_provider.dart';
 import 'package:musly/services/subsonic_service.dart';
 import 'package:musly/screens/player/now_playing_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+
 class TvNavigationSidebar extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
@@ -123,7 +124,9 @@ class _SidebarItemState extends State<_SidebarItem> {
                 decoration: BoxDecoration(
                   color: _hasFocus
                       ? Colors.white
-                      : (widget.isSelected ? Colors.white12 : Colors.transparent),
+                      : (widget.isSelected
+                          ? Colors.white12
+                          : Colors.transparent),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -208,7 +211,7 @@ class _TvSidebarPlayerState extends State<_TvSidebarPlayer> {
         if (!hasSong) return const SizedBox.shrink();
         final provider = context.read<PlayerProvider>();
         final song = provider.currentSong;
-        
+
         ImageProvider? imageProvider;
         if (song?.coverArt != null) {
           final subsonic = Provider.of<SubsonicService>(context, listen: false);
@@ -232,7 +235,9 @@ class _TvSidebarPlayerState extends State<_TvSidebarPlayer> {
                   decoration: BoxDecoration(
                     color: _hasFocus ? Colors.white : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
-                    border: _hasFocus ? Border.all(color: Colors.white, width: 2) : Border.all(color: Colors.transparent, width: 2),
+                    border: _hasFocus
+                        ? Border.all(color: Colors.white, width: 2)
+                        : Border.all(color: Colors.transparent, width: 2),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -258,7 +263,8 @@ class _TvSidebarPlayerState extends State<_TvSidebarPlayer> {
                               Text(
                                 song?.title ?? 'Radio',
                                 style: TextStyle(
-                                  color: _hasFocus ? Colors.black : Colors.white,
+                                  color:
+                                      _hasFocus ? Colors.black : Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
@@ -268,7 +274,9 @@ class _TvSidebarPlayerState extends State<_TvSidebarPlayer> {
                               Text(
                                 song?.artist ?? 'Live',
                                 style: TextStyle(
-                                  color: _hasFocus ? Colors.black54 : Colors.white54,
+                                  color: _hasFocus
+                                      ? Colors.black54
+                                      : Colors.white54,
                                   fontSize: 12,
                                 ),
                                 maxLines: 1,

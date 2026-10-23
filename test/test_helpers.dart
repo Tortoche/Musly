@@ -108,7 +108,8 @@ Widget createTestApp({
                 MuslyAudioHandler(), JukeboxService(), TranscodingService()),
       ),
       ChangeNotifierProvider<LibraryProvider>(
-        create: (_) => libraryProvider ?? LibraryProvider(service, MuslyAudioHandler()),
+        create: (_) =>
+            libraryProvider ?? LibraryProvider(service, MuslyAudioHandler()),
       ),
       ChangeNotifierProvider<ThemeService>(
         create: (_) => themeService ?? ThemeService(),

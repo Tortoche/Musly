@@ -12,7 +12,7 @@ class LibrarySearchDelegate extends SearchDelegate<String> {
 
   LibrarySearchDelegate({required this.libraryProvider, required this.isDark})
       : super(
-          searchFieldLabel: 'Search in Library...',
+          searchFieldLabel: 'Rechercher dans la bibliothèque...',
           searchFieldStyle: TextStyle(
             color: isDark ? Colors.white : Colors.black,
           ),
@@ -68,7 +68,7 @@ class LibrarySearchDelegate extends SearchDelegate<String> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Search your library',
+              'Recherchez dans votre bibliothèque',
               style: TextStyle(
                 color: isDark ? Colors.white54 : Colors.black45,
                 fontSize: 16,

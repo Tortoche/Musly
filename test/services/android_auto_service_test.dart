@@ -8,8 +8,11 @@ import 'package:audio_service/audio_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockSubsonicService extends Mock implements SubsonicService {}
+
 class MockOfflineService extends Mock implements OfflineService {}
+
 class MockPlayerDelegate extends Mock implements AndroidAutoDelegate {}
+
 class MockLibraryDelegate extends Mock implements AndroidAutoLibraryDelegate {}
 
 void main() {
@@ -30,8 +33,10 @@ void main() {
 
     when(() => mockSubsonic.isYoutube).thenReturn(false);
     when(() => mockOffline.isOfflineMode).thenReturn(false);
-    when(() => mockSubsonic.getCoverArtUrl(any(), size: any(named: 'size'))).thenReturn('http://cover.url');
-    when(() => mockLibrary.getCoverArtUrl(any())).thenReturn('http://cover.url');
+    when(() => mockSubsonic.getCoverArtUrl(any(), size: any(named: 'size')))
+        .thenReturn('http://cover.url');
+    when(() => mockLibrary.getCoverArtUrl(any()))
+        .thenReturn('http://cover.url');
 
     service = AndroidAutoService(
       subsonicService: mockSubsonic,
@@ -47,12 +52,22 @@ void main() {
       when(() => mockPlayer.queue).thenReturn([]);
 
       final items = await service.getChildren(AudioService.browsableRootId);
-      
-      expect(items.length, 9); // Recent, Favorites, Albums, Artists, Playlists, Genres, Radio, Downloads, Shuffle
-      expect(items.map((e) => e.id), containsAll([
-        'AUTO_RECENT', 'AUTO_FAVORITES', 'AUTO_ALBUMS', 'AUTO_ARTISTS',
-        'AUTO_PLAYLISTS', 'AUTO_GENRES', 'AUTO_RADIO', 'AUTO_DOWNLOADS', 'AUTO_SHUFFLE'
-      ]));
+
+      expect(items.length,
+          9); // Recent, Favorites, Albums, Artists, Playlists, Genres, Radio, Downloads, Shuffle
+      expect(
+          items.map((e) => e.id),
+          containsAll([
+            'AUTO_RECENT',
+            'AUTO_FAVORITES',
+            'AUTO_ALBUMS',
+            'AUTO_ARTISTS',
+            'AUTO_PLAYLISTS',
+            'AUTO_GENRES',
+            'AUTO_RADIO',
+            'AUTO_DOWNLOADS',
+            'AUTO_SHUFFLE'
+          ]));
     });
 
     test('includes Now Playing and Queue when active', () async {
@@ -61,9 +76,10 @@ void main() {
       when(() => mockPlayer.queue).thenReturn([song]);
 
       final items = await service.getChildren(AudioService.browsableRootId);
-      
+
       expect(items.length, 11);
-      expect(items.map((e) => e.id), contains(AudioService.recentRootId)); // Now Playing
+      expect(items.map((e) => e.id),
+          contains(AudioService.recentRootId)); // Now Playing
       expect(items.map((e) => e.id), contains('AUTO_QUEUE'));
     });
   });
@@ -89,7 +105,8 @@ void main() {
       when(() => mockLibrary.cachedAllAlbums).thenReturn([
         Album(id: 'a1', name: 'Album 1', artist: 'Artist A'),
       ]);
-      when(() => mockSubsonic.getCoverArtUrl(any(), size: any(named: 'size'))).thenReturn('http://test.com/art');
+      when(() => mockSubsonic.getCoverArtUrl(any(), size: any(named: 'size')))
+          .thenReturn('http://test.com/art');
 
       final items = await service.getChildren('AUTO_ALBUMS');
       expect(items.length, 1);
@@ -101,26 +118,27 @@ void main() {
   group('playback actions', () {
     test('playFromMediaId handles shuffle', () async {
       when(() => mockPlayer.shuffleLibrary()).thenAnswer((_) => Future.value());
-      
+
       await service.playFromMediaId('AUTO_SHUFFLE');
-      
+
       verify(() => mockPlayer.shuffleLibrary()).called(1);
     });
 
     test('playFromSearch plays found song', () async {
       when(() => mockLibrary.isInitialized).thenReturn(true);
       when(() => mockLibrary.isServerOfflineMode).thenReturn(false);
-      
+
       final song = Song(id: 's1', title: 'Search Hit');
-      when(() => mockLibrary.search('test query')).thenAnswer(
-        (_) => Future.value(SearchResult(songs: [song], albums: [], artists: []))
-      );
+      when(() => mockLibrary.search('test query')).thenAnswer((_) =>
+          Future.value(SearchResult(songs: [song], albums: [], artists: [])));
       when(() => mockLibrary.cachedAllSongs).thenReturn([song]);
-      when(() => mockPlayer.playSong(song, playlist: [song], startIndex: 0)).thenAnswer((_) => Future.value());
+      when(() => mockPlayer.playSong(song, playlist: [song], startIndex: 0))
+          .thenAnswer((_) => Future.value());
 
       await service.playFromSearch('test query');
 
-      verify(() => mockPlayer.playSong(song, playlist: [song], startIndex: 0)).called(1);
+      verify(() => mockPlayer.playSong(song, playlist: [song], startIndex: 0))
+          .called(1);
     });
   });
 }

@@ -73,8 +73,10 @@ class AndroidAutoService {
 
   static const _artworkSize = 800;
 
-  static const _contentStyleBrowsable = 'android.media.browse.CONTENT_STYLE_BROWSABLE_HINT';
-  static const _contentStylePlayable = 'android.media.browse.CONTENT_STYLE_PLAYABLE_HINT';
+  static const _contentStyleBrowsable =
+      'android.media.browse.CONTENT_STYLE_BROWSABLE_HINT';
+  static const _contentStylePlayable =
+      'android.media.browse.CONTENT_STYLE_PLAYABLE_HINT';
   static const _contentStyleGrid = 2;
   static const _contentStyleList = 1;
 
@@ -141,16 +143,20 @@ class AndroidAutoService {
 
         default:
           if (parentId.startsWith(_prefixAlbum)) {
-            return await _buildAlbumSongItems(parentId.substring(_prefixAlbum.length));
+            return await _buildAlbumSongItems(
+                parentId.substring(_prefixAlbum.length));
           }
           if (parentId.startsWith(_prefixArtist)) {
-            return await _buildArtistAlbumItems(parentId.substring(_prefixArtist.length));
+            return await _buildArtistAlbumItems(
+                parentId.substring(_prefixArtist.length));
           }
           if (parentId.startsWith(_prefixPlaylist)) {
-            return await _buildPlaylistSongItems(parentId.substring(_prefixPlaylist.length));
+            return await _buildPlaylistSongItems(
+                parentId.substring(_prefixPlaylist.length));
           }
           if (parentId.startsWith(_prefixGenre)) {
-            return await _buildGenreSongItems(Uri.decodeComponent(parentId.substring(_prefixGenre.length)));
+            return await _buildGenreSongItems(
+                Uri.decodeComponent(parentId.substring(_prefixGenre.length)));
           }
           return const [];
       }
@@ -181,7 +187,8 @@ class AndroidAutoService {
         return hits.map(_songToMediaItem).toList();
       }
 
-      final result = await lib.search(query).timeout(const Duration(seconds: 15));
+      final result =
+          await lib.search(query).timeout(const Duration(seconds: 15));
       return result.songs.take(30).map(_songToMediaItem).toList();
     } catch (e) {
       debugPrint('[AndroidAutoService] search error: $e');
@@ -234,28 +241,31 @@ class AndroidAutoService {
 
       final results = await search(query).timeout(const Duration(seconds: 15));
       if (results.isEmpty) {
-        debugPrint('[AndroidAutoService] playFromSearch: no results for "$query"');
+        debugPrint(
+            '[AndroidAutoService] playFromSearch: no results for "$query"');
         return;
       }
 
       final lib = _libraryDelegate;
       final firstId = results.first.id;
-      final songId = firstId.startsWith(_prefixSong) ? firstId.substring(_prefixSong.length) : firstId;
+      final songId = firstId.startsWith(_prefixSong)
+          ? firstId.substring(_prefixSong.length)
+          : firstId;
       final allSongs = lib?.cachedAllSongs ?? [];
       final song = allSongs.firstWhere(
         (s) => s.id == songId,
         orElse: () => _mediaItemToSong(results.first),
       );
 
-      final playlist = results
-          .map((item) {
-            final id = item.id.startsWith(_prefixSong) ? item.id.substring(_prefixSong.length) : item.id;
-            return allSongs.firstWhere(
-              (s) => s.id == id,
-              orElse: () => _mediaItemToSong(item),
-            );
-          })
-          .toList();
+      final playlist = results.map((item) {
+        final id = item.id.startsWith(_prefixSong)
+            ? item.id.substring(_prefixSong.length)
+            : item.id;
+        return allSongs.firstWhere(
+          (s) => s.id == id,
+          orElse: () => _mediaItemToSong(item),
+        );
+      }).toList();
 
       await player.playSong(song, playlist: playlist, startIndex: 0);
     } catch (e) {
@@ -272,14 +282,20 @@ class AndroidAutoService {
     if (desiredServerId != null && _authProvider != null) {
       final config = _subsonicService.config;
       if (config != null) {
-        final currentId = '${config.serverFamily}_${config.serverUrl}_${config.username}';
+        final currentId =
+            '${config.serverFamily}_${config.serverUrl}_${config.username}';
         if (currentId != desiredServerId) {
-          debugPrint('[AndroidAutoService] Switching server to $desiredServerId');
+          debugPrint(
+              '[AndroidAutoService] Switching server to $desiredServerId');
           final parts = desiredServerId.split('_');
           if (parts.length >= 3) {
             final profiles = await StorageService().getSavedProfiles();
-            final targetConfig = profiles.where((p) => '${p.serverFamily}_${p.serverUrl}_${p.username}' == desiredServerId).firstOrNull;
-            
+            final targetConfig = profiles
+                .where((p) =>
+                    '${p.serverFamily}_${p.serverUrl}_${p.username}' ==
+                    desiredServerId)
+                .firstOrNull;
+
             if (targetConfig != null) {
               await _authProvider!.switchProfile(targetConfig);
             }
@@ -287,7 +303,7 @@ class AndroidAutoService {
         }
       }
     }
-    
+
     final items = <MediaItem>[];
 
     if (player != null && player.currentSong != null) {
@@ -429,7 +445,9 @@ class AndroidAutoService {
     final lib = _libraryDelegate;
     if (lib == null) return const [];
 
-    var songs = lib.cachedAllSongs.isNotEmpty ? lib.cachedAllSongs : _playerDelegate?.randomSongs ?? [];
+    var songs = lib.cachedAllSongs.isNotEmpty
+        ? lib.cachedAllSongs
+        : _playerDelegate?.randomSongs ?? [];
 
     if (lib.isServerOfflineMode) {
       final ids = await _getDownloadedIds();
@@ -494,7 +512,10 @@ class AndroidAutoService {
       artistList = artistList.where((a) => artistIds.contains(a.id)).toList();
     }
 
-    return artistList.take(_maxItemsPerCategory).map(_artistToMediaItem).toList();
+    return artistList
+        .take(_maxItemsPerCategory)
+        .map(_artistToMediaItem)
+        .toList();
   }
 
   Future<List<MediaItem>> _buildPlaylistItems() async {
@@ -511,7 +532,10 @@ class AndroidAutoService {
           .toList();
     }
 
-    return playlistList.take(_maxItemsPerCategory).map(_playlistToMediaItem).toList();
+    return playlistList
+        .take(_maxItemsPerCategory)
+        .map(_playlistToMediaItem)
+        .toList();
   }
 
   Future<List<MediaItem>> _buildGenreItems() async {
@@ -520,12 +544,15 @@ class AndroidAutoService {
     if (lib == null) return const [];
 
     final genres = lib.richGenres;
-    return genres.take(_maxItemsPerCategory).map((g) => _browsableItem(
-      id: '$_prefixGenre${Uri.encodeComponent(g.value)}',
-      title: g.value,
-      displaySubtitle: '${g.songCount} brani',
-      iconUri: _androidResourceUri('ic_auto_genres'),
-    )).toList();
+    return genres
+        .take(_maxItemsPerCategory)
+        .map((g) => _browsableItem(
+              id: '$_prefixGenre${Uri.encodeComponent(g.value)}',
+              title: g.value,
+              displaySubtitle: '${g.songCount} brani',
+              iconUri: _androidResourceUri('ic_auto_genres'),
+            ))
+        .toList();
   }
 
   Future<List<MediaItem>> _buildRadioItems() async {
@@ -540,12 +567,15 @@ class AndroidAutoService {
           ),
         ];
       }
-      return stations.take(_maxItemsPerCategory).map((station) => MediaItem(
-        id: '$_prefixRadio${station.id}',
-        title: station.name,
-        displaySubtitle: station.homePageUrl,
-        playable: true,
-      )).toList();
+      return stations
+          .take(_maxItemsPerCategory)
+          .map((station) => MediaItem(
+                id: '$_prefixRadio${station.id}',
+                title: station.name,
+                displaySubtitle: station.homePageUrl,
+                playable: true,
+              ))
+          .toList();
     } catch (e) {
       debugPrint('[AndroidAutoService] _buildRadioItems error: $e');
       return const [];
@@ -566,7 +596,8 @@ class AndroidAutoService {
       ];
     }
 
-    final downloaded = lib.cachedAllSongs.where((s) => ids.contains(s.id)).toList();
+    final downloaded =
+        lib.cachedAllSongs.where((s) => ids.contains(s.id)).toList();
     return downloaded.take(_maxItemsPerCategory).map((song) {
       final localCover = _offlineService.getLocalCoverArtPath(song.id);
       final artUri = localCover != null && File(localCover).existsSync()
@@ -578,7 +609,8 @@ class AndroidAutoService {
         artist: song.artist,
         album: song.album,
         artUri: artUri,
-        duration: song.duration != null ? Duration(seconds: song.duration!) : null,
+        duration:
+            song.duration != null ? Duration(seconds: song.duration!) : null,
         playable: true,
       );
     }).toList();
@@ -599,7 +631,8 @@ class AndroidAutoService {
         artist: song.artist,
         album: song.album,
         artUri: _tryArtUri(artUrl),
-        duration: song.duration != null ? Duration(seconds: song.duration!) : null,
+        duration:
+            song.duration != null ? Duration(seconds: song.duration!) : null,
         playable: true,
         extras: {'queueIndex': i},
       );
@@ -620,7 +653,8 @@ class AndroidAutoService {
       final songs = await lib.getAlbumSongs(albumId);
       return songs.map(_songToMediaItem).toList();
     } catch (e) {
-      debugPrint('[AndroidAutoService] _buildAlbumSongItems($albumId) error: $e');
+      debugPrint(
+          '[AndroidAutoService] _buildAlbumSongItems($albumId) error: $e');
       return const [];
     }
   }
@@ -636,13 +670,15 @@ class AndroidAutoService {
             .map((s) => s.albumId)
             .whereType<String>()
             .toSet();
-        final albums = lib.cachedAllAlbums.where((a) => albumIds.contains(a.id)).toList();
+        final albums =
+            lib.cachedAllAlbums.where((a) => albumIds.contains(a.id)).toList();
         if (albums.isNotEmpty) return albums.map(_albumToMediaItem).toList();
       }
       final albums = await lib.getArtistAlbums(artistId);
       return albums.map(_albumToMediaItem).toList();
     } catch (e) {
-      debugPrint('[AndroidAutoService] _buildArtistAlbumItems($artistId) error: $e');
+      debugPrint(
+          '[AndroidAutoService] _buildArtistAlbumItems($artistId) error: $e');
       return const [];
     }
   }
@@ -663,7 +699,8 @@ class AndroidAutoService {
           ),
         );
         if (cached.songs != null && cached.songs!.isNotEmpty) {
-          final offline = cached.songs!.where((s) => ids.contains(s.id)).toList();
+          final offline =
+              cached.songs!.where((s) => ids.contains(s.id)).toList();
           if (offline.isNotEmpty) return offline.map(_songToMediaItem).toList();
         }
       }
@@ -671,7 +708,8 @@ class AndroidAutoService {
       final songs = playlist.songs ?? [];
       return songs.map(_songToMediaItem).toList();
     } catch (e) {
-      debugPrint('[AndroidAutoService] _buildPlaylistSongItems($playlistId) error: $e');
+      debugPrint(
+          '[AndroidAutoService] _buildPlaylistSongItems($playlistId) error: $e');
       return const [];
     }
   }
@@ -683,7 +721,9 @@ class AndroidAutoService {
       if (lib.isServerOfflineMode) {
         final ids = await _getDownloadedIds();
         final songs = lib.cachedAllSongs
-            .where((s) => ids.contains(s.id) && s.genre?.toLowerCase() == genre.toLowerCase())
+            .where((s) =>
+                ids.contains(s.id) &&
+                s.genre?.toLowerCase() == genre.toLowerCase())
             .take(_maxItemsPerCategory)
             .toList();
         return songs.map(_songToMediaItem).toList();
@@ -711,7 +751,8 @@ class AndroidAutoService {
       final allSongs = lib.cachedAllSongs;
       final idx = allSongs.indexWhere((s) => s.id == songId);
       if (idx != -1) {
-        await player.playSong(allSongs[idx], playlist: allSongs, startIndex: idx);
+        await player.playSong(allSongs[idx],
+            playlist: allSongs, startIndex: idx);
         return;
       }
     }
@@ -721,14 +762,19 @@ class AndroidAutoService {
       if (song == null && lib != null) {
         final result = await lib.search(songId);
         if (result.songs.isNotEmpty) {
-          song = result.songs.firstWhere((s) => s.id == songId, orElse: () => result.songs.first);
+          song = result.songs.firstWhere((s) => s.id == songId,
+              orElse: () => result.songs.first);
         }
       }
 
       if (song != null) {
         await player.playSong(song);
       } else if (_isWebStream) {
-        final tempSong = Song(id: songId, title: _l10n.androidAutoLoading, artist: _l10n.androidAutoOnlineStream, duration: 0);
+        final tempSong = Song(
+            id: songId,
+            title: _l10n.androidAutoLoading,
+            artist: _l10n.androidAutoOnlineStream,
+            duration: 0);
         await player.playSong(tempSong);
       }
     } catch (e) {
@@ -741,7 +787,8 @@ class AndroidAutoService {
     if (player == null) return;
     try {
       final stations = await _subsonicService.getInternetRadioStations();
-      final station = stations.firstWhere((s) => s.id == stationId, orElse: () => throw Exception('Station not found'));
+      final station = stations.firstWhere((s) => s.id == stationId,
+          orElse: () => throw Exception('Station not found'));
       final radioSong = Song(
         id: 'radio_$stationId',
         title: station.name,
@@ -751,7 +798,8 @@ class AndroidAutoService {
       );
       await player.playSong(radioSong);
     } catch (e) {
-      debugPrint('[AndroidAutoService] _playRadioStation($stationId) error: $e');
+      debugPrint(
+          '[AndroidAutoService] _playRadioStation($stationId) error: $e');
     }
   }
 
@@ -801,7 +849,8 @@ class AndroidAutoService {
       if (localCover != null && File(localCover).existsSync()) {
         artUrl = Uri.file(localCover).toString();
       } else if (lib != null) {
-        artUrl = _subsonicService.getCoverArtUrl(song.coverArt, size: _artworkSize);
+        artUrl =
+            _subsonicService.getCoverArtUrl(song.coverArt, size: _artworkSize);
       }
     }
 
@@ -811,7 +860,8 @@ class AndroidAutoService {
       artist: song.artist,
       album: song.album,
       artUri: _tryArtUri(artUrl),
-      duration: song.duration != null ? Duration(seconds: song.duration!) : null,
+      duration:
+          song.duration != null ? Duration(seconds: song.duration!) : null,
       playable: true,
       extras: {
         if (song.genre != null) 'genre': song.genre,
@@ -843,7 +893,8 @@ class AndroidAutoService {
     return MediaItem(
       id: '$_prefixArtist${artist.id}',
       title: artist.name,
-      displaySubtitle: artist.albumCount != null ? '${artist.albumCount} album' : null,
+      displaySubtitle:
+          artist.albumCount != null ? '${artist.albumCount} album' : null,
       playable: false,
     );
   }
@@ -898,6 +949,7 @@ class AndroidAutoService {
   }
 
   static Uri _androidResourceUri(String drawableName) {
-    return Uri.parse('android.resource://com.devid.musly/drawable/$drawableName');
+    return Uri.parse(
+        'android.resource://com.devid.musly/drawable/$drawableName');
   }
 }

@@ -9,7 +9,8 @@ import '../services/local_music_service.dart';
 import '../services/services.dart';
 import '../widgets/common/album_artwork.dart';
 
-class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelegate {
+class LibraryProvider extends ChangeNotifier
+    implements AndroidAutoLibraryDelegate {
   final SubsonicService _subsonicService;
   final MuslyAudioHandler _audioHandler;
 
@@ -365,7 +366,8 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
   }
 
   void _scheduleBackgroundRefresh() {
-    if (_subsonicService.isYoutube || _serverOfflineMode || _localOnlyMode) return;
+    if (_subsonicService.isYoutube || _serverOfflineMode || _localOnlyMode)
+      return;
 
     final isLibraryEmpty = _cachedAllAlbums.isEmpty || _cachedAllSongs.isEmpty;
     final shouldRefresh = isLibraryEmpty ||
@@ -382,7 +384,8 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
   }
 
   Future<void> _refreshAllDataInBackground() async {
-    if (_subsonicService.isYoutube || _serverOfflineMode || _localOnlyMode) return;
+    if (_subsonicService.isYoutube || _serverOfflineMode || _localOnlyMode)
+      return;
     if (_isBackgroundSyncing) {
       if (_syncFuture != null) await _syncFuture;
       return;
@@ -463,17 +466,12 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
               await _db.insertSongsBatch(batchSongs);
             }
           }
-          final currentDbSongs = await _db.getAllSongs();
-          if (currentDbSongs.isNotEmpty) {
-            _cachedAllSongs = currentDbSongs;
-            notifyListeners();
-          }
+          // Intermediate batch processed - avoid spamming notifyListeners to prevent infinite UI refetches
         }
       }
 
-      _cachedAllAlbums = allAlbums.isNotEmpty
-          ? allAlbums
-          : await _db.getAllAlbums();
+      _cachedAllAlbums =
+          allAlbums.isNotEmpty ? allAlbums : await _db.getAllAlbums();
       _cachedAllSongs = await _db.getAllSongs();
       _lastCacheUpdate = DateTime.now();
 
@@ -637,10 +635,10 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
         );
         if (cachedIndex != -1) {
           final cached = _cachedPlaylists[cachedIndex];
-          final effectiveCoverArt = (newPlaylist.coverArt != null &&
-                  newPlaylist.coverArt!.isNotEmpty)
-              ? newPlaylist.coverArt
-              : cached.coverArt;
+          final effectiveCoverArt =
+              (newPlaylist.coverArt != null && newPlaylist.coverArt!.isNotEmpty)
+                  ? newPlaylist.coverArt
+                  : cached.coverArt;
           if (cached.songs != null && cached.songs!.isNotEmpty) {
             mergedPlaylists.add(newPlaylist.copyWith(
               songs: cached.songs,
@@ -833,7 +831,6 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
     }
   }
 
-
   Future<void> addSongToPlaylist(String playlistId, String songId) async {
     await _subsonicService.updatePlaylist(
       playlistId: playlistId,
@@ -854,7 +851,8 @@ class LibraryProvider extends ChangeNotifier implements AndroidAutoLibraryDelega
   }
 
   Future<void> cacheSongsLocally(List<Song> songs) async {
-    final newSongs = songs.where((s) => !_cachedAllSongs.any((c) => c.id == s.id)).toList();
+    final newSongs =
+        songs.where((s) => !_cachedAllSongs.any((c) => c.id == s.id)).toList();
     if (newSongs.isNotEmpty) {
       _cachedAllSongs.addAll(newSongs);
       if (!_subsonicService.isYoutube) {

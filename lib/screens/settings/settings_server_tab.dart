@@ -370,141 +370,142 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
                   borderRadius: BorderRadius.circular(14),
                   child: Column(
                     children: [
-                    ...profiles.map((profile) {
-                      final isActive = (profile.isYoutube &&
-                              currentConfig?.isYoutube == true) ||
-                          (currentConfig?.serverUrl == profile.serverUrl &&
-                              currentConfig?.username == profile.username);
+                      ...profiles.map((profile) {
+                        final isActive = (profile.isYoutube &&
+                                currentConfig?.isYoutube == true) ||
+                            (currentConfig?.serverUrl == profile.serverUrl &&
+                                currentConfig?.username == profile.username);
 
-                      final (
-                        IconData pIcon,
-                        List<Color> pGradient
-                      ) = profile.isYoutube
-                          ? (
-                              CupertinoIcons.play_rectangle_fill,
-                              const [Color(0xFFFF3B30), Color(0xFFFF453A)]
-                            )
-                          : profile.isJellyfin
-                              ? (
-                                  CupertinoIcons.tv_fill,
-                                  const [Color(0xFF00A4DC), Color(0xFF0077A3)]
-                                )
-                              : (
-                                  CupertinoIcons.music_note_2,
-                                  const [Color(0xFF6366F1), Color(0xFF8B5CF6)]
-                                );
-
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 2),
-                            leading: Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: pGradient),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(pIcon, color: Colors.white, size: 18),
-                            ),
-                            title: Text(
-                              profile.displayServerName,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: isActive
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                            subtitle: Text(
-                              profile.displayUrl,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark
-                                    ? AppTheme.darkSecondaryText
-                                    : AppTheme.lightSecondaryText,
-                              ),
-                            ),
-                            trailing: isActive
-                                ? Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF34C759)
-                                          .withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      l10n.serverActiveBadge,
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF34C759),
-                                      ),
-                                    ),
+                        final (
+                          IconData pIcon,
+                          List<Color> pGradient
+                        ) = profile.isYoutube
+                            ? (
+                                CupertinoIcons.play_rectangle_fill,
+                                const [Color(0xFFFF3B30), Color(0xFFFF453A)]
+                              )
+                            : profile.isJellyfin
+                                ? (
+                                    CupertinoIcons.tv_fill,
+                                    const [Color(0xFF00A4DC), Color(0xFF0077A3)]
                                   )
-                                : Icon(
-                                    CupertinoIcons.arrow_2_squarepath,
-                                    size: 16,
-                                    color: isDark
-                                        ? Colors.white38
-                                        : Colors.black38,
-                                  ),
-                            onTap: isActive
-                                ? null
-                                : () async {
-                                    final playerProvider =
-                                        Provider.of<PlayerProvider>(context,
-                                            listen: false);
-                                    final libraryProvider =
-                                        Provider.of<LibraryProvider>(context,
-                                            listen: false);
-                                    await playerProvider.stop();
-                                    await authProvider.switchProfile(profile);
-                                    await libraryProvider.refresh();
-                                  },
-                          ),
-                          if (profile != profiles.last)
-                            Divider(
-                                height: 1,
-                                color: isDark
-                                    ? AppTheme.darkDivider
-                                    : AppTheme.lightDivider),
-                        ],
-                      );
-                    }),
-                    Divider(
-                        height: 1,
-                        color: isDark
-                            ? AppTheme.darkDivider
-                            : AppTheme.lightDivider),
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 2),
-                      leading: Icon(
-                        CupertinoIcons.plus_circle_fill,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 24,
-                      ),
-                      title: Text(
-                        l10n.addServerOrService,
-                        style: TextStyle(
+                                : (
+                                    CupertinoIcons.music_note_2,
+                                    const [Color(0xFF6366F1), Color(0xFF8B5CF6)]
+                                  );
+
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 2),
+                              leading: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: pGradient),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child:
+                                    Icon(pIcon, color: Colors.white, size: 18),
+                              ),
+                              title: Text(
+                                profile.displayServerName,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: isActive
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                              subtitle: Text(
+                                profile.displayUrl,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? AppTheme.darkSecondaryText
+                                      : AppTheme.lightSecondaryText,
+                                ),
+                              ),
+                              trailing: isActive
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF34C759)
+                                            .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        l10n.serverActiveBadge,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF34C759),
+                                        ),
+                                      ),
+                                    )
+                                  : Icon(
+                                      CupertinoIcons.arrow_2_squarepath,
+                                      size: 16,
+                                      color: isDark
+                                          ? Colors.white38
+                                          : Colors.black38,
+                                    ),
+                              onTap: isActive
+                                  ? null
+                                  : () async {
+                                      final playerProvider =
+                                          Provider.of<PlayerProvider>(context,
+                                              listen: false);
+                                      final libraryProvider =
+                                          Provider.of<LibraryProvider>(context,
+                                              listen: false);
+                                      await playerProvider.stop();
+                                      await authProvider.switchProfile(profile);
+                                      await libraryProvider.refresh();
+                                    },
+                            ),
+                            if (profile != profiles.last)
+                              Divider(
+                                  height: 1,
+                                  color: isDark
+                                      ? AppTheme.darkDivider
+                                      : AppTheme.lightDivider),
+                          ],
+                        );
+                      }),
+                      Divider(
+                          height: 1,
+                          color: isDark
+                              ? AppTheme.darkDivider
+                              : AppTheme.lightDivider),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 2),
+                        leading: Icon(
+                          CupertinoIcons.plus_circle_fill,
                           color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          size: 24,
                         ),
+                        title: Text(
+                          l10n.addServerOrService,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        trailing:
+                            const Icon(CupertinoIcons.chevron_right, size: 14),
+                        onTap: () => NavigationHelper.push(
+                            context, const AddServerScreen()),
                       ),
-                      trailing:
-                          const Icon(CupertinoIcons.chevron_right, size: 14),
-                      onTap: () => NavigationHelper.push(
-                          context, const AddServerScreen()),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
             ),
           ],
         );

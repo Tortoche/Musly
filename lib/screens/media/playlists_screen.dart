@@ -217,14 +217,14 @@ class _PlaylistTile extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.more_vert, size: 20),
-            onPressed: onOptions ??
-                () => PlaylistOptionsModal.show(context, playlist),
+            onPressed:
+                onOptions ?? () => PlaylistOptionsModal.show(context, playlist),
           ),
         ],
       ),
       onTap: onTap,
-      onLongPress: onLongPress ??
-          () => PlaylistOptionsModal.show(context, playlist),
+      onLongPress:
+          onLongPress ?? () => PlaylistOptionsModal.show(context, playlist),
     );
   }
 }

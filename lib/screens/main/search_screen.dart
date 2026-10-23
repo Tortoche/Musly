@@ -273,8 +273,14 @@ class _SearchScreenState extends State<SearchScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? primary
-              : (isDark ? const Color(0xFF282828) : const Color(0xFFE5E7EB)),
+              : (isDark ? const Color(0xFF0C0C0E) : const Color(0xFFE5E7EB)),
           borderRadius: BorderRadius.circular(20),
+          border: isSelected
+              ? null
+              : Border.all(
+                  color: isDark ? const Color(0x14FFFFFF) : Colors.transparent,
+                  width: 0.5,
+                ),
         ),
         child: Center(
           child: Text(
@@ -344,14 +350,19 @@ class _SearchScreenState extends State<SearchScreen> {
                   },
                   onDeleted: () => setState(() => _recentQueries.remove(q)),
                   backgroundColor:
-                      isDark ? const Color(0xFF282828) : Colors.grey[200],
+                      isDark ? const Color(0xFF0C0C0E) : Colors.grey[200],
+                  side: BorderSide(
+                    color:
+                        isDark ? const Color(0x14FFFFFF) : Colors.transparent,
+                    width: 0.5,
+                  ),
                 );
               }).toList(),
             ),
             const SizedBox(height: 24),
           ],
           const Text(
-            'Browse all',
+            'Tout explorer',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -373,7 +384,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   SizedBox(
                     width: cardWidth,
                     child: BrowseCategoryCard(
-                      title: 'Made For You',
+                      title: 'Créé pour vous',
                       gradientColors: const [
                         Color(0xFF1E3264),
                         Color(0xFF283EA3)
@@ -386,7 +397,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   SizedBox(
                     width: cardWidth,
                     child: BrowseCategoryCard(
-                      title: 'New Releases',
+                      title: 'Nouveautés',
                       gradientColors: const [
                         Color(0xFFE8115B),
                         Color(0xFFFF4081)
@@ -399,7 +410,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   SizedBox(
                     width: cardWidth,
                     child: BrowseCategoryCard(
-                      title: 'Top Rated',
+                      title: 'Mieux notés',
                       gradientColors: const [
                         Color(0xFF8D67AB),
                         Color(0xFFBA68C8)
@@ -413,7 +424,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     SizedBox(
                       width: cardWidth,
                       child: BrowseCategoryCard(
-                        title: 'Radio Stations',
+                        title: 'Stations radio',
                         gradientColors: const [
                           Color(0xFF148A08),
                           Color(0xFF43A047)
@@ -439,7 +450,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   SizedBox(
                     width: cardWidth,
                     child: BrowseCategoryCard(
-                      title: 'Liked Songs',
+                      title: 'Titres likés',
                       gradientColors: const [
                         Color(0xFF450AF5),
                         Color(0xFF8E8EE5)
@@ -545,13 +556,13 @@ class _SearchScreenState extends State<SearchScreen> {
               const Icon(CupertinoIcons.search, size: 48, color: Colors.grey),
               const SizedBox(height: 12),
               Text(
-                'No results found for "${_searchController.text}"',
+                'Aucun résultat pour "${_searchController.text}"',
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Please check your spelling or try another query.',
+                'Vérifiez l\'orthographe ou essayez une autre recherche.',
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
             ],
@@ -570,7 +581,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 artists.isNotEmpty ||
                 albums.isNotEmpty) ...[
               const Text(
-                'Top result',
+                'Meilleur résultat',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
@@ -681,7 +692,7 @@ class _SearchScreenState extends State<SearchScreen> {
       Song song, List<Song> queue, SubsonicService subsonicService) {
     return TopResultCard(
       title: song.title,
-      subtitle: song.artist ?? 'Unknown Artist',
+      subtitle: song.artist ?? 'Artiste inconnu',
       typeLabel: 'Song',
       imageUrl: song.coverArt,
       onTap: () => _playSong(song),

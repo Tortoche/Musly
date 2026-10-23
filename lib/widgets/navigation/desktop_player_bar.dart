@@ -45,12 +45,18 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
   }
 
   Widget _buildRadioBar(BuildContext context, RadioStation station) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 90,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF181818),
-        border: Border(top: BorderSide(color: Color(0xFF282828), width: 1)),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF181818) : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0x14FFFFFF) : const Color(0xFFE5E5EA),
+            width: 0.5,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -59,81 +65,83 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
             child: TvFocusableCard(
               borderRadius: BorderRadius.circular(8),
               onTap: () {
-                      final isTv = Provider.of<TvDetectionService>(context, listen: false).isTvMode;
-                      if (isTv) {
-                        // Radio doesn't use NowPlayingScreen on Mobile in exactly the same way, but we could adapt it.
-                        // For now we just make it focusable to navigate left/right.
-                      }
-                    },
-                    child: Row(
+                final isTv =
+                    Provider.of<TvDetectionService>(context, listen: false)
+                        .isTvMode;
+                if (isTv) {
+                  // Radio doesn't use NowPlayingScreen on Mobile in exactly the same way, but we could adapt it.
+                  // For now we just make it focusable to navigate left/right.
+                }
+              },
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: const Icon(Icons.radio_rounded,
+                        color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                        Text(
+                          station.name,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
                           ),
-                          child: const Icon(Icons.radio_rounded,
-                              color: Colors.white, size: 28),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                station.name,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFA243C),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFFFA243C)
-                                              .withValues(alpha: 0.5),
-                                          blurRadius: 4,
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  const Text(
-                                    'LIVE',
-                                    style: TextStyle(
-                                      color: Color(0xFFB3B3B3),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.0,
-                                    ),
-                                  ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFA243C),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFA243C)
+                                        .withValues(alpha: 0.5),
+                                    blurRadius: 4,
+                                  )
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'LIVE',
+                              style: TextStyle(
+                                color: Color(0xFFB3B3B3),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
+          ),
           Expanded(
             flex: 4,
             child: Selector<PlayerProvider, bool>(
@@ -181,15 +189,16 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
   }
 
   Widget _buildSongBar(BuildContext context, Song currentSong) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 90,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181818) : Colors.white,
+        color: isDark ? const Color(0xFF181818) : Colors.white,
         border: Border(
           top: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF282828) : const Color(0xFFE5E5EA),
-            width: 1,
+            color: isDark ? const Color(0x14FFFFFF) : const Color(0xFFE5E5EA),
+            width: 0.5,
           ),
         ),
       ),
@@ -203,32 +212,42 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
                   child: TvFocusableCard(
                     borderRadius: BorderRadius.circular(8),
                     onTap: () {
-                      final isTv = Provider.of<TvDetectionService>(context, listen: false).isTvMode;
+                      final isTv = Provider.of<TvDetectionService>(context,
+                              listen: false)
+                          .isTvMode;
                       if (isTv) {
-                        final subsonic = Provider.of<SubsonicService>(context, listen: false);
+                        final subsonic = Provider.of<SubsonicService>(context,
+                            listen: false);
                         final coverUrl = currentSong.coverArt != null
-                            ? subsonic.getCoverArtUrl(currentSong.coverArt, size: 800)
+                            ? subsonic.getCoverArtUrl(currentSong.coverArt,
+                                size: 800)
                             : null;
-                        final imageProvider = (coverUrl != null && coverUrl.isNotEmpty)
-                            ? CachedNetworkImageProvider(coverUrl) as ImageProvider
-                            : const AssetImage('assets/logo.png') as ImageProvider;
-                        
+                        final imageProvider =
+                            (coverUrl != null && coverUrl.isNotEmpty)
+                                ? CachedNetworkImageProvider(coverUrl)
+                                    as ImageProvider
+                                : const AssetImage('assets/logo.png')
+                                    as ImageProvider;
+
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
                           useRootNavigator: true,
                           backgroundColor: Colors.transparent,
-                          constraints: const BoxConstraints(maxWidth: double.infinity),
+                          constraints:
+                              const BoxConstraints(maxWidth: double.infinity),
                           builder: (ctx) => NowPlayingScreen(
                             topPadding: MediaQuery.of(context).padding.top,
                             image: imageProvider,
                             title: currentSong.title,
-                            artist: (currentSong.artistParticipants?.isNotEmpty == true
-                                    ? currentSong.artistParticipants!
-                                        .map((a) => a.name)
-                                        .join(', ')
-                                    : currentSong.artist) ??
-                                '',
+                            artist:
+                                (currentSong.artistParticipants?.isNotEmpty ==
+                                            true
+                                        ? currentSong.artistParticipants!
+                                            .map((a) => a.name)
+                                            .join(', ')
+                                        : currentSong.artist) ??
+                                    '',
                             heroTag: 'cover_${currentSong.id}',
                             song: currentSong,
                           ),
@@ -253,7 +272,10 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
-                                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white
+                                      : Colors.black,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

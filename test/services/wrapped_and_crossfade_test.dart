@@ -42,7 +42,8 @@ void main() {
       );
     });
 
-    test('Correctly unlocks during active seasonal window (Late Nov - Mid Jan)', () {
+    test('Correctly unlocks during active seasonal window (Late Nov - Mid Jan)',
+        () {
       // November 24 (Start of seasonal window)
       expect(
         WrappedService.isWrappedSeason(
@@ -153,6 +154,18 @@ void main() {
       await service.setCrossfadeSeconds(-3); // Clamped to 0
       expect(service.getCrossfadeSeconds(), equals(0));
       expect(service.isEnabled, isFalse);
+    });
+
+    test('Smart DJ dynamically calculates transition and equal power curves', () async {
+      final service = CrossfadeService();
+      await service.initialize();
+      await service.setSmartDjEnabled(true);
+      expect(service.isSmartDjEnabled, isTrue);
+
+      expect(CrossfadeService.equalPowerFadeOut(0.0), closeTo(1.0, 0.001));
+      expect(CrossfadeService.equalPowerFadeOut(1.0), closeTo(0.0, 0.001));
+      expect(CrossfadeService.equalPowerFadeIn(0.0), closeTo(0.0, 0.001));
+      expect(CrossfadeService.equalPowerFadeIn(1.0), closeTo(1.0, 0.001));
     });
   });
 

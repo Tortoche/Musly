@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:musly/l10n/app_localizations.dart';
+import 'package:musly/theme/app_theme.dart';
 
 class SupportDialog extends StatefulWidget {
   const SupportDialog({super.key});
@@ -54,9 +55,18 @@ class _SupportDialogState extends State<SupportDialog> {
     final isSmallScreen = size.width < 360 || size.height < 600;
     final l10n = AppLocalizations.of(context)!;
 
+    final dialogBg = Theme.of(context).dialogTheme.backgroundColor ??
+        (isDark ? AppTheme.oledCard : Colors.white);
+
     return Dialog(
-      backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: dialogBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? AppTheme.oledBorder : Colors.transparent,
+          width: 0.5,
+        ),
+      ),
       insetPadding: EdgeInsets.symmetric(
         horizontal: isSmallScreen ? 16 : 24,
         vertical: isSmallScreen ? 16 : 24,

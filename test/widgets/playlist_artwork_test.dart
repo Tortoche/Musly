@@ -13,7 +13,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('PlaylistArtwork renders fallback icon when no covers are available',
+  testWidgets(
+      'PlaylistArtwork renders fallback icon when no covers are available',
       (tester) async {
     await tester.pumpWidget(
       createTestApp(
@@ -47,7 +48,8 @@ void main() {
     expect(find.byType(PlaylistArtwork), findsOneWidget);
   });
 
-  testWidgets('PlaylistArtwork renders 2x2 grid with 2 covers diagonally opposite',
+  testWidgets(
+      'PlaylistArtwork renders 2x2 grid with 2 covers diagonally opposite',
       (tester) async {
     final songs = [
       Song(id: 's1', title: 'Song 1', coverArt: 'coverA'),
@@ -93,7 +95,8 @@ void main() {
     );
 
     final albumArtworkFinder = find.byWidgetPredicate(
-      (widget) => widget is AlbumArtwork && widget.coverArt == 'custom_pl_cover',
+      (widget) =>
+          widget is AlbumArtwork && widget.coverArt == 'custom_pl_cover',
     );
     expect(albumArtworkFinder, findsOneWidget);
   });
@@ -122,7 +125,8 @@ void main() {
 
     expect(find.byType(PlaylistArtwork), findsOneWidget);
     final albumArtworkFinder = find.byWidgetPredicate(
-      (widget) => widget is AlbumArtwork && widget.coverArt == 'custom_pl_cover_2',
+      (widget) =>
+          widget is AlbumArtwork && widget.coverArt == 'custom_pl_cover_2',
     );
     expect(albumArtworkFinder, findsOneWidget);
   });

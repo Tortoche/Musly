@@ -269,13 +269,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(
-                'Sort by',
+                'Trier par',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
             _buildSortOptionTile(ctx, 'Recents', _SortOption.recents),
             _buildSortOptionTile(
-                ctx, 'Recently added', _SortOption.recentlyAdded),
+                ctx, 'Ajoutés récemment', _SortOption.recentlyAdded),
             _buildSortOptionTile(ctx, 'Alphabetical', _SortOption.alphabetical),
             _buildSortOptionTile(ctx, 'Creator', _SortOption.creator),
           ],
@@ -399,7 +399,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
         _LibraryItem(
           type: _LibraryItemType.allSongs,
           title: l10n?.songs ?? 'All Songs',
-          subtitle: '${libraryProvider.cachedAllSongs.length} ${l10n?.songs.toLowerCase() ?? 'songs'}',
+          subtitle:
+              '${libraryProvider.cachedAllSongs.length} ${l10n?.songs.toLowerCase() ?? 'songs'}',
           onTap: () => _navigate(context, const AllSongsScreen()),
         ),
       );
@@ -431,7 +432,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           _LibraryItem(
             type: _LibraryItemType.song,
             title: song.title,
-            subtitle: song.artist ?? 'Unknown Artist',
+            subtitle: song.artist ?? 'Artiste inconnu',
             data: song,
             onTap: () {
               final player =
@@ -451,7 +452,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           _LibraryItem(
             type: _LibraryItemType.song,
             title: song.title,
-            subtitle: song.artist ?? 'Unknown Artist',
+            subtitle: song.artist ?? 'Artiste inconnu',
             data: song,
             onTap: () {
               final player =
@@ -487,181 +488,193 @@ class _LibraryScreenState extends State<LibraryScreen> {
               cacheExtent: 600.0,
               physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics()),
-            slivers: [
-              SliverAppBar(
-                automaticallyImplyLeading: false,
-                pinned: true,
-                floating: true,
-                expandedHeight: 120,
-                backgroundColor:
-                    isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-                elevation: 0,
-                flexibleSpace: FlexibleSpaceBar(
-                  titlePadding: EdgeInsets.only(left: hPad, bottom: 44),
-                  title: Text(
-                    AppLocalizations.of(context)?.yourLibrary ?? 'Your Library',
-                    style: TextStyle(
-                      fontSize: _isDesktop ? 24 : 20,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black87,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-                actions: [
-                  IconButton(
-                    icon: Icon(CupertinoIcons.search,
+              slivers: [
+                SliverAppBar(
+                  automaticallyImplyLeading: false,
+                  pinned: true,
+                  floating: true,
+                  expandedHeight: 120,
+                  backgroundColor: isDark
+                      ? AppTheme.darkBackground
+                      : AppTheme.lightBackground,
+                  elevation: 0,
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: EdgeInsets.only(left: hPad, bottom: 44),
+                    title: Text(
+                      AppLocalizations.of(context)?.yourLibrary ??
+                          'Votre bibliothèque',
+                      style: TextStyle(
+                        fontSize: _isDesktop ? 24 : 20,
+                        fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : Colors.black87,
-                        size: 22),
-                    tooltip: AppLocalizations.of(context)!.searchInLibrary,
-                    onPressed: () => _showLibrarySearch(context),
-                  ),
-                  IconButton(
-                    icon: Icon(CupertinoIcons.plus,
-                        color: isDark ? Colors.white : Colors.black87,
-                        size: 24),
-                    tooltip: AppLocalizations.of(context)!.add,
-                    onPressed: () => _showAddMenu(context),
-                  ),
-                  IconButton(
-                    icon: Icon(CupertinoIcons.gear_alt,
-                        color: isDark ? Colors.white : Colors.black87,
-                        size: 22),
-                    tooltip: AppLocalizations.of(context)!.settings,
-                    onPressed: () =>
-                        NavigationHelper.push(context, const SettingsScreen()),
-                  ),
-                  if (_isDesktop) const SizedBox(width: 12),
-                ],
-                bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(48),
-                  child: Container(
-                    height: 48,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: hPad, vertical: 6),
-                    alignment: Alignment.centerLeft,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        children: [
-                          if (_selectedFilter != null) ...[
-                            GestureDetector(
-                              onTap: () =>
-                                  setState(() => _selectedFilter = null),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF282828)
-                                      : Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Icon(CupertinoIcons.clear,
-                                    size: 14,
-                                    color:
-                                        isDark ? Colors.white : Colors.black),
-                              ),
-                            ),
-                          ],
-                          _buildFilterChip(
-                              'Playlists',
-                              AppLocalizations.of(context)?.playlists ??
-                                  'Playlists',
-                              isDark),
-                          const SizedBox(width: 8),
-                          _buildFilterChip(
-                              'Albums',
-                              AppLocalizations.of(context)?.albums ?? 'Albums',
-                              isDark),
-                          const SizedBox(width: 8),
-                          _buildFilterChip(
-                              'Artists',
-                              AppLocalizations.of(context)?.artists ??
-                                  'Artists',
-                              isDark),
-                          const SizedBox(width: 8),
-                          _buildFilterChip(
-                              'Downloaded',
-                              AppLocalizations.of(context)?.downloadedSongs ??
-                                  'Downloaded',
-                              isDark),
-                          if (!isYoutube) ...[
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                                'Songs',
-                                AppLocalizations.of(context)?.songs ?? 'Songs',
-                                isDark),
-                          ],
-                        ],
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      InkWell(
-                        onTap: () => _showSortMenu(context),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 4, horizontal: 4),
-                          child: Row(
-                            children: [
-                              const Icon(CupertinoIcons.arrow_up_arrow_down,
-                                  size: 14),
-                              const SizedBox(width: 6),
-                              Text(
-                                switch (_currentSort) {
-                                  _SortOption.recents => 'Recents',
-                                  _SortOption.recentlyAdded => 'Recently added',
-                                  _SortOption.alphabetical => 'Alphabetical',
-                                  _SortOption.creator => 'Creator',
-                                },
-                                style: const TextStyle(
-                                    fontSize: 13, fontWeight: FontWeight.w600),
+                  actions: [
+                    IconButton(
+                      icon: Icon(CupertinoIcons.search,
+                          color: isDark ? Colors.white : Colors.black87,
+                          size: 22),
+                      tooltip: AppLocalizations.of(context)!.searchInLibrary,
+                      onPressed: () => _showLibrarySearch(context),
+                    ),
+                    IconButton(
+                      icon: Icon(CupertinoIcons.plus,
+                          color: isDark ? Colors.white : Colors.black87,
+                          size: 24),
+                      tooltip: AppLocalizations.of(context)!.add,
+                      onPressed: () => _showAddMenu(context),
+                    ),
+                    IconButton(
+                      icon: Icon(CupertinoIcons.gear_alt,
+                          color: isDark ? Colors.white : Colors.black87,
+                          size: 22),
+                      tooltip: AppLocalizations.of(context)!.settings,
+                      onPressed: () => NavigationHelper.push(
+                          context, const SettingsScreen()),
+                    ),
+                    if (_isDesktop) const SizedBox(width: 12),
+                  ],
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(48),
+                    child: Container(
+                      height: 48,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: hPad, vertical: 6),
+                      alignment: Alignment.centerLeft,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          children: [
+                            if (_selectedFilter != null) ...[
+                              GestureDetector(
+                                onTap: () =>
+                                    setState(() => _selectedFilter = null),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF0C0C0E)
+                                        : Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0x14FFFFFF)
+                                          : Colors.transparent,
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  child: Icon(CupertinoIcons.clear,
+                                      size: 14,
+                                      color:
+                                          isDark ? Colors.white : Colors.black),
+                                ),
                               ),
                             ],
-                          ),
+                            _buildFilterChip(
+                                'Playlists',
+                                AppLocalizations.of(context)?.playlists ??
+                                    'Playlists',
+                                isDark),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                                'Albums',
+                                AppLocalizations.of(context)?.albums ??
+                                    'Albums',
+                                isDark),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                                'Artists',
+                                AppLocalizations.of(context)?.artists ??
+                                    'Artists',
+                                isDark),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                                'Downloaded',
+                                AppLocalizations.of(context)?.downloadedSongs ??
+                                    'Downloaded',
+                                isDark),
+                            if (!isYoutube) ...[
+                              const SizedBox(width: 8),
+                              _buildFilterChip(
+                                  'Songs',
+                                  AppLocalizations.of(context)?.songs ??
+                                      'Songs',
+                                  isDark),
+                            ],
+                          ],
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(
-                          _isGridView
-                              ? CupertinoIcons.list_bullet
-                              : CupertinoIcons.square_grid_2x2,
-                          size: 18,
-                        ),
-                        tooltip:
-                            _isGridView ? 'Switch to List' : 'Switch to Grid',
-                        onPressed: () =>
-                            setState(() => _isGridView = !_isGridView),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              if (_isGridView)
-                _buildSliverGrid(
-                    context, libraryProvider, isDark, isYoutube, hPad)
-              else
-                _buildSliverList(
-                    context, libraryProvider, isDark, isYoutube, hPad),
-              const SliverToBoxAdapter(child: SizedBox(height: 80)),
-            ],
-          ),
-        );
-      },
-    ),
-  );
-}
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        InkWell(
+                          onTap: () => _showSortMenu(context),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 4, horizontal: 4),
+                            child: Row(
+                              children: [
+                                const Icon(CupertinoIcons.arrow_up_arrow_down,
+                                    size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  switch (_currentSort) {
+                                    _SortOption.recents => 'Recents',
+                                    _SortOption.recentlyAdded =>
+                                      'Ajoutés récemment',
+                                    _SortOption.alphabetical => 'Alphabetical',
+                                    _SortOption.creator => 'Creator',
+                                  },
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _isGridView
+                                ? CupertinoIcons.list_bullet
+                                : CupertinoIcons.square_grid_2x2,
+                            size: 18,
+                          ),
+                          tooltip:
+                              _isGridView ? 'Affichage liste' : 'Affichage grille',
+                          onPressed: () =>
+                              setState(() => _isGridView = !_isGridView),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_isGridView)
+                  _buildSliverGrid(
+                      context, libraryProvider, isDark, isYoutube, hPad)
+                else
+                  _buildSliverList(
+                      context, libraryProvider, isDark, isYoutube, hPad),
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildFilterChip(String key, String label, bool isDark) {
     final isSelected = _selectedFilter == key;
@@ -685,8 +698,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary
-              : (isDark ? const Color(0xFF282828) : const Color(0xFFE5E7EB)),
+              : (isDark ? const Color(0xFF0C0C0E) : const Color(0xFFE5E7EB)),
           borderRadius: BorderRadius.circular(20),
+          border: isSelected
+              ? null
+              : Border.all(
+                  color: isDark ? const Color(0x14FFFFFF) : Colors.transparent,
+                  width: 0.5,
+                ),
         ),
         child: Text(
           label,
@@ -728,27 +747,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final (icon, message) = switch (_selectedFilter) {
       'Albums' => (
           CupertinoIcons.music_albums,
-          l10n?.noAlbumsFound ?? 'No albums found',
+          l10n?.noAlbumsFound ?? 'Aucun album trouvé',
         ),
       'Songs' => (
           CupertinoIcons.music_note,
-          l10n?.noSongsFound ?? 'No songs found',
+          l10n?.noSongsFound ?? 'Aucun morceau trouvé',
         ),
       'Artists' => (
           CupertinoIcons.person_2,
-          l10n?.artistDataNotFound ?? 'No artists found',
+          l10n?.artistDataNotFound ?? 'Aucun artiste trouvé',
         ),
       'Playlists' => (
           CupertinoIcons.music_note_list,
-          l10n?.playlistNotFound ?? 'No playlists found',
+          l10n?.playlistNotFound ?? 'Aucune playlist trouvée',
         ),
       'Downloaded' => (
           CupertinoIcons.arrow_down_circle,
-          l10n?.noDownloadedSongsYet ?? 'No downloaded songs yet',
+          l10n?.noDownloadedSongsYet ?? 'Aucun morceau téléchargé',
         ),
       _ => (
           CupertinoIcons.music_albums,
-          l10n?.noSongsFound ?? 'No items found in your library',
+          l10n?.noSongsFound ?? 'Aucun élément dans votre bibliothèque',
         ),
     };
 
@@ -893,7 +912,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             width: 54,
             height: 54,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Icon(
@@ -1148,7 +1168,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           subtitle: item.subtitle,
           customArtwork: Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(

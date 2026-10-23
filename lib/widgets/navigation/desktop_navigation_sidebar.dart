@@ -87,7 +87,8 @@ class _DesktopNavigationSidebarState extends State<DesktopNavigationSidebar> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF282828),
+        backgroundColor: Theme.of(ctx).dialogTheme.backgroundColor ??
+            const Color(0xFF0C0C0E),
         title: const Text('Disconnect', style: TextStyle(color: Colors.white)),
         content: const Text(
           'Are you sure you want to disconnect from this server?',
@@ -125,94 +126,98 @@ class _DesktopNavigationSidebarState extends State<DesktopNavigationSidebar> {
     final width = _isCollapsed ? 72.0 : 240.0;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      width: width,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF000000) : theme.scaffoldBackgroundColor,
-        border: Border(
-          right: BorderSide(color: isDark ? const Color(0xFF1A1A1A) : theme.dividerColor, width: 1),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        width: width,
+        decoration: BoxDecoration(
+          color:
+              isDark ? const Color(0xFF000000) : theme.scaffoldBackgroundColor,
+          border: Border(
+            right: BorderSide(
+                color: isDark ? const Color(0xFF1A1A1A) : theme.dividerColor,
+                width: 1),
+          ),
         ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _LogoRow(isCollapsed: _isCollapsed),
-            const SizedBox(height: 6),
-          _NavItem(
-            icon: Icons.home_outlined,
-            activeIcon: Icons.home_rounded,
-            label: l10n.home,
-            isSelected: widget.selectedIndex == 0,
-            isCollapsed: _isCollapsed,
-            onTap: () => widget.onDestinationSelected(0),
-          ),
-          _NavItem(
-            icon: Icons.search_rounded,
-            activeIcon: Icons.search_rounded,
-            label: l10n.search,
-            isSelected: widget.selectedIndex == 2,
-            isCollapsed: _isCollapsed,
-            onTap: () => widget.onDestinationSelected(2),
-          ),
-          _NavItem(
-            icon: Icons.library_music_outlined,
-            activeIcon: Icons.library_music_rounded,
-            label: l10n.library,
-            isSelected: widget.selectedIndex == 1,
-            isCollapsed: _isCollapsed,
-            onTap: () => widget.onDestinationSelected(1),
-          ),
-          _NavItem(
-            icon: Icons.settings_outlined,
-            activeIcon: Icons.settings_rounded,
-            label: l10n.settings,
-            isSelected: false,
-            isCollapsed: _isCollapsed,
-            onTap: _navigateToSettings,
-          ),
-          Container(
-            height: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: const Color(0xFF1A1A1A),
-          ),
-          _LibrarySection(
-            isCollapsed: _isCollapsed,
-            selectedIndex: widget.selectedIndex,
-            navigatorKey: widget.navigatorKey,
-            onLibraryTap: () => widget.onDestinationSelected(1),
-            onPlaylistsTap: _navigateToPlaylistsList,
-            onFavoritesTap: _navigateToFavorites,
-            onPlaylistTap: _navigateToPlaylist,
-          ),
-          Consumer<SubsonicService>(
-            builder: (context, subsonic, _) {
-              if (subsonic.isYoutube) return const SizedBox.shrink();
-              return _NavItem(
-                icon: Icons.radio_rounded,
-                activeIcon: Icons.radio_rounded,
-                label: l10n.categoryRadio,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _LogoRow(isCollapsed: _isCollapsed),
+              const SizedBox(height: 6),
+              _NavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: l10n.home,
+                isSelected: widget.selectedIndex == 0,
+                isCollapsed: _isCollapsed,
+                onTap: () => widget.onDestinationSelected(0),
+              ),
+              _NavItem(
+                icon: Icons.search_rounded,
+                activeIcon: Icons.search_rounded,
+                label: l10n.search,
+                isSelected: widget.selectedIndex == 2,
+                isCollapsed: _isCollapsed,
+                onTap: () => widget.onDestinationSelected(2),
+              ),
+              _NavItem(
+                icon: Icons.library_music_outlined,
+                activeIcon: Icons.library_music_rounded,
+                label: l10n.library,
+                isSelected: widget.selectedIndex == 1,
+                isCollapsed: _isCollapsed,
+                onTap: () => widget.onDestinationSelected(1),
+              ),
+              _NavItem(
+                icon: Icons.settings_outlined,
+                activeIcon: Icons.settings_rounded,
+                label: l10n.settings,
                 isSelected: false,
                 isCollapsed: _isCollapsed,
-                onTap: _navigateToRadio,
-              );
-            },
+                onTap: _navigateToSettings,
+              ),
+              Container(
+                height: 1,
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                color: const Color(0xFF1A1A1A),
+              ),
+              _LibrarySection(
+                isCollapsed: _isCollapsed,
+                selectedIndex: widget.selectedIndex,
+                navigatorKey: widget.navigatorKey,
+                onLibraryTap: () => widget.onDestinationSelected(1),
+                onPlaylistsTap: _navigateToPlaylistsList,
+                onFavoritesTap: _navigateToFavorites,
+                onPlaylistTap: _navigateToPlaylist,
+              ),
+              Consumer<SubsonicService>(
+                builder: (context, subsonic, _) {
+                  if (subsonic.isYoutube) return const SizedBox.shrink();
+                  return _NavItem(
+                    icon: Icons.radio_rounded,
+                    activeIcon: Icons.radio_rounded,
+                    label: l10n.categoryRadio,
+                    isSelected: false,
+                    isCollapsed: _isCollapsed,
+                    onTap: _navigateToRadio,
+                  );
+                },
+              ),
+              _DisconnectButton(
+                isCollapsed: _isCollapsed,
+                onTap: _handleDisconnect,
+              ),
+              _CollapseButton(
+                isCollapsed: _isCollapsed,
+                onTap: _toggleCollapse,
+                label: l10n.collapse,
+                expandLabel: l10n.expand,
+              ),
+            ],
           ),
-          _DisconnectButton(
-            isCollapsed: _isCollapsed,
-            onTap: _handleDisconnect,
-          ),
-          _CollapseButton(
-            isCollapsed: _isCollapsed,
-            onTap: _toggleCollapse,
-            label: l10n.collapse,
-            expandLabel: l10n.expand,
-          ),
-        ],
-      ),
-    ));
+        ));
   }
 }
 
@@ -249,7 +254,9 @@ class _LogoRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
                       letterSpacing: -0.3,
                     ),
                     maxLines: 1,
@@ -309,46 +316,47 @@ class _NavItemState extends State<_NavItem> {
           onTap: widget.onTap,
           borderRadius: BorderRadius.circular(8),
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          padding: EdgeInsets.symmetric(horizontal: widget.isCollapsed ? 0 : 12),
-        child: Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          alignment:
-              widget.isCollapsed ? Alignment.center : Alignment.centerLeft,
-          child: widget.isCollapsed
-              ? Icon(
-                  widget.isSelected ? widget.activeIcon : widget.icon,
-                  color: textColor,
-                  size: 20,
-                )
-              : Row(
-                  children: [
-                    Icon(
-                      widget.isSelected ? widget.activeIcon : widget.icon,
-                      color: textColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.label,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 14,
-                          fontWeight: widget.isSelected
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+          padding:
+              EdgeInsets.symmetric(horizontal: widget.isCollapsed ? 0 : 12),
+          child: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment:
+                widget.isCollapsed ? Alignment.center : Alignment.centerLeft,
+            child: widget.isCollapsed
+                ? Icon(
+                    widget.isSelected ? widget.activeIcon : widget.icon,
+                    color: textColor,
+                    size: 20,
+                  )
+                : Row(
+                    children: [
+                      Icon(
+                        widget.isSelected ? widget.activeIcon : widget.icon,
+                        color: textColor,
+                        size: 20,
                       ),
-                    ),
-                  ],
-                ),
-        ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          widget.label,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight: widget.isSelected
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );
@@ -485,7 +493,8 @@ class _LibrarySection extends StatelessWidget {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF282828),
+        backgroundColor: Theme.of(ctx).dialogTheme.backgroundColor ??
+            const Color(0xFF0C0C0E),
         title:
             Text(l10n.newPlaylist, style: const TextStyle(color: Colors.white)),
         content: TextField(
@@ -496,7 +505,7 @@ class _LibrarySection extends StatelessWidget {
             hintText: l10n.playlistName,
             hintStyle: const TextStyle(color: Color(0xFF6B7280)),
             filled: true,
-            fillColor: const Color(0xFF383838),
+            fillColor: const Color(0xFF141417),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
@@ -610,8 +619,7 @@ class _PlaylistTileState extends State<_PlaylistTile> {
       child: InkWell(
         key: ValueKey(widget.playlist.id),
         onTap: widget.onTap,
-        onLongPress: () =>
-            PlaylistOptionsModal.show(context, widget.playlist),
+        onLongPress: () => PlaylistOptionsModal.show(context, widget.playlist),
         onSecondaryTap: () =>
             PlaylistOptionsModal.show(context, widget.playlist),
         borderRadius: BorderRadius.circular(6),
@@ -636,9 +644,13 @@ class _PlaylistTileState extends State<_PlaylistTile> {
                     Text(
                       widget.playlist.name,
                       style: TextStyle(
-                        color: _isHovered 
-                            ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black) 
-                            : (Theme.of(context).brightness == Brightness.dark ? const Color(0xFFE5E7EB) : Colors.black87),
+                        color: _isHovered
+                            ? (Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black)
+                            : (Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFFE5E7EB)
+                                : Colors.black87),
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -665,8 +677,8 @@ class _PlaylistTileState extends State<_PlaylistTile> {
                   padding: EdgeInsets.zero,
                   constraints:
                       const BoxConstraints(minWidth: 24, minHeight: 24),
-                  tooltip: AppLocalizations.of(context)?.moreOptions ??
-                      'Options',
+                  tooltip:
+                      AppLocalizations.of(context)?.moreOptions ?? 'Options',
                   onPressed: () =>
                       PlaylistOptionsModal.show(context, widget.playlist),
                 ),
@@ -696,7 +708,7 @@ class _DisconnectButtonState extends State<_DisconnectButton> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hoverColor = isDark ? Colors.white : Colors.black;
     final defaultColor = const Color(0xFF9CA3AF);
-    
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -705,7 +717,9 @@ class _DisconnectButtonState extends State<_DisconnectButton> {
         child: InkWell(
           onTap: widget.onTap,
           borderRadius: BorderRadius.circular(8),
-          hoverColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          hoverColor: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.05),
           child: Container(
             height: 40,
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),

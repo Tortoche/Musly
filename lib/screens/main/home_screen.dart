@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Song> _cachedPersonalized = const [];
   List<Song> _cachedListenAgain = const [];
   List<Song> _cachedTopHits = const [];
-  String _lastRandomKey = '';
+
   String _selectedCategory = 'All';
 
   String _getGreeting() {
@@ -50,12 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return AppLocalizations.of(context)?.goodEvening ?? 'Good evening';
   }
 
-  String _computeRandomKey(List<Song> songs, RecommendationService rec) {
-    if (songs.isEmpty) return '';
-    final lastPlayed =
-        rec.recentlyPlayed.isNotEmpty ? rec.recentlyPlayed.first : '';
-    return '${songs.length}_${songs.first.id}_${songs.last.id}_${rec.profiles.length}_${rec.recentlyPlayed.length}_$lastPlayed';
-  }
 
   bool get _isDesktop =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
@@ -95,6 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         color: Theme.of(context).colorScheme.primary,
         onRefresh: () async {
+          setState(() {
+            _cachedMixes = const {};
+            _cachedPersonalized = const [];
+            _cachedListenAgain = const [];
+            _cachedTopHits = const [];
+
+          });
           final libraryProvider =
               Provider.of<LibraryProvider>(context, listen: false);
           await libraryProvider.refresh();
@@ -167,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _buildCategoryChip('Music', 'Music', isDark),
                         const SizedBox(width: 8),
                         _buildCategoryChip(
-                            'MadeForYou', 'Made For You', isDark),
+                            'MadeForYou', 'Créé pour vous', isDark),
                         const SizedBox(width: 8),
                         _buildCategoryChip('Playlists', 'Playlists', isDark),
                       ],
@@ -187,11 +188,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   final allSongs = libraryProvider.cachedAllSongs.isNotEmpty
                       ? libraryProvider.cachedAllSongs
                       : libraryProvider.randomSongs;
-                  final key =
-                      _computeRandomKey(allSongs, recommendationService);
 
-                  if (recommendationService.enabled && key.isNotEmpty) {
-                    if (key != _lastRandomKey) {
+                  if (recommendationService.enabled && allSongs.isNotEmpty) {
+                    // Stabilize recommendations: only generate once or on manual pull-to-refresh
+                    if (_cachedPersonalized.isEmpty) {
                       _cachedMixes =
                           recommendationService.generateMixes(allSongs);
                       _cachedPersonalized = recommendationService
@@ -200,14 +200,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           .getListenAgain(allSongs, limit: 10);
                       _cachedTopHits =
                           recommendationService.getTopHits(allSongs, limit: 10);
-                      _lastRandomKey = key;
                     }
-                  } else {
+                  } else if (!recommendationService.enabled) {
                     _cachedMixes = const {};
                     _cachedPersonalized = const [];
                     _cachedListenAgain = const [];
                     _cachedTopHits = const [];
-                    _lastRandomKey = '';
                   }
 
                   var mixes = _cachedMixes;
@@ -309,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _selectedCategory == 'Music') &&
                             recentAlbums.isNotEmpty) ...[
                           HorizontalScrollSection(
-                            title: 'Jump back in',
+                            title: 'Reprendre la lecture',
                             padding: EdgeInsets.symmetric(horizontal: hPad),
                             cardSize: isDesktop ? 180 : 155,
                             children: recentAlbums.take(12).map((album) {
@@ -332,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             personalizedFeed.isNotEmpty) ...[
                           _buildMixSection(
                             context: context,
-                            title: 'Made For You',
+                            title: 'Créé pour vous',
                             icon: Icons.auto_awesome,
                             songs: personalizedFeed,
                             isDesktop: isDesktop,
@@ -345,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             listenAgain.isNotEmpty) ...[
                           _buildMixSection(
                             context: context,
-                            title: 'Listen Again',
+                            title: 'Réécouter',
                             icon: Icons.history_rounded,
                             songs: listenAgain,
                             isDesktop: isDesktop,
@@ -358,7 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             topHits.isNotEmpty) ...[
                           _buildMixSection(
                             context: context,
-                            title: 'Your Top Hits',
+                            title: 'Vos plus grands succès',
                             icon: Icons.favorite_rounded,
                             songs: topHits,
                             isDesktop: isDesktop,
@@ -370,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _selectedCategory == 'Playlists') &&
                             playlists.isNotEmpty) ...[
                           HorizontalScrollSection(
-                            title: 'Your Playlists',
+                            title: 'Vos playlists',
                             padding: EdgeInsets.symmetric(horizontal: hPad),
                             cardSize: isDesktop ? 180 : 155,
                             children: playlists.take(12).map((playlist) {
@@ -410,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _selectedCategory == 'Music') &&
                             artists.isNotEmpty) ...[
                           HorizontalScrollSection(
-                            title: 'Artists You Love',
+                            title: 'Artistes favoris',
                             padding: EdgeInsets.symmetric(horizontal: hPad),
                             cardSize: isDesktop ? 160 : 140,
                             children: artists.take(10).map((artist) {
@@ -502,7 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(
                 width: cardWidth,
                 child: QuickAccessTile(
-                  title: 'Liked Songs',
+                  title: 'Titres likés',
                   customArtwork: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -785,7 +783,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       Text(
                         AppLocalizations.of(context)?.yourYearInReviewIsReady ??
-                            'Your Year in Review is ready!',
+                            'Votre rétrospective musicale est prête !',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -914,4 +912,3 @@ class _FavoritePlaylistRowState extends State<_FavoritePlaylistRow> {
     );
   }
 }
-

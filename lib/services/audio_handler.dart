@@ -10,10 +10,28 @@ import 'package:rxdart/rxdart.dart';
 import 'android_auto_service.dart';
 
 class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
-  final AudioPlayer _player = AudioPlayer(
+  final AudioPlayer _playerA = AudioPlayer(
     handleAudioSessionActivation: false,
     handleInterruptions: false,
   );
+  final AudioPlayer _playerB = AudioPlayer(
+    handleAudioSessionActivation: false,
+    handleInterruptions: false,
+  );
+  late AudioPlayer _activePlayer = _playerA;
+
+  AudioPlayer get player => _activePlayer;
+  AudioPlayer get standbyPlayer => _activePlayer == _playerA ? _playerB : _playerA;
+
+  void swapPlayers() {
+    _localStateSub?.cancel();
+    _activePlayer = standbyPlayer;
+    _localStateSub = _activePlayer.playbackEventStream.listen((event) {
+      if (_remotePlayback) return;
+      playbackState.add(_buildPlaybackState(event));
+    });
+    playbackState.add(_buildPlaybackState(_activePlayer.playbackEvent));
+  }
   static const _pitchChannel = MethodChannel('com.devid.musly/pitch');
 
   static const mediaIdRecent = 'AUTO_RECENT';
@@ -26,7 +44,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   static const mediaIdDownloads = 'AUTO_DOWNLOADS';
   static const mediaIdQueue = 'AUTO_QUEUE';
 
-  AudioPlayer get player => _player;
+  
 
   AndroidAutoService? _autoService;
 
@@ -48,14 +66,14 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
     } else {
       switch (repeatMode) {
         case AudioServiceRepeatMode.none:
-          await _player.setLoopMode(LoopMode.off);
+          await _activePlayer.setLoopMode(LoopMode.off);
           break;
         case AudioServiceRepeatMode.one:
-          await _player.setLoopMode(LoopMode.one);
+          await _activePlayer.setLoopMode(LoopMode.one);
           break;
         case AudioServiceRepeatMode.all:
         case AudioServiceRepeatMode.group:
-          await _player.setLoopMode(LoopMode.all);
+          await _activePlayer.setLoopMode(LoopMode.all);
           break;
       }
     }
@@ -67,11 +85,12 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
       onSetShuffleMode!(shuffleMode);
     } else {
       final enabled = shuffleMode != AudioServiceShuffleMode.none;
-      await _player.setShuffleModeEnabled(enabled);
+      await _activePlayer.setShuffleModeEnabled(enabled);
     }
   }
 
-  final Map<String, BehaviorSubject<Map<String, dynamic>>> _childrenSubjects = {};
+  final Map<String, BehaviorSubject<Map<String, dynamic>>> _childrenSubjects =
+      {};
 
   bool _remotePlayback = false;
 
@@ -119,7 +138,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   StreamSubscription<PlaybackEvent>? _localStateSub;
 
   MuslyAudioHandler() {
-    _localStateSub = _player.playbackEventStream.listen((event) {
+    _localStateSub = _activePlayer.playbackEventStream.listen((event) {
       if (_remotePlayback) return;
       playbackState.add(_buildPlaybackState(event));
     });
@@ -141,14 +160,14 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   @override
-  Future<void> play() => onPlay?.call() ?? _player.play();
+  Future<void> play() => onPlay?.call() ?? _activePlayer.play();
 
   @override
-  Future<void> pause() => onPause?.call() ?? _player.pause();
+  Future<void> pause() => onPause?.call() ?? _activePlayer.pause();
 
   @override
   Future<void> stop() async {
-    await (onStop?.call() ?? _player.stop());
+    await (onStop?.call() ?? _activePlayer.stop());
     await super.stop();
   }
 
@@ -166,7 +185,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> seek(Duration position) =>
-      onSeekTo?.call(position) ?? _player.seek(position);
+      onSeekTo?.call(position) ?? _activePlayer.seek(position);
 
   @override
   Future<void> click([MediaButton button = MediaButton.media]) async {
@@ -177,7 +196,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
         await skipToPrevious();
       case MediaButton.media:
         await (onTogglePlayPause?.call() ??
-            (_player.playing ? _player.pause() : _player.play()));
+            (_activePlayer.playing ? _activePlayer.pause() : _activePlayer.play()));
     }
   }
 
@@ -313,7 +332,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
       );
     } else {
       androidPlaybackInfo.add(LocalAndroidPlaybackInfo());
-      playbackState.add(_buildPlaybackState(_player.playbackEvent));
+      playbackState.add(_buildPlaybackState(_activePlayer.playbackEvent));
     }
   }
 
@@ -338,7 +357,8 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   @override
-  Future<void> androidAdjustRemoteVolume(AndroidVolumeDirection direction) async {
+  Future<void> androidAdjustRemoteVolume(
+      AndroidVolumeDirection direction) async {
     // direction is -1, 0 or +1. Zero is the ADJUST_SAME that Android sends on
     // key-up; acting on it would issue a redundant SetVolume for no change.
     if (!_remotePlayback || direction.index == 0) return;
@@ -355,7 +375,9 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
     String? artworkUrl,
     Duration? duration,
   }) {
-    final artUri = artworkUrl != null && artworkUrl.isNotEmpty ? Uri.tryParse(artworkUrl) : null;
+    final artUri = artworkUrl != null && artworkUrl.isNotEmpty
+        ? Uri.tryParse(artworkUrl)
+        : null;
     mediaItem.add(
       MediaItem(
         id: id,
@@ -412,7 +434,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
     return PlaybackState(
       controls: [
         MediaControl.skipToPrevious,
-        if (_player.playing) MediaControl.pause else MediaControl.play,
+        if (_activePlayer.playing) MediaControl.pause else MediaControl.play,
         MediaControl.skipToNext,
       ],
       systemActions: const {
@@ -425,19 +447,19 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
         MediaAction.setRepeatMode,
       },
       androidCompactActionIndices: const [0, 1, 2],
-      processingState:
-          processingStateMap[_player.processingState] ?? AudioProcessingState.idle,
-      playing: _player.playing,
-      updatePosition: _player.position,
-      bufferedPosition: _player.bufferedPosition,
-      speed: _player.speed,
+      processingState: processingStateMap[_activePlayer.processingState] ??
+          AudioProcessingState.idle,
+      playing: _activePlayer.playing,
+      updatePosition: _activePlayer.position,
+      bufferedPosition: _activePlayer.bufferedPosition,
+      speed: _activePlayer.speed,
       queueIndex: event.currentIndex,
-      repeatMode: _player.loopMode == LoopMode.one
+      repeatMode: _activePlayer.loopMode == LoopMode.one
           ? AudioServiceRepeatMode.one
-          : (_player.loopMode == LoopMode.all
+          : (_activePlayer.loopMode == LoopMode.all
               ? AudioServiceRepeatMode.all
               : AudioServiceRepeatMode.none),
-      shuffleMode: _player.shuffleModeEnabled
+      shuffleMode: _activePlayer.shuffleModeEnabled
           ? AudioServiceShuffleMode.all
           : AudioServiceShuffleMode.none,
     );
@@ -465,7 +487,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
         await sub.close();
       }
       _childrenSubjects.clear();
-      await _player.dispose();
+      await _playerA.dispose(); await _playerB.dispose();
     }
   }
 }

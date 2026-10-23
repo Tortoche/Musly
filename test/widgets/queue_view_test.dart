@@ -40,7 +40,8 @@ void main() {
       playerProvider.dispose();
     });
 
-    testWidgets('renders empty queue message when queue is empty', (tester) async {
+    testWidgets('renders empty queue message when queue is empty',
+        (tester) async {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -59,9 +60,13 @@ void main() {
       expect(find.text('No songs in queue'), findsOneWidget);
     });
 
-    testWidgets('renders ReorderableListView with drag handles and more_vert buttons', (tester) async {
-      final song1 = Song(id: '1', title: 'Song One', artist: 'Artist One', duration: 180);
-      final song2 = Song(id: '2', title: 'Song Two', artist: 'Artist Two', duration: 200);
+    testWidgets(
+        'renders ReorderableListView with drag handles and more_vert buttons',
+        (tester) async {
+      final song1 =
+          Song(id: '1', title: 'Song One', artist: 'Artist One', duration: 180);
+      final song2 =
+          Song(id: '2', title: 'Song Two', artist: 'Artist Two', duration: 200);
 
       playerProvider.addToQueue(song1);
       playerProvider.addToQueue(song2);
@@ -89,7 +94,9 @@ void main() {
       expect(find.byIcon(Icons.drag_handle_rounded), findsNWidgets(2));
     });
 
-    testWidgets('scrolls to current song when opening queue with multiple songs', (tester) async {
+    testWidgets(
+        'scrolls to current song when opening queue with multiple songs',
+        (tester) async {
       final testPlayer = _TestQueuePlayerProvider(
         subsonicService,
         StorageService(),
@@ -102,7 +109,8 @@ void main() {
 
       final songs = List.generate(
         40,
-        (i) => Song(id: '$i', title: 'Song $i', artist: 'Artist $i', duration: 180),
+        (i) => Song(
+            id: '$i', title: 'Song $i', artist: 'Artist $i', duration: 180),
       );
       testPlayer.setMockQueue(songs, 25);
 
@@ -121,7 +129,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+      final scrollable =
+          tester.state<ScrollableState>(find.byType(Scrollable).first);
       expect(scrollable.position.pixels, greaterThan(0.0));
       expect(find.text('Song 25'), findsOneWidget);
 
@@ -157,4 +166,3 @@ class _TestQueuePlayerProvider extends PlayerProvider {
     notifyListeners();
   }
 }
-

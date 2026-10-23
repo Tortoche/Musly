@@ -44,17 +44,16 @@ class _TopResultCardState extends State<TopResultCard> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isDark
-                ? (_isHovered
-                    ? const Color(0xFF282828)
-                    : const Color(0xFF1E1E1E))
+                ? (_isHovered ? AppTheme.oledCardHover : AppTheme.oledCard)
                 : (_isHovered
                     ? const Color(0xFFF3F4F6)
                     : const Color(0xFFF9FAFB)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isDark
-                  ? Colors.white10
+                  ? AppTheme.oledDivider
                   : Colors.black.withValues(alpha: 0.05),
+              width: 0.5,
             ),
           ),
           child: Stack(

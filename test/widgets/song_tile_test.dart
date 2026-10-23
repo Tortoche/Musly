@@ -115,7 +115,9 @@ void main() {
       expect(find.textContaining('Test Album'), findsOneWidget);
     });
 
-    testWidgets('should show AlbumArtwork with centered AnimatedEqualizer overlay when playing with showArtwork', (tester) async {
+    testWidgets(
+        'should show AlbumArtwork with centered AnimatedEqualizer overlay when playing with showArtwork',
+        (tester) async {
       final song = Song(
         id: '1',
         title: 'Playing Song',
@@ -149,7 +151,9 @@ void main() {
       expect(find.byType(Stack), findsWidgets);
     });
 
-    testWidgets('AnimatedEqualizer maintains stable height of 16.0 during animation', (tester) async {
+    testWidgets(
+        'AnimatedEqualizer maintains stable height of 16.0 during animation',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(

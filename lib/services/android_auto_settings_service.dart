@@ -12,7 +12,8 @@ class AndroidAutoSettingsService {
   static const String _keyShowRadio = 'auto_show_radio';
   static const String _keyShowDownloads = 'auto_show_downloads';
 
-  static final AndroidAutoSettingsService _instance = AndroidAutoSettingsService._internal();
+  static final AndroidAutoSettingsService _instance =
+      AndroidAutoSettingsService._internal();
   factory AndroidAutoSettingsService() => _instance;
   AndroidAutoSettingsService._internal();
 

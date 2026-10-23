@@ -1,3 +1,4 @@
+import 'package:musly/services/player_ui_settings_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:musly/models/album.dart';
@@ -50,7 +51,7 @@ class _AlbumCardState extends State<AlbumCard> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(PlayerUiSettingsService().getArtworkShape() == 'circle' ? 999 : 8),
                       boxShadow: _isHovered
                           ? [
                               BoxShadow(
@@ -66,7 +67,7 @@ class _AlbumCardState extends State<AlbumCard> {
                         AlbumArtwork(
                           coverArt: widget.album.coverArt,
                           size: widget.size,
-                          borderRadius: 8,
+                          borderRadius: PlayerUiSettingsService().getArtworkShape() == 'circle' ? 999 : 8,
                         ),
                         if (_isHovered && widget.onPlayPressed != null)
                           Positioned(

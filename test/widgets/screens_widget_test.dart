@@ -55,7 +55,8 @@ void main() {
     ) async {
       await tester.pumpWidget(createTestApp(child: const SettingsDisplayTab()));
       await tester.pump();
-      if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      if (!kIsWeb &&
+          (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
         await tester.scrollUntilVisible(find.text('Spotverlay'), 300);
         expect(find.text('Spotverlay'), findsWidgets);
       }
@@ -83,7 +84,9 @@ void main() {
       expect(find.byType(NowPlayingScreen), findsOneWidget);
     });
 
-    testWidgets('NowPlayingScreen builds without overflow in landscape mode (Issue #234)', (
+    testWidgets(
+        'NowPlayingScreen builds without overflow in landscape mode (Issue #234)',
+        (
       WidgetTester tester,
     ) async {
       tester.view.physicalSize = const Size(850, 400);
@@ -106,7 +109,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('NowPlayingScreen displays star ratings when showStarRatings is enabled', (
+    testWidgets(
+        'NowPlayingScreen displays star ratings when showStarRatings is enabled',
+        (
       WidgetTester tester,
     ) async {
       PlayerUiSettingsService().showStarRatingsNotifier.value = true;

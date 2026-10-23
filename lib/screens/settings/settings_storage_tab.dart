@@ -289,7 +289,10 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
             if (customPaths.isNotEmpty) ...[
               const SettingsDivider(),
               ...customPaths.map((path) => SettingsListTile(
-                    gradientColors: const [Color(0xFFFF9500), Color(0xFFFFB340)],
+                    gradientColors: const [
+                      Color(0xFFFF9500),
+                      Color(0xFFFFB340)
+                    ],
                     icon: CupertinoIcons.folder_fill,
                     title: p.basename(path),
                     subtitle: path,
@@ -306,7 +309,9 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
               gradientColors: const [Color(0xFF5856D6), Color(0xFF7B68EE)],
               icon: CupertinoIcons.refresh,
               title: l10n.rescanLocalMusic,
-              onTap: localMusic.isScanning ? null : () => _rescanLocalMusic(context, localMusic),
+              onTap: localMusic.isScanning
+                  ? null
+                  : () => _rescanLocalMusic(context, localMusic),
             ),
           ],
         );
@@ -378,8 +383,8 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
     return SettingsSwitchTile(
       gradientColors: const [Color(0xFFE91E63), Color(0xFFF06292)],
       icon: CupertinoIcons.heart_solid,
-      title: 'Auto Download Favorites',
-      subtitle: 'Automatically download songs when added to favorites',
+      title: 'Téléchargement auto des favoris',
+      subtitle: 'Télécharger automatiquement les morceaux ajoutés aux favoris',
       value: _autoDownloadFavorites,
       onChanged: _toggleAutoDownloadFavorites,
     );
@@ -425,8 +430,8 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
       icon: CupertinoIcons.folder_badge_plus,
       title: l10n.downloadFolder,
       subtitle: customPath != null && customPath.isNotEmpty
-            ? customPath
-            : l10n.downloadFolderDefault,
+          ? customPath
+          : l10n.downloadFolderDefault,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -689,9 +694,9 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
                 gradientColors: const [Color(0xFF34C759), Color(0xFF30D158)],
                 icon: CupertinoIcons.arrow_down_circle_fill,
                 title: AppLocalizations.of(context)!.downloadingLibrary(
-                    downloadState.currentProgress,
-                    downloadState.totalCount,
-                  ),
+                  downloadState.currentProgress,
+                  downloadState.totalCount,
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.close, size: 20),
                   onPressed: () {

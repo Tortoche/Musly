@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme/app_theme.dart';
 
 class PrivacyPolicyDialog extends StatefulWidget {
   const PrivacyPolicyDialog({super.key});
@@ -55,9 +56,18 @@ class _PrivacyPolicyDialogState extends State<PrivacyPolicyDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context)!;
 
+    final dialogBg = Theme.of(context).dialogTheme.backgroundColor ??
+        (isDark ? AppTheme.oledCard : Colors.white);
+
     return Dialog(
-      backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: dialogBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isDark ? AppTheme.oledBorder : Colors.transparent,
+          width: 0.5,
+        ),
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420, maxHeight: 600),
         child: Column(

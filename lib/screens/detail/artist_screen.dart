@@ -54,14 +54,25 @@ class _ArtistScreenState extends State<ArtistScreen> {
             .where((s) => s.artistId == widget.artistId)
             .toList();
       } else {
-        final artistFuture = subsonicService.getArtist(widget.artistId).catchError((e) {
-          debugPrint('[ArtistScreen] getArtist failed: $e – trying fallbacks');
-          throw e;
-        }).then<Artist?>((val) => val).catchError((_) => null);
+        final artistFuture = subsonicService
+            .getArtist(widget.artistId)
+            .catchError((e) {
+              debugPrint(
+                  '[ArtistScreen] getArtist failed: $e – trying fallbacks');
+              throw e;
+            })
+            .then<Artist?>((val) => val)
+            .catchError((_) => null);
 
-        final infoFuture = subsonicService.getArtistInfo(widget.artistId).catchError((_) => null);
-        final topSongsFuture = subsonicService.getArtistTopSongs(widget.artistId).catchError((_) => <Song>[]);
-        final albumsFuture = subsonicService.getArtistAlbums(widget.artistId).catchError((_) => <Album>[]);
+        final infoFuture = subsonicService
+            .getArtistInfo(widget.artistId)
+            .catchError((_) => null);
+        final topSongsFuture = subsonicService
+            .getArtistTopSongs(widget.artistId)
+            .catchError((_) => <Song>[]);
+        final albumsFuture = subsonicService
+            .getArtistAlbums(widget.artistId)
+            .catchError((_) => <Album>[]);
 
         final results = await Future.wait([
           artistFuture,

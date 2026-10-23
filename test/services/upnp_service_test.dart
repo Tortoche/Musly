@@ -83,15 +83,14 @@ void main() {
       const echoed =
           'http://192.168.1.5:4533/rest/stream?u=tim&amp;amp;v=1.16.1&amp;amp;c=Musly&amp;amp;id=xyz';
 
-      expect(UpnpService.canonicalUri(sent),
-          UpnpService.canonicalUri(echoed));
+      expect(UpnpService.canonicalUri(sent), UpnpService.canonicalUri(echoed));
     });
 
     test('genuinely different tracks still differ', () {
       const a = 'http://h/rest/stream?id=AAA&v=1';
       const b = 'http://h/rest/stream?id=BBB&v=1';
-      expect(UpnpService.canonicalUri(a) == UpnpService.canonicalUri(b),
-          isFalse);
+      expect(
+          UpnpService.canonicalUri(a) == UpnpService.canonicalUri(b), isFalse);
     });
 
     test('matches when the renderer uses numeric refs for &', () {
@@ -104,8 +103,8 @@ void main() {
 
       expect(UpnpService.canonicalUri(echoedDecimal),
           UpnpService.canonicalUri(sent));
-      expect(UpnpService.canonicalUri(echoedHex),
-          UpnpService.canonicalUri(sent));
+      expect(
+          UpnpService.canonicalUri(echoedHex), UpnpService.canonicalUri(sent));
     });
 
     test('trims renderer whitespace padding', () {

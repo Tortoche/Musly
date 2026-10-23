@@ -30,8 +30,7 @@ class TranslationOtaService {
   Set<String> get discoveredLocales => Set.unmodifiable(_discoveredLocales);
   Map<String, String> get activeTranslations =>
       Map.unmodifiable(_activeTranslations);
-  Map<String, int> get completionPercentages =>
-      Map.unmodifiable(_percentages);
+  Map<String, int> get completionPercentages => Map.unmodifiable(_percentages);
 
   Future<void> init(String? currentLocaleCode) async {
     try {

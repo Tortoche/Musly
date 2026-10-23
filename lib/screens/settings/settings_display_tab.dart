@@ -44,10 +44,15 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
   bool _lyricsKeepScreenOn = true;
   bool _hideWindowTitlebar = false;
   String _artworkResolution = 'normal';
+  double _albumArtCornerRadius = 8.0;
+  String _artworkShape = 'circle';
+  String _artworkShadow = 'soft';
+  String _artworkShadowColor = 'black';
 
   ThemeMode _themeMode = ThemeMode.system;
   AccentColor _accentColor = AccentColor.red;
   bool _liquidGlass = false;
+  bool _pureOled = false;
 
   bool get _isDesktop {
     if (kIsWeb) return false;
@@ -82,9 +87,14 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       _lyricsGlowEffect = _playerUiSettings.getLyricsGlowEffect();
       _lyricsKeepScreenOn = _playerUiSettings.getLyricsKeepScreenOn();
       _artworkResolution = _playerUiSettings.getArtworkResolution();
+      _albumArtCornerRadius = _playerUiSettings.getAlbumArtCornerRadius();
+      _artworkShape = _playerUiSettings.getArtworkShape();
+      _artworkShadow = _playerUiSettings.getArtworkShadow();
+      _artworkShadowColor = _playerUiSettings.getArtworkShadowColor();
       _themeMode = themeService.themeMode;
       _accentColor = themeService.accentColor;
       _liquidGlass = themeService.liquidGlass;
+      _pureOled = themeService.pureOled;
     });
 
     if (_isDesktop) {
@@ -163,8 +173,10 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
         ),
         const SizedBox(height: 24),
         SettingsSectionCard(
-          title: 'ARTWORK',
+          title: 'STYLE DES POCHETTES & DESIGN',
           children: [
+            _buildArtworkStyleEditor(),
+            const SettingsDivider(),
             _buildArtworkResolutionSelector(),
           ],
         ),
@@ -203,6 +215,7 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
   }
 
   Widget _buildAppearanceEditor() {
+    final theme = Theme.of(context);
     final themeService = Provider.of<ThemeService>(context, listen: false);
     final isDark = context.isDark;
 
@@ -273,6 +286,40 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
               ),
             ),
           ],
+          const SizedBox(height: 20),
+          _buildEditorRow(
+            icon: CupertinoIcons.circle_lefthalf_fill,
+            iconColor: const Color(0xFF8E8E93),
+            label: 'Pure OLED (#000000)',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Noir absolu (#000000) et bordures fines pour les écrans OLED',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppTheme.oledSecondaryText
+                        : AppTheme.lightSecondaryText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Spacer(),
+                    CupertinoSwitch(
+                      value: _pureOled,
+                      activeTrackColor: theme.colorScheme.primary,
+                      onChanged: (value) async {
+                        setState(() => _pureOled = value);
+                        await themeService.setPureOled(value);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -286,9 +333,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       subtitle: AppLocalizations.of(context)!.showVolumeSliderSubtitle,
       value: _showVolumeSlider,
       onChanged: (value) async {
-          setState(() => _showVolumeSlider = value);
-          await _playerUiSettings.setShowVolumeSlider(value);
-        },
+        setState(() => _showVolumeSlider = value);
+        await _playerUiSettings.setShowVolumeSlider(value);
+      },
     );
   }
 
@@ -300,9 +347,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       subtitle: AppLocalizations.of(context)!.showStarRatingsSubtitle,
       value: _showStarRatings,
       onChanged: (value) async {
-          setState(() => _showStarRatings = value);
-          await _playerUiSettings.setShowStarRatings(value);
-        },
+        setState(() => _showStarRatings = value);
+        await _playerUiSettings.setShowStarRatings(value);
+      },
     );
   }
 
@@ -314,9 +361,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       subtitle: AppLocalizations.of(context)!.showMiniPlayerHeartSubtitle,
       value: _showMiniPlayerHeart,
       onChanged: (value) async {
-          setState(() => _showMiniPlayerHeart = value);
-          await _playerUiSettings.setShowMiniPlayerHeart(value);
-        },
+        setState(() => _showMiniPlayerHeart = value);
+        await _playerUiSettings.setShowMiniPlayerHeart(value);
+      },
     );
   }
 
@@ -328,9 +375,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       subtitle: AppLocalizations.of(context)!.showMiniPlayerRepeatSubtitle,
       value: _showMiniPlayerRepeat,
       onChanged: (value) async {
-          setState(() => _showMiniPlayerRepeat = value);
-          await _playerUiSettings.setShowMiniPlayerRepeat(value);
-        },
+        setState(() => _showMiniPlayerRepeat = value);
+        await _playerUiSettings.setShowMiniPlayerRepeat(value);
+      },
     );
   }
 
@@ -342,9 +389,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       subtitle: AppLocalizations.of(context)!.showMiniPlayerShuffleSubtitle,
       value: _showMiniPlayerShuffle,
       onChanged: (value) async {
-          setState(() => _showMiniPlayerShuffle = value);
-          await _playerUiSettings.setShowMiniPlayerShuffle(value);
-        },
+        setState(() => _showMiniPlayerShuffle = value);
+        await _playerUiSettings.setShowMiniPlayerShuffle(value);
+      },
     );
   }
 
@@ -357,9 +404,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       subtitle: l10n.lyricsUnderArtworkSubtitle,
       value: _showLiveLyricUnderArtwork,
       onChanged: (value) async {
-          setState(() => _showLiveLyricUnderArtwork = value);
-          await _playerUiSettings.setShowLiveLyricUnderArtwork(value);
-        },
+        setState(() => _showLiveLyricUnderArtwork = value);
+        await _playerUiSettings.setShowLiveLyricUnderArtwork(value);
+      },
     );
   }
 
@@ -371,9 +418,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       subtitle: AppLocalizations.of(context)!.liveSearchSubtitle,
       value: _liveSearch,
       onChanged: (value) async {
-          setState(() => _liveSearch = value);
-          await _playerUiSettings.setLiveSearch(value);
-        },
+        setState(() => _liveSearch = value);
+        await _playerUiSettings.setLiveSearch(value);
+      },
     );
   }
 
@@ -382,7 +429,8 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       gradientColors: const [Color(0xFFFA243C), Color(0xFFFF2D55)],
       icon: CupertinoIcons.heart_fill,
       title: AppLocalizations.of(context)!.showFavoritePlaylistsOnHome,
-      subtitle: AppLocalizations.of(context)!.showFavoritePlaylistsOnHomeSubtitle,
+      subtitle:
+          AppLocalizations.of(context)!.showFavoritePlaylistsOnHomeSubtitle,
       value: _showFavoritePlaylistsOnHome,
       onChanged: (value) async {
         setState(() => _showFavoritePlaylistsOnHome = value);
@@ -435,13 +483,13 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
     return Consumer<RecommendationService>(
       builder: (context, service, _) {
         return SettingsSwitchTile(
-      gradientColors: const [Color(0xFFFF2D55), Color(0xFFFF6B6B)],
-      icon: CupertinoIcons.sparkles,
-      title: AppLocalizations.of(context)!.enableRecommendations,
-      subtitle: AppLocalizations.of(context)!.enableRecommendationsSubtitle,
-      value: service.enabled,
-      onChanged: (value) => service.setEnabled(value),
-    );
+          gradientColors: const [Color(0xFFFF2D55), Color(0xFFFF6B6B)],
+          icon: CupertinoIcons.sparkles,
+          title: AppLocalizations.of(context)!.enableRecommendations,
+          subtitle: AppLocalizations.of(context)!.enableRecommendationsSubtitle,
+          value: service.enabled,
+          onChanged: (value) => service.setEnabled(value),
+        );
       },
     );
   }
@@ -935,15 +983,278 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
     );
   }
 
+  
+  double _artworkPreviewRadius() {
+    const previewSize = 108.0;
+    const referenceSize = 50.0;
+    if (_artworkShape == 'circle') return 9999.0;
+    if (_artworkShape == 'square') return 0.0;
+    return (_albumArtCornerRadius * previewSize / referenceSize)
+        .clamp(0.0, previewSize / 2);
+  }
+
+  List<BoxShadow>? _artworkPreviewShadow() {
+    if (_artworkShadow == 'none') return null;
+    const previewSize = 108.0;
+    final Color color = _artworkShadowColor == 'accent'
+        ? Theme.of(context).colorScheme.primary
+        : Colors.black;
+    double opacity;
+    double blur;
+    Offset offset;
+    switch (_artworkShadow) {
+      case 'medium':
+        opacity = context.isDark ? 0.35 : 0.25;
+        blur = previewSize / 6;
+        offset = Offset(0, previewSize / 20);
+        break;
+      case 'strong':
+        opacity = context.isDark ? 0.55 : 0.40;
+        blur = previewSize / 4;
+        offset = Offset(0, previewSize / 12);
+        break;
+      default:
+        opacity = context.isDark ? 0.22 : 0.14;
+        blur = previewSize / 10;
+        offset = Offset(0, previewSize / 30);
+    }
+    return [
+      BoxShadow(
+        color: color.withValues(alpha: opacity),
+        blurRadius: blur,
+        offset: offset,
+      ),
+    ];
+  }
+
+  Widget _buildChips({
+    required List<({String value, String label})> options,
+    required String selected,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((opt) {
+        final isSelected = opt.value == selected;
+        return GestureDetector(
+          onTap: () => onSelected(opt.value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : (context.isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
+              ),
+            ),
+            child: Text(
+              opt.label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected
+                    ? Colors.white
+                    : (context.isDark ? Colors.white70 : Colors.black87),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildArtworkStyleEditor() {
+    const previewSize = 108.0;
+    final radius = _artworkPreviewRadius();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  'Aperçu en direct',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: context.isDark
+                        ? AppTheme.darkSecondaryText
+                        : AppTheme.lightSecondaryText,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  width: previewSize,
+                  height: previewSize,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.primary.withAlpha(180),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(
+                      radius.clamp(0.0, previewSize / 2),
+                    ),
+                    boxShadow: _artworkPreviewShadow(),
+                  ),
+                  child: const Icon(
+                    Icons.music_note_rounded,
+                    color: Colors.white,
+                    size: 44,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildEditorRow(
+            icon: Icons.crop_square_rounded,
+            iconColor: const Color(0xFF5856D6),
+            label: 'Forme des pochettes',
+            child: _buildChips(
+              options: [
+                (value: 'circle', label: 'Cercle (par défaut)'),
+                (value: 'rounded', label: 'Arrondi'),
+                (value: 'square', label: 'Carré'),
+              ],
+              selected: _artworkShape,
+              onSelected: (v) {
+                setState(() => _artworkShape = v);
+                _playerUiSettings.setArtworkShape(v);
+              },
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: _artworkShape == 'rounded'
+                ? Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      _buildEditorRow(
+                        icon: Icons.rounded_corner,
+                        iconColor: const Color(0xFFFF9500),
+                        label: 'Rayon des coins',
+                        trailing: Text(
+                          _albumArtCornerRadius.round() == 0
+                              ? 'Aucun'
+                              : '${_albumArtCornerRadius.round()}px',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor:
+                                Theme.of(context).colorScheme.primary,
+                            inactiveTrackColor: context.isDark
+                                ? AppTheme.darkDivider
+                                : AppTheme.lightDivider,
+                            thumbColor: Theme.of(context).colorScheme.primary,
+                            overlayColor: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.12),
+                            trackHeight: 3,
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 7,
+                            ),
+                          ),
+                          child: Slider(
+                            value: _albumArtCornerRadius,
+                            min: 0,
+                            max: 24,
+                            divisions: 24,
+                            onChanged: (v) {
+                              setState(() => _albumArtCornerRadius = v);
+                              _playerUiSettings.setAlbumArtCornerRadius(v);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 16),
+          _buildEditorRow(
+            icon: Icons.blur_on_rounded,
+            iconColor: const Color(0xFF34AADC),
+            label: 'Ombre des pochettes',
+            child: _buildChips(
+              options: [
+                (value: 'none', label: 'Aucune'),
+                (value: 'soft', label: 'Légère'),
+                (value: 'medium', label: 'Moyenne'),
+                (value: 'strong', label: 'Prononcée'),
+              ],
+              selected: _artworkShadow,
+              onSelected: (v) {
+                setState(() => _artworkShadow = v);
+                _playerUiSettings.setArtworkShadow(v);
+              },
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: _artworkShadow != 'none'
+                ? Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      _buildEditorRow(
+                        icon: Icons.palette_outlined,
+                        iconColor: const Color(0xFFFF2D55),
+                        label: "Couleur de l'ombre",
+                        child: _buildChips(
+                          options: [
+                            (value: 'black', label: 'Noire'),
+                            (value: 'accent', label: "Teinte d'accentuation"),
+                          ],
+                          selected: _artworkShadowColor,
+                          onSelected: (v) {
+                            setState(() => _artworkShadowColor = v);
+                            _playerUiSettings.setArtworkShadowColor(v);
+                          },
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildArtworkResolutionSelector() {
     final options = {
-      'low': 'Low (300px)',
-      'normal': 'Normal (600px)',
-      'high': 'High (Original)',
+      'low': 'Basse (300px)',
+      'normal': 'Normale (600px)',
+      'high': 'Haute (Originale)',
     };
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      title: const Text('Artwork Resolution'),
+      title: const Text('Résolution des pochettes'),
       trailing: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _artworkResolution,

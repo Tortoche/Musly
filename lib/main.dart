@@ -73,9 +73,9 @@ void main() async {
   }
 
   try {
-    final isTizen = Platform.operatingSystem == 'tizen' || 
-                    Platform.operatingSystem == 'webos' || 
-                    Platform.environment.containsKey('TIZEN_API_VERSION');
+    final isTizen = Platform.operatingSystem == 'tizen' ||
+        Platform.operatingSystem == 'webos' ||
+        Platform.environment.containsKey('TIZEN_API_VERSION');
     if (isTizen) {
       JustAudioPlatform.instance = TizenJustAudioPlatform();
     } else {
@@ -255,11 +255,15 @@ class MuslyApp extends StatelessWidget {
         if (themeService.accentColor.isDynamic) {
           if (lightDynamic != null && darkDynamic != null) {
             light = AppTheme.lightThemeFromScheme(lightDynamic.harmonized());
-            dark = AppTheme.darkThemeFromScheme(darkDynamic.harmonized());
+            dark = themeService.pureOled
+                ? AppTheme.oledThemeWith(lightDynamic.harmonized().primary)
+                : AppTheme.darkThemeFromScheme(darkDynamic.harmonized());
           } else {
             final fallbackAccent = themeService.accentColor.color;
             light = AppTheme.lightThemeWith(fallbackAccent);
-            dark = AppTheme.darkThemeWith(fallbackAccent);
+            dark = themeService.pureOled
+                ? AppTheme.oledThemeWith(fallbackAccent)
+                : AppTheme.darkThemeWith(fallbackAccent);
           }
         } else {
           final accent = themeService.accentColor.color;
@@ -273,10 +277,14 @@ class MuslyApp extends StatelessWidget {
                   secondary: accent.withAlpha(200),
                 );
             light = AppTheme.lightThemeFromScheme(harmonisedLight);
-            dark = AppTheme.darkThemeFromScheme(harmonisedDark);
+            dark = themeService.pureOled
+                ? AppTheme.oledThemeWith(accent)
+                : AppTheme.darkThemeFromScheme(harmonisedDark);
           } else {
             light = AppTheme.lightThemeWith(accent);
-            dark = AppTheme.darkThemeWith(accent);
+            dark = themeService.pureOled
+                ? AppTheme.oledThemeWith(accent)
+                : AppTheme.darkThemeWith(accent);
           }
         }
 
@@ -288,7 +296,7 @@ class MuslyApp extends StatelessWidget {
           themeMode: isTv ? ThemeMode.dark : themeService.themeMode,
           scrollBehavior: AppScrollBehavior(),
           navigatorKey: navigatorKey,
-          locale: localeService.currentLocale,
+          locale: localeService.currentLocale ?? const Locale('fr'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) =>
@@ -350,25 +358,10 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
   }
 
   Future<void> _checkOnboarding() async {
-    TvDetectionService? tvService;
-    try {
-      tvService = Provider.of<TvDetectionService>(context, listen: false);
-    } catch (_) {}
-    if (tvService?.isTvMode == true) {
-      await StorageService().setOnboardingCompleted(true);
-      if (mounted) {
-        setState(() {
-          _onboardingCompleted = true;
-          _checkedOnboarding = true;
-        });
-      }
-      return;
-    }
-
-    final completed = await StorageService().isOnboardingCompleted();
+    await StorageService().setOnboardingCompleted(true);
     if (mounted) {
       setState(() {
-        _onboardingCompleted = completed;
+        _onboardingCompleted = true;
         _checkedOnboarding = true;
       });
     }

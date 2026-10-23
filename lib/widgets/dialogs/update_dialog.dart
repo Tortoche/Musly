@@ -67,8 +67,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       final isDone = received >= total;
       final timePassed = _lastProgressUpdateTime == null ||
           now.difference(_lastProgressUpdateTime!).inMilliseconds >= 80;
-      final progressChanged =
-          (fraction - _lastProgressFraction).abs() >= 0.01;
+      final progressChanged = (fraction - _lastProgressFraction).abs() >= 0.01;
 
       if (isDone || (timePassed && progressChanged)) {
         _lastProgressUpdateTime = now;
@@ -209,8 +208,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                               'v${UpdateService.currentVersion}',
                               style: TextStyle(
                                 fontSize: 13,
-                                color:
-                                    isDark ? Colors.white54 : Colors.black45,
+                                color: isDark ? Colors.white54 : Colors.black45,
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -333,8 +331,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   child: LinearProgressIndicator(
                     value: _downloadProgress > 0 ? _downloadProgress : null,
                     minHeight: 8,
-                    backgroundColor:
-                        isDark ? Colors.white12 : Colors.black12,
+                    backgroundColor: isDark ? Colors.white12 : Colors.black12,
                     valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                   ),
                 ),
@@ -351,7 +348,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     ),
                     TextButton(
                       onPressed: _cancelDownload,
-                      child: const Text('Annulla', style: TextStyle(fontSize: 12)),
+                      child:
+                          const Text('Annulla', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),

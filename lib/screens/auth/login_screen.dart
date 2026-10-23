@@ -34,14 +34,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _serverController = TextEditingController();
+  final _serverController = TextEditingController(text: 'https://music.corentinjanin.fr');
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _serverFocusNode = FocusNode();
   final _usernameFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   final _scrollController = ScrollController();
-  
+
   bool _useLegacyAuth = false;
   bool _allowSelfSignedCertificates = false;
   bool _obscurePassword = true;
@@ -69,32 +69,39 @@ class _LoginScreenState extends State<LoginScreen> {
     _usernameController.addListener(_clearError);
     _passwordController.addListener(_clearError);
     _profileNameController.addListener(_clearError);
-    
+
+    if (_serverController.text.trim().isEmpty) {
+      _serverController.text = 'https://music.corentinjanin.fr';
+    }
     _serverFocusNode.addListener(_onTvFocusChange);
     _usernameFocusNode.addListener(_onTvFocusChange);
     _passwordFocusNode.addListener(_onTvFocusChange);
-    
+
     _loadSavedServerFamily();
   }
 
   void _onTvFocusChange() {
     if (!mounted) return;
-    
-    final isTv = Provider.of<TvDetectionService>(context, listen: false).isTvMode;
+
+    final isTv =
+        Provider.of<TvDetectionService>(context, listen: false).isTvMode;
     if (isTv) {
       // Rebuild to apply the extra bottom padding
       setState(() {});
-      
+
       // A small delay lets the TV keyboard animation start, and then we force scroll
       // the focused field to the top 20% of the screen so it's not covered by the keyboard overlay.
       Future.delayed(const Duration(milliseconds: 150), () {
         if (!mounted) return;
         if (_serverFocusNode.hasFocus) {
-          Scrollable.ensureVisible(_serverFocusNode.context!, alignment: 0.15, duration: const Duration(milliseconds: 300));
+          Scrollable.ensureVisible(_serverFocusNode.context!,
+              alignment: 0.15, duration: const Duration(milliseconds: 300));
         } else if (_usernameFocusNode.hasFocus) {
-          Scrollable.ensureVisible(_usernameFocusNode.context!, alignment: 0.15, duration: const Duration(milliseconds: 300));
+          Scrollable.ensureVisible(_usernameFocusNode.context!,
+              alignment: 0.15, duration: const Duration(milliseconds: 300));
         } else if (_passwordFocusNode.hasFocus) {
-          Scrollable.ensureVisible(_passwordFocusNode.context!, alignment: 0.15, duration: const Duration(milliseconds: 300));
+          Scrollable.ensureVisible(_passwordFocusNode.context!,
+              alignment: 0.15, duration: const Duration(milliseconds: 300));
         }
       });
     }
@@ -166,20 +173,20 @@ class _LoginScreenState extends State<LoginScreen> {
         icon = CupertinoIcons.lock_slash;
         color = const Color(0xFFFF9500);
         if (!_allowSelfSignedCertificates) {
-          hint = 'Try enabling "Allow Self-Signed Certificates" below.';
+          hint = 'Activez "Autoriser les certificats auto-signés" ci-dessous.';
         }
       case _LoginErrorType.credentials:
         icon = CupertinoIcons.person_badge_minus;
         color = AppTheme.brandRed;
-        hint = 'Check your username and password and try again.';
+        hint = 'Vérifiez votre nom d\'utilisateur et votre mot de passe puis réessayez.';
       case _LoginErrorType.notFound:
         icon = CupertinoIcons.question_circle;
         color = const Color(0xFFFF9500);
-        hint = 'Verify the server URL path (e.g. /navidrome, /airsonic).';
+        hint = 'Vérifiez le chemin d\'URL du serveur (ex. /navidrome, /airsonic).';
       case _LoginErrorType.timeout:
         icon = CupertinoIcons.timer;
         color = const Color(0xFFFF9500);
-        hint = 'The server took too long to respond. Check your network.';
+        hint = 'Le serveur a mis trop de temps à répondre. Vérifiez votre connexion.';
       case _LoginErrorType.connection:
         icon = CupertinoIcons.wifi_slash;
         color = const Color(0xFFFF9500);
@@ -187,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
       case _LoginErrorType.format:
         icon = CupertinoIcons.link;
         color = const Color(0xFFFF9500);
-        hint = 'URL must start with http:// or https://';
+        hint = 'L\'URL doit commencer par http:// ou https://';
       case _LoginErrorType.generic:
         icon = CupertinoIcons.exclamationmark_triangle;
         color = AppTheme.brandRed;
@@ -237,7 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         content: Text(
                           AppLocalizations.of(context)
                                   ?.errorCopiedToClipboard ??
-                              'Error copied to clipboard',
+                              'Erreur copiée dans le presse-papier',
                         ),
                         duration: const Duration(seconds: 2),
                         behavior: SnackBarBehavior.floating,
@@ -274,8 +281,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   child: Text(
                     Platform.isIOS || Platform.isAndroid
-                        ? 'Tap to enable self-signed certificates'
-                        : 'Click to enable self-signed certificates',
+                        ? 'Appuyez pour activer les certificats auto-signés'
+                        : 'Cliquez pour activer les certificats auto-signés',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: color,
                       fontWeight: FontWeight.w600,
@@ -332,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['p12', 'pfx', 'pem'],
-        dialogTitle: 'Select Client Certificate',
+        dialogTitle: 'Sélectionner le certificat client',
       );
       if (result != null && result.files.single.path != null) {
         setState(() {
@@ -362,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pem', 'crt', 'cer', 'p12', 'pfx', 'der'],
-        dialogTitle: 'Select TLS/SSL Certificate',
+        dialogTitle: 'Sélectionner le certificat TLS/SSL',
       );
 
       if (result != null && result.files.single.path != null) {
@@ -403,7 +410,7 @@ class _LoginScreenState extends State<LoginScreen> {
         !serverUrl.startsWith('http://') &&
         !serverUrl.startsWith('https://')) {
       setState(
-        () => _loginError = 'Server URL must start with http:// or https://',
+        () => _loginError = 'L\'URL du serveur doit commencer par http:// ou https://',
       );
       return;
     }
@@ -427,7 +434,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!success && mounted) {
       setState(
-        () => _loginError = authProvider.error ?? 'Failed to connect to server',
+        () => _loginError = authProvider.error ?? 'Échec de connexion au serveur',
       );
     }
   }
@@ -454,7 +461,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isScanning = true;
         _scanProgress = 0.0;
-        _scanStatus = 'Select your music files...';
+        _scanStatus = 'Sélectionnez vos fichiers audio...';
       });
       try {
         final added = await localService.pickAndAddFiles();
@@ -467,7 +474,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(added == 0
-                    ? 'No files selected. Tap "Use Local Files" and pick your music files.'
+                    ? 'Aucun fichier sélectionné. Choisissez vos fichiers musicaux.'
                     : AppLocalizations.of(context)!.noMusicFilesFound),
                 backgroundColor: Colors.orange,
               ),
@@ -483,7 +490,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isScanning = true;
       _scanProgress = 0.0;
-      _scanStatus = 'Starting scan...';
+      _scanStatus = 'Démarrage de l\'analyse...';
     });
 
     void updateProgress() {
@@ -534,10 +541,13 @@ class _LoginScreenState extends State<LoginScreen> {
     final isBusy = isLoading || _isScanning;
 
     final isTv = Provider.of<TvDetectionService>(context).isTvMode;
-    final bool anyFieldFocused = _serverFocusNode.hasFocus || _usernameFocusNode.hasFocus || _passwordFocusNode.hasFocus;
-    
+    final bool anyFieldFocused = _serverFocusNode.hasFocus ||
+        _usernameFocusNode.hasFocus ||
+        _passwordFocusNode.hasFocus;
+
     // Add extra padding at the bottom when a field is focused on TV so there's enough room to scroll it up
-    final bottomPadding = (isTv && anyFieldFocused) ? 400.0 : ScreenHelper.loginPadding(context);
+    final bottomPadding =
+        (isTv && anyFieldFocused) ? 400.0 : ScreenHelper.loginPadding(context);
 
     return Scaffold(
       body: SafeArea(
@@ -664,7 +674,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      'Play audio files directly from this device without connecting to any remote server.',
+                                      'Écoutez vos fichiers audio stockés localement sur cet appareil sans aucun serveur.',
                                       style: TextStyle(
                                         fontSize: 13,
                                         color:
@@ -697,7 +707,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   label: Text(
                                     _isScanning
                                         ? _scanStatus
-                                        : 'Scan & Play Local Files',
+                                        : 'Analyser et écouter les fichiers locaux',
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
@@ -748,7 +758,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Web Stream streams music directly online. No account required — tap Connect to start.',
+                                  'Le streaming Web diffuse la musique directement en ligne. Aucun compte requis — appuyez sur Connexion.',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Theme.of(context).brightness ==
@@ -773,7 +783,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: InputDecoration(
                             labelText:
                                 AppLocalizations.of(context)?.serverUrl ??
-                                    'Server URL',
+                                    'URL du serveur',
                             hintText: _serverFamily == 'jellyfin'
                                 ? 'https://jellyfin.example.com'
                                 : 'https://your-server.com',
@@ -784,12 +794,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Please enter server URL';
+                              return AppLocalizations.of(context)?.pleaseEnterServerUrl ?? 'Veuillez entrer l\'URL du serveur';
                             }
                             final url = value.trim();
                             if (!url.startsWith('http://') &&
                                 !url.startsWith('https://')) {
-                              return 'URL must start with http:// or https://';
+                              return AppLocalizations.of(context)?.serverUrlMustStartWith ?? 'L\'URL doit commencer par http:// ou https://';
                             }
                             return null;
                           },
@@ -814,7 +824,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Insecure HTTP: Passwords and streaming traffic are not encrypted over public networks. HTTPS is recommended.',
+                                    'HTTP non sécurisé : les mots de passe et flux ne sont pas chiffrés sur le réseau. HTTPS recommandé.',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: theme.brightness == Brightness.dark
@@ -845,7 +855,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Please enter username';
+                              return AppLocalizations.of(context)?.pleaseEnterUsername ?? 'Veuillez entrer le nom d\'utilisateur';
                             }
                             return null;
                           },
@@ -881,7 +891,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter password';
+                              return AppLocalizations.of(context)?.pleaseEnterPassword ?? 'Veuillez saisir votre mot de passe';
                             }
                             return null;
                           },
@@ -906,11 +916,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Legacy Authentication',
+                                    'Authentification héritée (Legacy)',
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                   Text(
-                                    'Use for older Subsonic servers',
+                                    'Pour les anciennes versions de Subsonic',
                                     style: theme.textTheme.bodySmall,
                                   ),
                                 ],
@@ -939,11 +949,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Allow Self-Signed Certificates',
+                                    'Autoriser les certificats auto-signés',
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                   Text(
-                                    'For servers with custom TLS/SSL certificates',
+                                    'Pour les serveurs avec certificats auto-signés',
                                     style: theme.textTheme.bodySmall,
                                   ),
                                 ],
@@ -969,7 +979,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Advanced Options',
+                                'Options avancées',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -985,7 +995,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: InputDecoration(
                               labelText: AppLocalizations.of(context)
                                       ?.profileNameOptional ??
-                                  'Profile Name (optional)',
+                                  'Nom du profil (optionnel)',
                               hintText: 'e.g. Home, Work, VPN',
                               prefixIcon: const Icon(CupertinoIcons.tag),
                               border: OutlineInputBorder(
@@ -1006,14 +1016,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Custom TLS/SSL Certificate',
+                                  'Certificat TLS/SSL personnalisé',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Upload a custom certificate for servers with non-standard CA',
+                                  'Importer un certificat pour les serveurs avec autorité personnalisée',
                                   style: theme.textTheme.bodySmall,
                                 ),
                                 const SizedBox(height: 12),
@@ -1101,7 +1111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Client Certificate (mTLS)',
+                                  'Certificat client (mTLS)',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -1160,9 +1170,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     decoration: InputDecoration(
                                       labelText: AppLocalizations.of(context)
                                               ?.clientCertPassword ??
-                                          'Certificate Password',
+                                          'Mot de passe du certificat',
                                       hintText:
-                                          'Password for .p12 / .pfx (optional)',
+                                          'Mot de passe du fichier .p12 / .pfx (optionnel)',
                                       prefixIcon: const Icon(
                                           CupertinoIcons.lock_shield),
                                       suffixIcon: IconButton(
@@ -1229,7 +1239,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               duration: const Duration(milliseconds: 200),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: isLoading ? theme.colorScheme.primary.withValues(alpha: 0.5) : theme.colorScheme.primary,
+                                color: isLoading
+                                    ? theme.colorScheme.primary
+                                        .withValues(alpha: 0.5)
+                                    : theme.colorScheme.primary,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: isLoading
@@ -1238,17 +1251,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                       height: 24,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
                                           Colors.white,
                                         ),
                                       ),
                                     )
                                   : Text(
-                                      'Connect',
+                                      AppLocalizations.of(context)?.connect ?? 'Connexion',
                                       style: TextStyle(
                                         fontSize: 17,
                                         fontWeight: FontWeight.w600,
-                                        color: ThemeData.estimateBrightnessForColor(theme.colorScheme.primary) == Brightness.dark
+                                        color: ThemeData
+                                                    .estimateBrightnessForColor(
+                                                        theme.colorScheme
+                                                            .primary) ==
+                                                Brightness.dark
                                             ? Colors.white
                                             : Colors.black,
                                       ),
@@ -1315,7 +1333,7 @@ class _SavedProfilesSwitcherState extends State<_SavedProfilesSwitcher> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Saved Profiles',
+              'Profils enregistrés',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -1355,7 +1373,7 @@ class _SavedProfilesSwitcherState extends State<_SavedProfilesSwitcher> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Tap a profile to connect • tap × to delete',
+              'Touchez un profil pour vous connecter • × pour supprimer',
               style: TextStyle(
                 fontSize: 11,
                 color: isDark ? Colors.white38 : Colors.black38,
@@ -1382,7 +1400,8 @@ class _ServerFamilyToggle extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final labelColor = isDark ? Colors.white70 : Colors.black87;
 
-    final isTv = Provider.of<TvDetectionService>(context, listen: false).isTvMode;
+    final isTv =
+        Provider.of<TvDetectionService>(context, listen: false).isTvMode;
     final chips = [
       (
         label: 'Subsonic',
@@ -1398,14 +1417,14 @@ class _ServerFamilyToggle extends StatelessWidget {
       ),
       if (!kIsWeb && !Platform.isIOS && !isTv)
         (
-          label: 'Web Stream',
+          label: 'Streaming Web',
           family: 'youtube',
           icon: CupertinoIcons.play_rectangle_fill,
           activeColor: const Color(0xFFFF3B30),
         ),
       if (!isTv)
         (
-          label: 'Local Files',
+          label: 'Fichiers Locaux',
           family: 'local',
           icon: CupertinoIcons.folder_fill,
           activeColor: const Color(0xFF34C759),
@@ -1416,7 +1435,7 @@ class _ServerFamilyToggle extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Music Source',
+          'Source de musique',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,

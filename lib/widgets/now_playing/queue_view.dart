@@ -129,9 +129,8 @@ class _QueueViewState extends State<QueueView> {
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 leading: KeyedSubtree(
-                  key: isPlaying && !_initialScrollDone
-                      ? _currentItemKey
-                      : null,
+                  key:
+                      isPlaying && !_initialScrollDone ? _currentItemKey : null,
                   child: AlbumArtwork(
                     coverArt: song.coverArt,
                     size: 48,

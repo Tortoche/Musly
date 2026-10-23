@@ -25,7 +25,7 @@ class SettingsSwitchTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasLeading = icon != null && gradientColors != null;
-    
+
     return InkWell(
       onTap: () => onChanged(!value),
       child: Container(

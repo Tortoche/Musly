@@ -61,7 +61,8 @@ class WakelockService {
     try {
       if (shouldBeLocked) {
         await WakelockPlus.enable();
-        debugPrint('[WakelockService] Screen timeout paused (reasons: $_activeReasons)');
+        debugPrint(
+            '[WakelockService] Screen timeout paused (reasons: $_activeReasons)');
       } else {
         await WakelockPlus.disable();
         debugPrint('[WakelockService] Screen timeout resumed');

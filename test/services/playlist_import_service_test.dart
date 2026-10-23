@@ -99,7 +99,8 @@ void main() {
         'PLFgquLnL59alW3xmYiWRaoz0oM3H17Lth',
       );
       expect(
-        service.extractYouTubePlaylistId('VLPLFgquLnL59alW3xmYiWRaoz0oM3H17Lth'),
+        service
+            .extractYouTubePlaylistId('VLPLFgquLnL59alW3xmYiWRaoz0oM3H17Lth'),
         'PLFgquLnL59alW3xmYiWRaoz0oM3H17Lth',
       );
     });
@@ -175,4 +176,3 @@ void main() {
     });
   });
 }
-

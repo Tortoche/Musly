@@ -106,7 +106,8 @@ void main() {
       }
     });
 
-    test('should handle Cast connection and disconnection transitions cleanly', () async {
+    test('should handle Cast connection and disconnection transitions cleanly',
+        () async {
       final fakeCast = FakeCastService();
       final player = PlayerProvider(
         subsonicService,

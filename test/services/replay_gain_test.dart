@@ -24,7 +24,8 @@ void main() {
       expect(multiplier, 1.0);
     });
 
-    test('mode track calculates correct volume multiplier with trackGain', () async {
+    test('mode track calculates correct volume multiplier with trackGain',
+        () async {
       await service.setMode(ReplayGainMode.track);
       await service.setPreampGain(0.0);
       await service.setPreventClipping(false);
@@ -62,7 +63,8 @@ void main() {
       expect(multiplier, closeTo(0.5, 0.01));
     });
 
-    test('prevent clipping reduces multiplier if peak would exceed 1.0', () async {
+    test('prevent clipping reduces multiplier if peak would exceed 1.0',
+        () async {
       await service.setMode(ReplayGainMode.track);
       await service.setPreampGain(3.0); // positive preamp would amplify
       await service.setPreventClipping(true);
@@ -76,7 +78,8 @@ void main() {
       expect(multiplier, closeTo(0.8, 0.01));
     });
 
-    test('Song model with loudgain tags provides correct fields to service', () {
+    test('Song model with loudgain tags provides correct fields to service',
+        () {
       final song = Song.fromJson({
         'id': 's1',
         'title': 'Track with loudgain',

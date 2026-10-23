@@ -43,7 +43,7 @@ class _TvNowPlayingScreenState extends State<TvNowPlayingScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<PlayerProvider>(context);
     final song = provider.currentSong ?? widget.song;
-    
+
     ImageProvider? currentImageProvider = widget.image;
     if (song != null && song.coverArt != null) {
       final subsonic = Provider.of<SubsonicService>(context, listen: false);
@@ -65,7 +65,6 @@ class _TvNowPlayingScreenState extends State<TvNowPlayingScreen> {
                   child: const SizedBox.shrink(),
                 ),
               ),
-            
             Padding(
               padding: const EdgeInsets.all(64.0),
               child: Row(
@@ -120,50 +119,62 @@ class _TvNowPlayingScreenState extends State<TvNowPlayingScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 48),
-                        
+
                         // Progress bar with scrubbing support
                         Focus(
                           focusNode: _progressFocusNode,
                           onKeyEvent: (node, event) {
                             if (event is KeyDownEvent) {
-                              if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-                                provider.seek(provider.position - const Duration(seconds: 5));
+                              if (event.logicalKey ==
+                                  LogicalKeyboardKey.arrowLeft) {
+                                provider.seek(provider.position -
+                                    const Duration(seconds: 5));
                                 return KeyEventResult.handled;
-                              } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-                                provider.seek(provider.position + const Duration(seconds: 5));
+                              } else if (event.logicalKey ==
+                                  LogicalKeyboardKey.arrowRight) {
+                                provider.seek(provider.position +
+                                    const Duration(seconds: 5));
                                 return KeyEventResult.handled;
                               }
                             }
                             return KeyEventResult.ignored;
                           },
-                          child: Builder(
-                            builder: (context) {
-                              final hasFocus = Focus.of(context).hasFocus;
-                              return Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                                decoration: BoxDecoration(
-                                  border: hasFocus ? Border.all(color: Colors.white, width: 2) : Border.all(color: Colors.transparent, width: 2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: StreamBuilder<Duration>(
-                                  stream: provider.positionStream,
-                                  initialData: provider.position,
-                                  builder: (context, snapshot) {
-                                    return PlaybackProgressSlider(
-                                      position: snapshot.data ?? Duration.zero,
-                                      duration: provider.duration.inMilliseconds > 0 ? provider.duration : Duration(seconds: song?.duration ?? 0),
-                                      onChanged: (val) => provider.seek(val),
-                                      accentColor: widget.bgColors.isNotEmpty ? widget.bgColors.first : Colors.white,
-                                    );
-                                  },
-                                ),
-                              );
-                            }
-                          ),
+                          child: Builder(builder: (context) {
+                            final hasFocus = Focus.of(context).hasFocus;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 4),
+                              decoration: BoxDecoration(
+                                border: hasFocus
+                                    ? Border.all(color: Colors.white, width: 2)
+                                    : Border.all(
+                                        color: Colors.transparent, width: 2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: StreamBuilder<Duration>(
+                                stream: provider.positionStream,
+                                initialData: provider.position,
+                                builder: (context, snapshot) {
+                                  return PlaybackProgressSlider(
+                                    position: snapshot.data ?? Duration.zero,
+                                    duration:
+                                        provider.duration.inMilliseconds > 0
+                                            ? provider.duration
+                                            : Duration(
+                                                seconds: song?.duration ?? 0),
+                                    onChanged: (val) => provider.seek(val),
+                                    accentColor: widget.bgColors.isNotEmpty
+                                        ? widget.bgColors.first
+                                        : Colors.white,
+                                  );
+                                },
+                              ),
+                            );
+                          }),
                         ),
-                        
+
                         const SizedBox(height: 64),
-                        
+
                         // Playback Controls
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -178,7 +189,9 @@ class _TvNowPlayingScreenState extends State<TvNowPlayingScreen> {
                               onPressed: provider.skipPrevious,
                             ),
                             _TvControlButton(
-                              icon: provider.isPlaying ? Icons.pause : Icons.play_arrow,
+                              icon: provider.isPlaying
+                                  ? Icons.pause
+                                  : Icons.play_arrow,
                               onPressed: provider.togglePlayPause,
                               size: 80,
                               iconSize: 48,
@@ -189,8 +202,8 @@ class _TvNowPlayingScreenState extends State<TvNowPlayingScreen> {
                               onPressed: provider.skipNext,
                             ),
                             _TvControlButton(
-                              icon: provider.repeatMode == RepeatMode.one 
-                                  ? Icons.repeat_one 
+                              icon: provider.repeatMode == RepeatMode.one
+                                  ? Icons.repeat_one
                                   : Icons.repeat,
                               onPressed: provider.toggleRepeat,
                               isActive: provider.repeatMode != RepeatMode.off,
@@ -239,28 +252,31 @@ class _TvControlButtonState extends State<_TvControlButton> {
     return Focus(
       autofocus: widget.autofocus,
       onFocusChange: (focused) => setState(() => _hasFocus = focused),
-      child: Builder(
-        builder: (context) {
-          return GestureDetector(
-            onTap: widget.onPressed,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: widget.size,
-              height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _hasFocus ? Colors.white : (widget.isActive ? Colors.white24 : Colors.transparent),
-                border: _hasFocus ? Border.all(color: Colors.white, width: 3) : null,
-              ),
-              child: Icon(
-                widget.icon,
-                color: _hasFocus ? Colors.black : (widget.isActive ? Colors.white : Colors.white70),
-                size: widget.iconSize,
-              ),
+      child: Builder(builder: (context) {
+        return GestureDetector(
+          onTap: widget.onPressed,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _hasFocus
+                  ? Colors.white
+                  : (widget.isActive ? Colors.white24 : Colors.transparent),
+              border:
+                  _hasFocus ? Border.all(color: Colors.white, width: 3) : null,
             ),
-          );
-        }
-      ),
+            child: Icon(
+              widget.icon,
+              color: _hasFocus
+                  ? Colors.black
+                  : (widget.isActive ? Colors.white : Colors.white70),
+              size: widget.iconSize,
+            ),
+          ),
+        );
+      }),
     );
   }
 }

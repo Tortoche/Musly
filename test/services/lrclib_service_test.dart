@@ -30,7 +30,8 @@ void main() {
         equals('Starboy'),
       );
       expect(
-        LrcLibService.cleanTitle('Queen - Another One Bites the Dust (Remastered 2011)'),
+        LrcLibService.cleanTitle(
+            'Queen - Another One Bites the Dust (Remastered 2011)'),
         equals('Another One Bites the Dust'),
       );
       expect(
@@ -70,7 +71,8 @@ void main() {
       );
     });
 
-    test('searchLyrics finds synced lyrics for YouTube title formats', () async {
+    test('searchLyrics finds synced lyrics for YouTube title formats',
+        () async {
       final result = await LrcLibService().searchLyrics(
         artist: 'Music Zone',
         title: 'Ramz - Barking (Audio)',

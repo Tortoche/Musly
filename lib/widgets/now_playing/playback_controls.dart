@@ -45,10 +45,12 @@ class PlaybackControls extends StatelessWidget {
         : Icons.repeat_rounded;
 
     final themePrimary = Theme.of(context).colorScheme.primary;
-    final effectiveActiveColor = (accentColor == Colors.white ||
-            accentColor.computeLuminance() > 0.85)
-        ? (themePrimary != Colors.white ? themePrimary : const Color(0xFFFA243C))
-        : accentColor;
+    final effectiveActiveColor =
+        (accentColor == Colors.white || accentColor.computeLuminance() > 0.85)
+            ? (themePrimary != Colors.white
+                ? themePrimary
+                : const Color(0xFFFA243C))
+            : accentColor;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,

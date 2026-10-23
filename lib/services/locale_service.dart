@@ -6,7 +6,7 @@ import 'package:musly/services/translation_ota_service.dart';
 
 class LocaleService extends ChangeNotifier {
   static const String _localeKey = 'selected_locale';
-  Locale? _currentLocale;
+  Locale? _currentLocale = const Locale('fr');
 
   Locale? get currentLocale => _currentLocale;
   final TranslationOtaService _otaService = TranslationOtaService();
@@ -149,7 +149,7 @@ class LocaleService extends ChangeNotifier {
 
   static Map<String, String> get supportedLanguages {
     final Map<String, String> result = {};
-    final preferredOrder = ['en', 'sq', 'it'];
+    final preferredOrder = ['fr', 'en', 'sq', 'it'];
     final allSupportedCodes =
         AppLocalizations.supportedLocales.map((l) => l.languageCode).toSet();
     allSupportedCodes.addAll(TranslationOtaService().discoveredLocales);
@@ -173,10 +173,13 @@ class LocaleService extends ChangeNotifier {
     final localeCode = prefs.getString(_localeKey);
     if (localeCode != null) {
       _currentLocale = Locale(localeCode);
+    } else {
+      _currentLocale = const Locale('fr');
+      await prefs.setString(_localeKey, 'fr');
     }
 
     // Attempt to detect system locale if none is explicitly saved
-    String fallbackCode = 'en';
+    String fallbackCode = 'fr';
     if (_currentLocale == null) {
       try {
         final systemLocale = Platform.localeName.split('_')[0];

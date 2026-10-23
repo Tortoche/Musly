@@ -829,7 +829,9 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                         child: _PlayButton(
                           icon: CupertinoIcons.play_fill,
                           label: AppLocalizations.of(context)!.play,
-                          autofocus: Provider.of<TvDetectionService>(context, listen: false).isTvMode,
+                          autofocus: Provider.of<TvDetectionService>(context,
+                                  listen: false)
+                              .isTvMode,
                           onTap: () => _playAll(),
                         ),
                       ),

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/cupertino.dart' hide RepeatMode;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
@@ -26,7 +27,9 @@ class MiniPlayer extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDesktop =
         !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
-    if (isDesktop && ScreenHelper.isDesktop(context)) return const SizedBox.shrink();
+    if (isDesktop && ScreenHelper.isDesktop(context)) {
+      return const SizedBox.shrink();
+    }
 
     return Selector<PlayerProvider, (Song?, RadioStation?, bool)>(
       selector: (_, p) =>
@@ -129,32 +132,38 @@ class MiniPlayer extends StatelessWidget {
                 onLongPress: currentSong != null
                     ? () => SongOptionsModal.show(context, currentSong)
                     : null,
-                child: Container(
-                  height: 64,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xF01C1C1E)
-                        : const Color(0xF5FFFFFF),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.14)
-                          : Colors.black.withValues(alpha: 0.08),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: row),
-                      const Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: _MiniPlayerProgressBar(
-                            borderRadius: 22, isGlass: true),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      height: 64,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xB30A0A0C)
+                            : const Color(0xB3FFFFFF),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0x1AFFFFFF)
+                              : Colors.black.withValues(alpha: 0.08),
+                          width: 0.8,
+                        ),
                       ),
-                    ],
+                      child: Stack(
+                        children: [
+                          Positioned.fill(child: row),
+                          const Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: _MiniPlayerProgressBar(
+                                borderRadius: 22, isGlass: true),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -172,12 +181,13 @@ class MiniPlayer extends StatelessWidget {
               height: 64,
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.black.withValues(alpha: 0.95)
+                    ? const Color(0xFF1C1C1E)
                     : Colors.white.withValues(alpha: 0.95),
                 border: Border(
                   top: BorderSide(
-                    color:
-                        isDark ? AppTheme.darkDivider : AppTheme.lightDivider,
+                    color: isDark
+                        ? const Color(0x1AFFFFFF)
+                        : AppTheme.lightDivider,
                     width: 0.5,
                   ),
                 ),

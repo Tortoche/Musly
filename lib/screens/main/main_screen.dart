@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -302,84 +303,43 @@ class _MainScreenState extends State<MainScreen> {
           },
           child: TvRemoteScope(
             child: Scaffold(
-            backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? AppTheme.darkBackground
-                : AppTheme.lightBackground,
-            resizeToAvoidBottomInset: false,
-            body: Column(
-              children: [
-                if (widget.isOfflineMode || isLocalMode)
-                  Container(
-                    width: double.infinity,
-                    color: isLocalMode ? Colors.indigo : Colors.orange,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 16,
-                    ),
-                    child: SafeArea(
-                      bottom: false,
-                      child: Row(
-                        children: [
-                          Icon(
-                            isLocalMode
-                                ? CupertinoIcons.folder_fill
-                                : CupertinoIcons.wifi_slash,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              isLocalMode
-                                  ? AppLocalizations.of(
-                                      context,
-                                    )!
-                                      .localFilesModeBanner
-                                  : AppLocalizations.of(
-                                      context,
-                                    )!
-                                      .offlineModeBanner,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.darkBackground
+                  : AppTheme.lightBackground,
+              resizeToAvoidBottomInset: false,
+              body: Column(
+                children: [
+                  if (widget.isOfflineMode || isLocalMode)
+                    Container(
+                      width: double.infinity,
+                      color: isLocalMode ? Colors.indigo : Colors.orange,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 16,
                       ),
-                    ),
-                  ),
-                if (isLocalMode)
-                  Selector<LocalMusicService, (bool, double, String)>(
-                    selector: (_, s) =>
-                        (s.isScanning, s.scanProgress, s.scanStatus),
-                    builder: (context, data, _) {
-                      final (isScanning, progress, status) = data;
-                      if (!isScanning) return const SizedBox.shrink();
-                      return Container(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withValues(alpha: 0.85),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                      child: SafeArea(
+                        bottom: false,
                         child: Row(
                           children: [
-                            const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
+                            Icon(
+                              isLocalMode
+                                  ? CupertinoIcons.folder_fill
+                                  : CupertinoIcons.wifi_slash,
+                              color: Colors.white,
+                              size: 18,
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                status,
+                                isLocalMode
+                                    ? AppLocalizations.of(
+                                        context,
+                                      )!
+                                        .localFilesModeBanner
+                                    : AppLocalizations.of(
+                                        context,
+                                      )!
+                                        .offlineModeBanner,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 13,
@@ -387,45 +347,86 @@ class _MainScreenState extends State<MainScreen> {
                                 ),
                               ),
                             ),
-                            if (progress > 0)
-                              Text(
-                                '${(progress * 100).toStringAsFixed(0)}%',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
                           ],
                         ),
-                      );
-                    },
+                      ),
+                    ),
+                  if (isLocalMode)
+                    Selector<LocalMusicService, (bool, double, String)>(
+                      selector: (_, s) =>
+                          (s.isScanning, s.scanProgress, s.scanStatus),
+                      builder: (context, data, _) {
+                        final (isScanning, progress, status) = data;
+                        if (!isScanning) return const SizedBox.shrink();
+                        return Container(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primaryContainer
+                              .withValues(alpha: 0.85),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  status,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (progress > 0)
+                                Text(
+                                  '${(progress * 100).toStringAsFixed(0)}%',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  Expanded(
+                    child: Navigator(
+                      key: NavigationHelper.appNavigatorKey,
+                      onGenerateRoute: (settings) {
+                        return MaterialPageRoute(
+                          builder: (_) => LazyIndexedStack(
+                            index: _currentIndex,
+                            children: _screens,
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                Expanded(
-                  child: Navigator(
-                    key: NavigationHelper.appNavigatorKey,
-                    onGenerateRoute: (settings) {
-                      return MaterialPageRoute(
-                        builder: (_) => LazyIndexedStack(
-                          index: _currentIndex,
-                          children: _screens,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                if (MediaQuery.of(context).viewInsets.bottom == 0)
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (hasCurrentSong) const MiniPlayer(),
-                      liquidGlass
-                          ? _buildGlassBottomNav(context)
-                          : _buildBottomNav(context),
-                    ],
-                  ),
-              ],
+                  if (MediaQuery.of(context).viewInsets.bottom == 0)
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (hasCurrentSong) const MiniPlayer(),
+                        liquidGlass
+                            ? _buildGlassBottomNav(context)
+                            : _buildBottomNav(context),
+                      ],
+                    ),
+                ],
+              ),
             ),
-          ),
           ),
         );
       },
@@ -474,90 +475,96 @@ class _MainScreenState extends State<MainScreen> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(12, 4, 12, safeBottom > 0 ? safeBottom : 12),
-      child: Container(
-        height: 62,
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xF018181A) : const Color(0xF5FFFFFF),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.12)
-                : Colors.black.withValues(alpha: 0.08),
-            width: 0.8,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: List.generate(items.length, (idx) {
-            final item = items[idx];
-            final isSelected = _currentIndex == idx;
-            return Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  final navigatorState =
-                      NavigationHelper.appNavigatorKey.currentState;
-                  navigatorState?.popUntil((route) => route.isFirst);
-
-                  if (idx == 2) {
-                    final now = DateTime.now();
-                    if (now.difference(_lastSearchTap).inSeconds > 3) {
-                      _searchTapCount = 0;
-                    }
-                    _searchTapCount++;
-                    _lastSearchTap = now;
-                    if (_searchTapCount >= 11) {
-                      _searchTapCount = 0;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const FantasyScreen(),
-                        ),
-                      );
-                      return;
-                    }
-                  } else {
-                    _searchTapCount = 0;
-                  }
-
-                  setState(() => _currentIndex = idx);
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 150),
-                      child: Icon(
-                        isSelected ? item.activeIcon : item.icon,
-                        key: ValueKey(isSelected),
-                        color: isSelected
-                            ? accent
-                            : (isDark ? Colors.white54 : Colors.black38),
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.label,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w400,
-                        color: isSelected
-                            ? accent
-                            : (isDark ? Colors.white54 : Colors.black38),
-                      ),
-                    ),
-                  ],
-                ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: 62,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xB31C1C1E) : const Color(0xB3FFFFFF),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0x14FFFFFF)
+                    : Colors.black.withValues(alpha: 0.08),
+                width: 0.5,
               ),
-            );
-          }),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: List.generate(items.length, (idx) {
+                final item = items[idx];
+                final isSelected = _currentIndex == idx;
+                return Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      final navigatorState =
+                          NavigationHelper.appNavigatorKey.currentState;
+                      navigatorState?.popUntil((route) => route.isFirst);
+
+                      if (idx == 2) {
+                        final now = DateTime.now();
+                        if (now.difference(_lastSearchTap).inSeconds > 3) {
+                          _searchTapCount = 0;
+                        }
+                        _searchTapCount++;
+                        _lastSearchTap = now;
+                        if (_searchTapCount >= 11) {
+                          _searchTapCount = 0;
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const FantasyScreen(),
+                            ),
+                          );
+                          return;
+                        }
+                      } else {
+                        _searchTapCount = 0;
+                      }
+
+                      setState(() => _currentIndex = idx);
+                    },
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 150),
+                          child: Icon(
+                            isSelected ? item.activeIcon : item.icon,
+                            key: ValueKey(isSelected),
+                            color: isSelected
+                                ? accent
+                                : (isDark ? Colors.white54 : Colors.black38),
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w400,
+                            color: isSelected
+                                ? accent
+                                : (isDark ? Colors.white54 : Colors.black38),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
         ),
       ),
     );
@@ -570,10 +577,10 @@ class _MainScreenState extends State<MainScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        color: isDark ? const Color(0xFF000000) : Colors.white,
         border: Border(
           top: BorderSide(
-            color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
+            color: isDark ? const Color(0x14FFFFFF) : const Color(0xFFE5E5EA),
             width: 0.5,
           ),
         ),
@@ -581,6 +588,7 @@ class _MainScreenState extends State<MainScreen> {
       child: SafeArea(
         top: false,
         child: BottomNavigationBar(
+          backgroundColor: isDark ? const Color(0xFF000000) : Colors.white,
           currentIndex: _currentIndex,
           onTap: (index) {
             final navigatorState =

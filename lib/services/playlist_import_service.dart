@@ -142,8 +142,7 @@ class PlaylistImportService {
 
   String? extractSpotifyId(String input) {
     final trimmed = input.trim();
-    final match = RegExp(
-            r'(?:playlist[/:]|embed/playlist/|^)([a-zA-Z0-9]{22})')
+    final match = RegExp(r'(?:playlist[/:]|embed/playlist/|^)([a-zA-Z0-9]{22})')
         .firstMatch(trimmed);
     return match?.group(1);
   }
@@ -278,7 +277,7 @@ class PlaylistImportService {
           var thumb = item['thumbnailUrl'] as String?;
           if (thumb != null &&
               (thumb.contains('googleusercontent.com') ||
-               thumb.contains('ggpht.com'))) {
+                  thumb.contains('ggpht.com'))) {
             thumb = '${thumb.split('=')[0]}=w800-h800-l90-rj';
           }
           return PlaylistImportTrack(
@@ -310,8 +309,7 @@ class PlaylistImportService {
 
   Future<PlaylistImportPreview> _fetchYouTubeMusicViaBrowse(
       String playlistId) async {
-    final browseId =
-        playlistId.startsWith('VL') ? playlistId : 'VL$playlistId';
+    final browseId = playlistId.startsWith('VL') ? playlistId : 'VL$playlistId';
     final uri = Uri.parse('https://music.youtube.com/youtubei/v1/browse');
     final req = await _client.postUrl(uri);
     req.headers.set('Content-Type', 'application/json');
@@ -348,7 +346,8 @@ class PlaylistImportService {
           final thumbs = h['thumbnail']?['musicThumbnailRenderer']?['thumbnail']
               ?['thumbnails'] as List?;
           if (thumbs != null && thumbs.isNotEmpty) {
-            playlistCover = _normalizeThumbnailUrl(thumbs.last['url'] as String?);
+            playlistCover =
+                _normalizeThumbnailUrl(thumbs.last['url'] as String?);
           }
           return;
         }
@@ -372,7 +371,7 @@ class PlaylistImportService {
               obj['musicResponsiveListItemRenderer'] as Map<String, dynamic>;
           final videoId = item['playlistItemData']?['videoId'] ??
               item['overlay']?['musicItemThumbnailOverlayRenderer']?['content']
-                  ?['musicPlayButtonRenderer']?['playNavigationEndpoint']
+                      ?['musicPlayButtonRenderer']?['playNavigationEndpoint']
                   ?['watchEndpoint']?['videoId'];
 
           if (videoId != null && videoId.toString().length == 11) {
@@ -383,13 +382,15 @@ class PlaylistImportService {
             int? duration;
 
             if (flexCols.isNotEmpty) {
-              final r0 = flexCols[0]['musicResponsiveListItemFlexColumnRenderer']
-                  ?['text']?['runs'] as List?;
+              final r0 = flexCols[0]
+                      ['musicResponsiveListItemFlexColumnRenderer']?['text']
+                  ?['runs'] as List?;
               if (r0 != null && r0.isNotEmpty) title = r0[0]['text'] ?? title;
             }
             if (flexCols.length > 1) {
-              final r1 = flexCols[1]['musicResponsiveListItemFlexColumnRenderer']
-                  ?['text']?['runs'] as List?;
+              final r1 = flexCols[1]
+                      ['musicResponsiveListItemFlexColumnRenderer']?['text']
+                  ?['runs'] as List?;
               if (r1 != null && r1.isNotEmpty) artist = r1[0]['text'] ?? artist;
             }
 
@@ -422,7 +423,9 @@ class PlaylistImportService {
               artist: artist,
               album: album ?? playlistTitle,
               duration: duration,
-              coverArt: thumb ?? playlistCover ?? 'https://i.ytimg.com/vi/$videoId/hq720.jpg',
+              coverArt: thumb ??
+                  playlistCover ??
+                  'https://i.ytimg.com/vi/$videoId/hq720.jpg',
               youtubeVideoId: videoId.toString(),
             ));
           }
@@ -450,15 +453,22 @@ class PlaylistImportService {
     );
   }
 
-  Future<({String videoId, String? coverArt})?> matchSpotifyTrackToYouTubeDetails(
+  Future<({String videoId, String? coverArt})?>
+      matchSpotifyTrackToYouTubeDetails(
     String title,
     String artist, {
     int? duration,
   }) async {
     // 1. Clean query removing noisy suffixes often present in metadata
     final cleanTitle = title
-        .replaceAll(RegExp(r'\s*\([^)]*(feat\.|ft\.|remaster|deluxe|version)[^)]*\)', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\s*\[[^\]]*(feat\.|ft\.|remaster|deluxe|version)[^\]]*\]', caseSensitive: false), '')
+        .replaceAll(
+            RegExp(r'\s*\([^)]*(feat\.|ft\.|remaster|deluxe|version)[^)]*\)',
+                caseSensitive: false),
+            '')
+        .replaceAll(
+            RegExp(r'\s*\[[^\]]*(feat\.|ft\.|remaster|deluxe|version)[^\]]*\]',
+                caseSensitive: false),
+            '')
         .trim();
     final cleanArtist = artist.split(',').first.split('&').first.trim();
 
@@ -470,7 +480,8 @@ class PlaylistImportService {
 
     for (final query in queriesToTry) {
       if (query.isEmpty) continue;
-      final candidate = await _queryYouTubeMusicCandidate(query, targetDuration: duration);
+      final candidate =
+          await _queryYouTubeMusicCandidate(query, targetDuration: duration);
       if (candidate != null) {
         return (videoId: candidate.id, coverArt: candidate.thumbnailUrl);
       }
@@ -484,7 +495,8 @@ class PlaylistImportService {
     String artist, {
     int? duration,
   }) async {
-    final details = await matchSpotifyTrackToYouTubeDetails(title, artist, duration: duration);
+    final details = await matchSpotifyTrackToYouTubeDetails(title, artist,
+        duration: duration);
     return details?.videoId;
   }
 
@@ -493,7 +505,8 @@ class PlaylistImportService {
     int? targetDuration,
   }) async {
     try {
-      final uri = Uri.parse('https://music.youtube.com/youtubei/v1/search?prettyPrint=false');
+      final uri = Uri.parse(
+          'https://music.youtube.com/youtubei/v1/search?prettyPrint=false');
       final req = await _client.postUrl(uri);
       req.headers.set('Content-Type', 'application/json');
       req.headers.set('User-Agent', _defaultUserAgent);
@@ -528,7 +541,7 @@ class PlaylistImportService {
                 obj['musicResponsiveListItemRenderer'] as Map<String, dynamic>;
             final videoId = item['playlistItemData']?['videoId'] ??
                 item['overlay']?['musicItemThumbnailOverlayRenderer']
-                    ?['content']?['musicPlayButtonRenderer']
+                        ?['content']?['musicPlayButtonRenderer']
                     ?['playNavigationEndpoint']?['watchEndpoint']?['videoId'];
 
             if (videoId != null && videoId.toString().length == 11) {
@@ -615,10 +628,9 @@ class PlaylistImportService {
     void Function(int current, int total, String status)? onProgress,
   }) async {
     final total = preview.tracks.length;
-    final finalName =
-        (customName != null && customName.trim().isNotEmpty)
-            ? customName.trim()
-            : preview.title;
+    final finalName = (customName != null && customName.trim().isNotEmpty)
+        ? customName.trim()
+        : preview.title;
 
     final List<Song> resolvedSongs = [];
 
@@ -663,8 +675,8 @@ class PlaylistImportService {
             vid = match?.videoId;
             matchedCover = match?.coverArt;
           }
-          final effectiveId =
-              vid ?? 'ytsearch:${Uri.encodeComponent('${track.artist} ${track.title}')}';
+          final effectiveId = vid ??
+              'ytsearch:${Uri.encodeComponent('${track.artist} ${track.title}')}';
 
           final effectiveCover = _normalizeThumbnailUrl(matchedCover) ??
               _normalizeThumbnailUrl(track.coverArt) ??

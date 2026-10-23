@@ -42,8 +42,10 @@ void main() {
       position: const Duration(seconds: 10),
     );
     expect(handler.playbackState.value.playing, isFalse);
-    expect(handler.playbackState.value.systemActions, contains(MediaAction.setShuffleMode));
-    expect(handler.playbackState.value.systemActions, contains(MediaAction.setRepeatMode));
+    expect(handler.playbackState.value.systemActions,
+        contains(MediaAction.setShuffleMode));
+    expect(handler.playbackState.value.systemActions,
+        contains(MediaAction.setRepeatMode));
   });
 
   test('repeated remote updates keep working', () {

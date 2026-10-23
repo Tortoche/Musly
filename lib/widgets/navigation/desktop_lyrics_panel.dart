@@ -230,9 +230,9 @@ class _DesktopLyricsPanelState extends State<DesktopLyricsPanel> {
     return Container(
       width: 380,
       decoration: const BoxDecoration(
-        color: Color(0xFF080808),
+        color: Color(0xFF000000),
         border: Border(
-          left: BorderSide(color: Color(0xFF282828), width: 1),
+          left: BorderSide(color: Color(0x14FFFFFF), width: 0.5),
         ),
       ),
       child: Stack(
@@ -549,7 +549,7 @@ class _DesktopLyricsPanelState extends State<DesktopLyricsPanel> {
 
     return Center(
       child: Text(
-        'No lyrics available',
+        'Aucune parole disponible',
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,

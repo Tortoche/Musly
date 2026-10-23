@@ -66,12 +66,9 @@ class PlaylistCoverService {
     _coverPaths.remove(playlistId);
     if (_coverDir != null && _coverDir!.existsSync()) {
       try {
-        final matches = _coverDir!
-            .listSync()
-            .whereType<File>()
-            .where((f) =>
-                f.path.contains('playlist_mosaic_${playlistId}_') &&
-                f.path.endsWith('.png'));
+        final matches = _coverDir!.listSync().whereType<File>().where((f) =>
+            f.path.contains('playlist_mosaic_${playlistId}_') &&
+            f.path.endsWith('.png'));
         for (final file in matches) {
           try {
             await file.delete();

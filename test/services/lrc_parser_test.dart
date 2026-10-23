@@ -12,11 +12,14 @@ void main() {
       final lines = LrcParser.parseLrc(content);
       expect(lines.length, equals(3));
       expect(lines[0].text, equals('First line'));
-      expect(lines[0].startTime, equals(const Duration(seconds: 12, milliseconds: 500)));
+      expect(lines[0].startTime,
+          equals(const Duration(seconds: 12, milliseconds: 500)));
       expect(lines[1].text, equals('Second line'));
-      expect(lines[1].startTime, equals(const Duration(seconds: 15, milliseconds: 800)));
+      expect(lines[1].startTime,
+          equals(const Duration(seconds: 15, milliseconds: 800)));
       expect(lines[2].text, equals('Third line'));
-      expect(lines[2].startTime, equals(const Duration(minutes: 1, seconds: 2, milliseconds: 100)));
+      expect(lines[2].startTime,
+          equals(const Duration(minutes: 1, seconds: 2, milliseconds: 100)));
       expect(LrcParser.hasTimestamps(lines), isTrue);
     });
 
@@ -28,7 +31,8 @@ void main() {
       final lines = LrcParser.parseLrc(content);
       expect(lines.length, equals(2));
       expect(lines[0].text, equals('Line one'));
-      expect(lines[0].startTime, equals(const Duration(seconds: 10, milliseconds: 500)));
+      expect(lines[0].startTime,
+          equals(const Duration(seconds: 10, milliseconds: 500)));
       expect(lines[1].text, equals('Line two'));
       expect(lines[1].startTime, equals(const Duration(seconds: 20)));
       expect(LrcParser.hasTimestamps(lines), isTrue);
@@ -41,8 +45,10 @@ void main() {
 ''';
       final lines = LrcParser.parseLrc(content);
       expect(lines.length, equals(2));
-      expect(lines[0].startTime, equals(const Duration(minutes: 1, seconds: 5, milliseconds: 250)));
-      expect(lines[1].startTime, equals(const Duration(minutes: 2, seconds: 30)));
+      expect(lines[0].startTime,
+          equals(const Duration(minutes: 1, seconds: 5, milliseconds: 250)));
+      expect(
+          lines[1].startTime, equals(const Duration(minutes: 2, seconds: 30)));
       expect(LrcParser.hasTimestamps(lines), isTrue);
     });
 

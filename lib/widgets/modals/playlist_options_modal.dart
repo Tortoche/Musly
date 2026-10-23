@@ -135,165 +135,167 @@ class PlaylistOptionsModal extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  PlaylistArtwork(
-                    playlist: playlist,
-                    size: 54,
-                    borderRadius: 8,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          playlist.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          l10n.songsCount(playlist.songCount ?? 0),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: isDark
-                                ? AppTheme.darkSecondaryText
-                                : AppTheme.lightSecondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
                   children: [
-                    _OptionTile(
-                      icon: CupertinoIcons.play_circle,
-                      title: l10n.play,
-                      onTap: () async {
-                        final player = Provider.of<PlayerProvider>(
-                          context,
-                          listen: false,
-                        );
-                        final subsonic = Provider.of<SubsonicService>(
-                          context,
-                          listen: false,
-                        );
-                        final lib = Provider.of<LibraryProvider>(
-                          context,
-                          listen: false,
-                        );
-                        Navigator.pop(context);
-                        final songs = await _fetchSongsIfNeeded(subsonic, lib);
-                        if (songs.isNotEmpty) {
-                          player.playSong(
-                            songs.first,
-                            playlist: songs,
-                            startIndex: 0,
-                          );
-                        }
-                      },
+                    PlaylistArtwork(
+                      playlist: playlist,
+                      size: 54,
+                      borderRadius: 8,
                     ),
-                    _OptionTile(
-                      icon: CupertinoIcons.text_badge_plus,
-                      title: l10n.addAllToQueue,
-                      onTap: () async {
-                        final player = Provider.of<PlayerProvider>(
-                          context,
-                          listen: false,
-                        );
-                        final subsonic = Provider.of<SubsonicService>(
-                          context,
-                          listen: false,
-                        );
-                        final lib = Provider.of<LibraryProvider>(
-                          context,
-                          listen: false,
-                        );
-                        final messenger = ScaffoldMessenger.of(context);
-                        Navigator.pop(context);
-                        final songs = await _fetchSongsIfNeeded(subsonic, lib);
-                        if (songs.isNotEmpty) {
-                          for (final song in songs) {
-                            player.addToQueue(song);
-                          }
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content:
-                                  Text(l10n.songsAddedToQueue(songs.length)),
-                              behavior: SnackBarBehavior.floating,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            playlist.name,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                        }
-                      },
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            l10n.songsCount(playlist.songCount ?? 0),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: isDark
+                                  ? AppTheme.darkSecondaryText
+                                  : AppTheme.lightSecondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    AnimatedBuilder(
-                      animation: favoriteService,
-                      builder: (context, _) {
-                        final isFavorite =
-                            favoriteService.isFavorite(playlist.id);
-                        return _OptionTile(
-                          icon: isFavorite
-                              ? CupertinoIcons.heart_fill
-                              : CupertinoIcons.heart,
-                          title: isFavorite
-                              ? l10n.removeFromFavorites
-                              : l10n.addToFavorites,
-                          iconColor: isFavorite ? Colors.red : null,
-                          onTap: () {
-                            favoriteService.toggleFavorite(playlist.id);
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-                    _OptionTile(
-                      icon: CupertinoIcons.trash,
-                      title: l10n.deletePlaylist,
-                      iconColor: Colors.red,
-                      titleColor: Colors.red,
-                      onTap: () async {
-                        final navigator = Navigator.of(context);
-                        final deleted =
-                            await confirmAndDelete(context, playlist);
-                        if (deleted && navigator.canPop()) {
-                          navigator.pop();
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
                   ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _OptionTile(
+                        icon: CupertinoIcons.play_circle,
+                        title: l10n.play,
+                        onTap: () async {
+                          final player = Provider.of<PlayerProvider>(
+                            context,
+                            listen: false,
+                          );
+                          final subsonic = Provider.of<SubsonicService>(
+                            context,
+                            listen: false,
+                          );
+                          final lib = Provider.of<LibraryProvider>(
+                            context,
+                            listen: false,
+                          );
+                          Navigator.pop(context);
+                          final songs =
+                              await _fetchSongsIfNeeded(subsonic, lib);
+                          if (songs.isNotEmpty) {
+                            player.playSong(
+                              songs.first,
+                              playlist: songs,
+                              startIndex: 0,
+                            );
+                          }
+                        },
+                      ),
+                      _OptionTile(
+                        icon: CupertinoIcons.text_badge_plus,
+                        title: l10n.addAllToQueue,
+                        onTap: () async {
+                          final player = Provider.of<PlayerProvider>(
+                            context,
+                            listen: false,
+                          );
+                          final subsonic = Provider.of<SubsonicService>(
+                            context,
+                            listen: false,
+                          );
+                          final lib = Provider.of<LibraryProvider>(
+                            context,
+                            listen: false,
+                          );
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(context);
+                          final songs =
+                              await _fetchSongsIfNeeded(subsonic, lib);
+                          if (songs.isNotEmpty) {
+                            for (final song in songs) {
+                              player.addToQueue(song);
+                            }
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text(l10n.songsAddedToQueue(songs.length)),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      AnimatedBuilder(
+                        animation: favoriteService,
+                        builder: (context, _) {
+                          final isFavorite =
+                              favoriteService.isFavorite(playlist.id);
+                          return _OptionTile(
+                            icon: isFavorite
+                                ? CupertinoIcons.heart_fill
+                                : CupertinoIcons.heart,
+                            title: isFavorite
+                                ? l10n.removeFromFavorites
+                                : l10n.addToFavorites,
+                            iconColor: isFavorite ? Colors.red : null,
+                            onTap: () {
+                              favoriteService.toggleFavorite(playlist.id);
+                              Navigator.pop(context);
+                            },
+                          );
+                        },
+                      ),
+                      _OptionTile(
+                        icon: CupertinoIcons.trash,
+                        title: l10n.deletePlaylist,
+                        iconColor: Colors.red,
+                        titleColor: Colors.red,
+                        onTap: () async {
+                          final navigator = Navigator.of(context);
+                          final deleted =
+                              await confirmAndDelete(context, playlist);
+                          if (deleted && navigator.canPop()) {
+                            navigator.pop();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

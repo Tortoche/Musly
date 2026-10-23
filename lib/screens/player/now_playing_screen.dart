@@ -25,6 +25,8 @@ import 'package:musly/l10n/app_localizations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:musly/services/tv_detection_service.dart';
 import 'tv_now_playing_screen.dart';
+import 'package:musly/theme/app_theme.dart';
+import 'package:musly/services/theme_service.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   final ImageProvider image;
@@ -282,8 +284,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     final effectiveRightPadding =
         viewPadding.right > 0 ? viewPadding.right : mediaQueryPadding.right;
 
+    final baseTheme = Theme.of(context);
+    final isBaseDark = baseTheme.brightness == Brightness.dark;
+    bool isOled = true;
+    try {
+      isOled = Provider.of<ThemeService>(context, listen: false).pureOled;
+    } catch (_) {}
+
+    final playerTheme = isBaseDark
+        ? baseTheme
+        : (isOled
+            ? AppTheme.oledThemeWith(baseTheme.colorScheme.primary)
+            : AppTheme.darkThemeWith(baseTheme.colorScheme.primary));
+
     return Theme(
-      data: ThemeData.dark(),
+      data: playerTheme,
       child: Scaffold(
         backgroundColor: Colors.black,
         body: GestureDetector(
@@ -810,6 +825,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                             child: AlbumArtView(
                               image: _currentImageProvider ?? widget.image,
                               tag: currentSong?.id ?? widget.heroTag,
+                              dominantColor: accentColor,
                             ),
                           ),
                         ),
@@ -1006,6 +1022,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                         child: AlbumArtView(
                           image: _currentImageProvider ?? widget.image,
                           tag: currentSong?.id ?? widget.heroTag,
+                          dominantColor: accentColor,
                         ),
                       ),
                     ),

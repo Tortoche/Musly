@@ -30,8 +30,7 @@ class _FakeRenderer {
   /// can land a poll in the middle of a load.
   Future<void>? gateSetUri;
 
-  String get controlUrl =>
-      'http://${_server.address.host}:${_server.port}/avt';
+  String get controlUrl => 'http://${_server.address.host}:${_server.port}/avt';
 
   Future<void> start() async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -58,7 +57,8 @@ class _FakeRenderer {
         }
         body = '<CurrentTransportState>$seen</CurrentTransportState>';
       case 'GetPositionInfo':
-        body = '<RelTime>0:00:01</RelTime><TrackDuration>0:03:00</TrackDuration>';
+        body =
+            '<RelTime>0:00:01</RelTime><TrackDuration>0:03:00</TrackDuration>';
       case 'Stop':
         state = 'STOPPED';
       case 'SetAVTransportURI':
@@ -125,7 +125,8 @@ void main() {
   }
 
   /// Lets a released poll run to completion and notify.
-  Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 200));
+  Future<void> settle() =>
+      Future<void>.delayed(const Duration(milliseconds: 200));
 
   test('a poll sent before a load cannot report STOPPED after it', () async {
     // The renderer is between tracks when the poll goes out...

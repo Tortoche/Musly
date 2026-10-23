@@ -123,7 +123,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
   Future<void> _connectYtStream() async {
     if (!kIsWeb && Platform.isIOS) {
       setState(() {
-        _errorMessage = 'Web Stream is not available on iOS.';
+        _errorMessage = 'Le streaming Web n\'est pas disponible sur iOS.';
       });
       return;
     }
@@ -137,7 +137,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
     if (hasYt) {
       setState(() {
         _errorMessage =
-            'Web Stream is already configured in your music sources.';
+            'Le streaming Web est déjà configuré dans vos sources.';
       });
       return;
     }
@@ -176,7 +176,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
         setState(() {
           _isConnecting = false;
           _errorMessage =
-              authProvider.error ?? 'Failed to connect to Web Stream';
+              authProvider.error ?? 'Échec de connexion au streaming Web';
         });
       }
     } catch (e) {
@@ -258,7 +258,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
         setState(() {
           _isConnecting = false;
           _errorMessage = authProvider.error ??
-              'Connection failed. Check URL and credentials.';
+              'Échec de la connexion. Vérifiez l\'URL et vos identifiants.';
         });
       }
     } catch (e) {
@@ -273,7 +273,8 @@ class _AddServerScreenState extends State<AddServerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isTv = Provider.of<TvDetectionService>(context, listen: false).isTvMode;
+    final isTv =
+        Provider.of<TvDetectionService>(context, listen: false).isTvMode;
 
     return Scaffold(
       backgroundColor:
@@ -292,7 +293,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Add Music Source',
+          'Ajouter une source musicale',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -313,7 +314,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Select Music Provider',
+                  'Sélectionner le fournisseur musical',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -327,7 +328,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 _buildProviderCard(
                   family: 'subsonic',
                   title: 'Navidrome / Subsonic',
-                  subtitle: 'Connect to your self-hosted music library',
+                  subtitle: 'Connectez votre bibliothèque musicale auto-hébergée',
                   icon: CupertinoIcons.music_note_2,
                   gradient: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                   badge: 'Self-Hosted',
@@ -338,10 +339,10 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 _buildProviderCard(
                   family: 'jellyfin',
                   title: 'Jellyfin / Emby',
-                  subtitle: 'Connect to your Jellyfin or Emby media server',
+                  subtitle: 'Connectez votre serveur Jellyfin ou Emby',
                   icon: CupertinoIcons.tv_fill,
                   gradient: const [Color(0xFF00A4DC), Color(0xFF006699)],
-                  badge: 'Media Server',
+                  badge: 'Serveur Média',
                   isSelected: _selectedFamily == 'jellyfin',
                   isDisabled: false,
                 ),
@@ -349,13 +350,13 @@ class _AddServerScreenState extends State<AddServerScreen> {
                   const SizedBox(height: 10),
                   _buildProviderCard(
                     family: 'youtube',
-                    title: 'Web Stream',
+                    title: 'Streaming Web',
                     subtitle: hasYtStream
-                        ? 'Already configured in your music sources'
-                        : 'Stream music online without account setup',
+                        ? 'Déjà configuré dans vos sources'
+                        : 'Diffusez la musique en ligne sans compte requis',
                     icon: CupertinoIcons.play_rectangle_fill,
                     gradient: const [Color(0xFFFF3B30), Color(0xFFFF453A)],
-                    badge: hasYtStream ? 'ALREADY ADDED' : 'No Account Needed',
+                    badge: hasYtStream ? 'DÉJÀ AJOUTÉ' : 'Sans compte',
                     isSelected: _selectedFamily == 'youtube',
                     isDisabled: hasYtStream,
                   ),
@@ -364,8 +365,8 @@ class _AddServerScreenState extends State<AddServerScreen> {
                   const SizedBox(height: 10),
                   _buildProviderCard(
                     family: 'local',
-                    title: 'Local Files',
-                    subtitle: 'Play audio files stored directly on this device',
+                    title: 'Fichiers Locaux',
+                    subtitle: 'Lisez vos fichiers audio stockés sur cet appareil',
                     icon: CupertinoIcons.folder_fill,
                     gradient: const [Color(0xFF34C759), Color(0xFF30B0C7)],
                     badge: 'Offline',
@@ -419,16 +420,16 @@ class _AddServerScreenState extends State<AddServerScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isDark
-              ? (isSelected ? const Color(0xFF282828) : AppTheme.darkSurface)
+              ? (isSelected ? AppTheme.oledCardHover : AppTheme.oledCard)
               : (isSelected ? Colors.white : const Color(0xFFF9FAFB)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? primaryColor
                 : (isDark
-                    ? Colors.white10
+                    ? AppTheme.oledDivider
                     : Colors.black.withValues(alpha: 0.06)),
-            width: isSelected ? 2 : 1,
+            width: isSelected ? 2 : 0.5,
           ),
           boxShadow: isSelected
               ? [
@@ -546,7 +547,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Connection Error',
+                  'Erreur de connexion',
                   style: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
@@ -604,7 +605,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'No server setup or account credentials required',
+                      'Aucune configuration serveur ni identifiants requis',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
@@ -617,15 +618,15 @@ class _AddServerScreenState extends State<AddServerScreen> {
           const SizedBox(height: 16),
           _buildFeatureBullet(
             icon: CupertinoIcons.music_albums,
-            title: 'Global Music Search',
+            title: 'Recherche Musicale Mondiale',
             subtitle:
-                'Search and stream millions of tracks, albums, and playlists seamlessly.',
+                'Recherchez et écoutez des millions de titres, albums et playlists.',
             isDark: isDark,
           ),
           const SizedBox(height: 12),
           _buildFeatureBullet(
             icon: CupertinoIcons.antenna_radiowaves_left_right,
-            title: 'Dynamic Radio',
+            title: 'Radio Dynamique',
             subtitle:
                 'Auto-generates seamless radio stations tailored to any song or artist.',
             isDark: isDark,
@@ -635,7 +636,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
             icon: CupertinoIcons.lock_shield,
             title: 'Private & Direct',
             subtitle:
-                'Audio streams directly to your device with local smart caching.',
+                'Flux audio diffusés avec mise en cache locale intelligente.',
             isDark: isDark,
           ),
           const SizedBox(height: 24),
@@ -661,8 +662,8 @@ class _AddServerScreenState extends State<AddServerScreen> {
                     )
                   : Text(
                       hasYtStream
-                          ? 'Web Stream is Already Added'
-                          : 'Connect Web Stream',
+                          ? 'Le streaming Web est déjà ajouté'
+                          : 'Connecter le streaming Web',
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.bold),
                     ),
@@ -741,13 +742,13 @@ class _AddServerScreenState extends State<AddServerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Local Music Library',
+                      'Bibliothèque Musicale Locale',
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Play local audio files stored on device',
+                      'Lire les fichiers musicaux stockés sur l\'appareil',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark
@@ -842,7 +843,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
           children: [
             Text(
               isJellyfin
-                  ? 'Jellyfin Connection Details'
+                  ? 'Détails de connexion Jellyfin'
                   : 'Subsonic / Navidrome Details',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
@@ -1004,7 +1005,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Advanced Security & TLS Settings',
+                      'Paramètres de sécurité avancés & TLS',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

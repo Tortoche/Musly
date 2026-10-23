@@ -40,12 +40,16 @@ class _QuickAccessTileState extends State<QuickAccessTile> {
           decoration: BoxDecoration(
             color: isDark
                 ? (_isHovered
-                    ? const Color(0xFF383838)
-                    : const Color(0xFF282828))
+                    ? const Color(0xFF141417)
+                    : const Color(0xFF1C1C1E))
                 : (_isHovered
                     ? const Color(0xFFE5E7EB)
                     : const Color(0xFFF3F4F6)),
             borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000),
+              width: 0.5,
+            ),
             boxShadow: _isHovered
                 ? [
                     BoxShadow(

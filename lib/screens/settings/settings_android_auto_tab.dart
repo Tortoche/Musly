@@ -71,7 +71,7 @@ class _SettingsAndroidAutoTabState extends State<SettingsAndroidAutoTab> {
         child: Text(l10n.androidAutoNotSupported),
       );
     }
-    
+
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 16),
       children: [
@@ -87,7 +87,10 @@ class _SettingsAndroidAutoTabState extends State<SettingsAndroidAutoTab> {
                 constraints: const BoxConstraints(maxWidth: 180),
                 child: DropdownButton<String?>(
                   isExpanded: true,
-                  value: _profiles.any((p) => _getServerId(p) == _selectedServerId) ? _selectedServerId : null,
+                  value:
+                      _profiles.any((p) => _getServerId(p) == _selectedServerId)
+                          ? _selectedServerId
+                          : null,
                   underline: const SizedBox(),
                   items: [
                     DropdownMenuItem<String?>(

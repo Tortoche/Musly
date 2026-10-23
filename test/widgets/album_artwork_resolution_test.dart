@@ -38,7 +38,8 @@ void main() {
       expect(urlAfterClear, contains('size=600'));
     });
 
-    testWidgets('AlbumArtwork builds without exception in normal, low, and high resolution',
+    testWidgets(
+        'AlbumArtwork builds without exception in normal, low, and high resolution',
         (tester) async {
       final settings = PlayerUiSettingsService();
       await settings.setArtworkResolution('normal');
@@ -75,7 +76,8 @@ void main() {
       expect(defaultUrl, contains('size=600'));
     });
 
-    test('ImageUrlCache upscales Google CDN image URLs dynamically by size', () {
+    test('ImageUrlCache upscales Google CDN image URLs dynamically by size',
+        () {
       final service = SubsonicService();
       const googleThumb =
           'https://yt3.googleusercontent.com/abc123xyz=w60-h60-l90-rj';
@@ -88,10 +90,10 @@ void main() {
       expect(url800, isNot(contains('=w60-h60')));
     });
 
-    test('ImageUrlCache upgrades legacy YouTube hqdefault.jpg to hq720.jpg', () {
+    test('ImageUrlCache upgrades legacy YouTube hqdefault.jpg to hq720.jpg',
+        () {
       final service = SubsonicService();
-      const legacyYtThumb =
-          'https://i.ytimg.com/vi/b53QJYP-lqY/hqdefault.jpg';
+      const legacyYtThumb = 'https://i.ytimg.com/vi/b53QJYP-lqY/hqdefault.jpg';
 
       final upgraded = ImageUrlCache.getUrl(service, legacyYtThumb, 600);
       expect(upgraded, 'https://i.ytimg.com/vi/b53QJYP-lqY/hq720.jpg');
@@ -127,4 +129,3 @@ void main() {
     });
   });
 }
-

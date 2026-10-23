@@ -126,7 +126,8 @@ void main() {
       expect(clean.contains('`'), isFalse);
       expect(clean.contains('https://link.com'), isFalse);
       expect(clean.contains('new player'), isTrue);
-      expect(clean.contains('Feature: Added new player and speed improvements.'),
+      expect(
+          clean.contains('Feature: Added new player and speed improvements.'),
           isTrue);
       expect(clean.contains('Fixed bug'), isTrue);
     });

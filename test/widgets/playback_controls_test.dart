@@ -33,7 +33,8 @@ void main() {
       expect(iconWidget.color, Colors.white.withValues(alpha: 0.45));
     });
 
-    testWidgets('Phase 2 (all/queue): displays repeat_rounded icon in active state',
+    testWidgets(
+        'Phase 2 (all/queue): displays repeat_rounded icon in active state',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -61,7 +62,8 @@ void main() {
       expect(iconWidget.color, const Color(0xFFFA243C));
     });
 
-    testWidgets('Phase 3 (single/one): displays repeat_one_rounded icon distinctly',
+    testWidgets(
+        'Phase 3 (single/one): displays repeat_one_rounded icon distinctly',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -116,8 +118,7 @@ void main() {
       expect(toggled, isTrue);
     });
 
-    testWidgets('backwards-compatibility with isRepeatEnabled',
-        (tester) async {
+    testWidgets('backwards-compatibility with isRepeatEnabled', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -137,8 +138,7 @@ void main() {
       );
 
       expect(find.byIcon(Icons.repeat_rounded), findsOneWidget);
-      final iconWidget =
-          tester.widget<Icon>(find.byIcon(Icons.repeat_rounded));
+      final iconWidget = tester.widget<Icon>(find.byIcon(Icons.repeat_rounded));
       expect(iconWidget.color, const Color(0xFFFA243C));
     });
   });

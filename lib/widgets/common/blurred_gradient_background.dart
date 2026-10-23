@@ -46,9 +46,9 @@ class _BlurredGradientBackgroundState extends State<BlurredGradientBackground>
     final safeColors = widget.colors.isNotEmpty
         ? widget.colors
         : [
-            const Color(0xFF1E1E1E),
-            const Color(0xFF2C2C2C),
-            const Color(0xFF1A1A1A)
+            Colors.black,
+            Colors.black,
+            Colors.black,
           ];
 
     while (safeColors.length < 3) {
@@ -128,6 +128,23 @@ class _BlurredGradientBackgroundState extends State<BlurredGradientBackground>
         Positioned.fill(
           child: Container(
             color: Colors.black.withValues(alpha: 0.35),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.35, 0.7, 1.0],
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.15),
+                  Colors.black.withValues(alpha: 0.75),
+                  Colors.black,
+                ],
+              ),
+            ),
           ),
         ),
         RepaintBoundary(

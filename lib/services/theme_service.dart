@@ -83,14 +83,17 @@ class ThemeService extends ChangeNotifier {
   static const String _keyThemeMode = 'app_theme_mode';
   static const String _keyAccentColor = 'app_accent_color';
   static const String _keyLiquidGlass = 'app_liquid_glass';
+  static const String _keyPureOled = 'app_pure_oled';
 
   ThemeMode _themeMode = ThemeMode.system;
   AccentColor _accentColor = AccentColor.red;
   bool _liquidGlass = false;
+  bool _pureOled = false;
 
   ThemeMode get themeMode => _themeMode;
   AccentColor get accentColor => _accentColor;
   bool get liquidGlass => _liquidGlass;
+  bool get pureOled => _pureOled;
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
@@ -102,6 +105,8 @@ class ThemeService extends ChangeNotifier {
     _accentColor = AccentColorExt.fromKey(colorKey);
 
     _liquidGlass = prefs.getBool(_keyLiquidGlass) ?? false;
+    _pureOled = prefs.getBool(_keyPureOled) ?? false;
+    await prefs.setBool(_keyPureOled, false);
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -123,6 +128,13 @@ class ThemeService extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyLiquidGlass, enabled);
+  }
+
+  Future<void> setPureOled(bool enabled) async {
+    _pureOled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyPureOled, enabled);
   }
 
   static ThemeMode _themeModeFromKey(String key) {

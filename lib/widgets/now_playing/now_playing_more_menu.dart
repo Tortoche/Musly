@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/player_provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../../theme/app_theme.dart';
 
 class NowPlayingMoreMenu extends StatelessWidget {
   const NowPlayingMoreMenu({super.key});
@@ -20,12 +21,17 @@ class NowPlayingMoreMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[900]
-            : Colors.white,
+        color: isDark ? AppTheme.oledCard : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppTheme.oledBorder : const Color(0xFFE5E5EA),
+            width: 0.5,
+          ),
+        ),
       ),
       padding: const EdgeInsets.only(bottom: 32, top: 16),
       child: Consumer<PlayerProvider>(

@@ -75,6 +75,10 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 16),
       children: [
+        _buildCrossfadeSection(),
+        const SizedBox(height: 24),
+        _buildGaplessSection(),
+        const SizedBox(height: 24),
         SettingsSectionCard(
           title: AppLocalizations.of(context)!.sectionAutoDj,
           children: [
@@ -85,14 +89,6 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
             ],
           ],
         ),
-        const SizedBox(height: 24),
-        _buildCrossfadeSection(),
-        const SizedBox(height: 24),
-        _buildGaplessSection(),
-        const SizedBox(height: 24),
-        _buildFadeSection(),
-        const SizedBox(height: 24),
-        _buildLrcLibSection(),
         const SizedBox(height: 24),
         SettingsSectionCard(
           title: AppLocalizations.of(context)!.sectionVolumeNormalization,
@@ -108,6 +104,10 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
             ],
           ],
         ),
+        const SizedBox(height: 24),
+        _buildLrcLibSection(),
+        const SizedBox(height: 24),
+        _buildFadeSection(),
         if (!isYoutube) ...[
           const SizedBox(height: 24),
           _buildTranscodingSection(),
@@ -303,6 +303,18 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
     return SettingsSectionCard(
       title: l10n.sectionSmartCrossfade,
       children: [
+        SettingsSwitchTile(
+          gradientColors: const [Color(0xFFFF9500), Color(0xFFFF5E3A)],
+          icon: CupertinoIcons.sparkles,
+          title: 'Transitions DJ Intelligentes',
+          subtitle: 'Transition fluide adaptée au tempo et au genre',
+          value: _crossfadeService.isSmartDjEnabled,
+          onChanged: (val) async {
+            await _crossfadeService.setSmartDjEnabled(val);
+            setState(() {});
+          },
+        ),
+        const SettingsDivider(),
         SettingsListTile(
           gradientColors: [accent, accent.withValues(alpha: 0.6)],
           icon: CupertinoIcons.slider_horizontal_below_rectangle,
@@ -486,7 +498,8 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
                 gradientColors: [accent, accent.withValues(alpha: 0.6)],
                 icon: Icons.auto_fix_high_rounded,
                 title: AppLocalizations.of(context)!.smartTranscoding,
-                subtitle: AppLocalizations.of(context)!.smartTranscodingSubtitle,
+                subtitle:
+                    AppLocalizations.of(context)!.smartTranscodingSubtitle,
                 value: ts.smartEnabled,
                 onChanged: (v) => ts.setSmartEnabled(v),
               ),
@@ -581,7 +594,8 @@ class _SettingsPlaybackTabState extends State<SettingsPlaybackTab> {
               SettingsListTile(
                 leading: const Icon(Icons.audio_file_rounded, size: 20),
                 title: AppLocalizations.of(context)!.transcodingFormat,
-                subtitle: AppLocalizations.of(context)!.transcodingFormatSubtitle,
+                subtitle:
+                    AppLocalizations.of(context)!.transcodingFormatSubtitle,
                 trailing: DropdownButton<String>(
                   value: ts.format,
                   underline: const SizedBox(),
