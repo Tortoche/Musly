@@ -666,24 +666,49 @@ class PlayerProvider extends ChangeNotifier
     final secondsRemaining = totalSeconds - position.inSeconds;
     final progressRatio = position.inSeconds / totalSeconds;
 
-    final shouldPreload = (secondsRemaining <= 30 && secondsRemaining > 0) ||
-        (progressRatio >= 0.60 && position.inSeconds >= 10);
-
-    if (!shouldPreload) return;
-
     final nextSong = _getNextSongToPreload();
-    if (nextSong == null ||
-        nextSong.id == _lastPreloadedSongId ||
-        nextSong.id == _currentSong?.id) {
+    if (nextSong == null || nextSong.id == _currentSong?.id) {
       return;
     }
 
-    _lastPreloadedSongId = nextSong.id;
-    _preloadSong(nextSong);
-    if (_crossfadeService.isEnabled && !_isCrossfadingOut && !_isRenderingRemotely) {
-      _prebufferStandbyDeck(nextSong).catchError((e) {
-        debugPrint('[Player] Standby deck pre-buffer error: $e');
-      });
+    // 1. Preload metadata, stream URL resolution & lyrics in advance (after 60% or 30s remaining)
+    final shouldPreloadMetadata = (secondsRemaining <= 30 && secondsRemaining > 0) ||
+        (progressRatio >= 0.60 && position.inSeconds >= 10);
+
+    if (shouldPreloadMetadata && nextSong.id != _lastPreloadedSongId) {
+      _lastPreloadedSongId = nextSong.id;
+      _preloadSong(nextSong);
+    }
+
+    // 2. Pre-buffer the standby audio deck ~8 seconds BEFORE the crossfade threshold!
+    // This gives ExoPlayer ample time to warm up and buffer the stream in advance,
+    // while keeping the standby deck completely idle during 90% of the song to
+    // eliminate AudioTrack HAL conflicts and micro-cuts.
+    if (_crossfadeService.isEnabled &&
+        !_isCrossfadingOut &&
+        !_isRenderingRemotely) {
+      int crossfadeSec = _crossfadeService.calculateTransitionSeconds(
+        currentSong: _currentSong,
+        nextSong: nextSong,
+        lastLyricSeconds: _currentSongLastLyricSec,
+        duration: _duration,
+      );
+      final threshold = _crossfadeService.calculateTriggerThreshold(
+        duration: _duration,
+        crossfadeSec: crossfadeSec,
+        lastLyricSeconds: _currentSongLastLyricSec,
+      );
+
+      final prebufferThreshold = threshold - const Duration(seconds: 8);
+      final shouldPrebufferStandby = position >= prebufferThreshold ||
+          secondsRemaining <= (crossfadeSec + 8);
+
+      if (shouldPrebufferStandby &&
+          (!_isStandbyPreloaded || _standbyPreloadedSongId != nextSong.id)) {
+        _prebufferStandbyDeck(nextSong).catchError((e) {
+          debugPrint('[Player] Standby deck pre-buffer error: $e');
+        });
+      }
     }
   }
 
@@ -2643,8 +2668,14 @@ class PlayerProvider extends ChangeNotifier
         .catchError((_) {});
   }
 
+  bool _isStandbyPrebuffering = false;
+
   Future<void> _prebufferStandbyDeck(Song nextSong) async {
-    if (_standbyPreloadedSongId == nextSong.id && _isStandbyPreloaded) return;
+    if ((_standbyPreloadedSongId == nextSong.id && _isStandbyPreloaded) ||
+        _isStandbyPrebuffering) {
+      return;
+    }
+    _isStandbyPrebuffering = true;
     try {
       final source = await _buildAudioSourceForSong(nextSong);
       await _standbyPlayer.setAudioSource(source);
@@ -2657,6 +2688,8 @@ class PlayerProvider extends ChangeNotifier
       debugPrint('[Player] Standby pre-buffering failed: $e');
       _isStandbyPreloaded = false;
       _standbyPreloadedSongId = null;
+    } finally {
+      _isStandbyPrebuffering = false;
     }
   }
 
@@ -2762,13 +2795,8 @@ class PlayerProvider extends ChangeNotifier
 
     debugPrint('[Player] DJ Crossfade completed smoothly to "${nextSong.title}" at position ${_position.inSeconds}s');
 
-    // 6. Pre-buffer the NEXT song on the newly freed standby deck
-    final upcoming = _getNextSongToPreload();
-    if (upcoming != null && upcoming.id != nextSong.id) {
-      _prebufferStandbyDeck(upcoming).catchError((e) {
-        debugPrint('[Player] Standby pre-buffering error: $e');
-      });
-    }
+    // Standby deck will be pre-buffered automatically 8s before the next crossfade threshold
+    // to preserve 100% of audio hardware resources and prevent micro-cuts during normal playback.
   }
 
   Future<void> _startSimultaneousCrossfade(Song nextSong, int crossfadeSec) async {
