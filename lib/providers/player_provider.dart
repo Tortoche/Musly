@@ -667,20 +667,27 @@ class PlayerProvider extends ChangeNotifier
     final progressRatio = position.inSeconds / totalSeconds;
 
     final shouldPreload = (secondsRemaining <= 30 && secondsRemaining > 0) ||
-        (progressRatio >= 0.60 && position.inSeconds >= 10);
+        (progressRatio >= 0.75 && position.inSeconds >= 15);
 
     if (!shouldPreload) return;
 
     final nextSong = _getNextSongToPreload();
-    if (nextSong == null ||
-        nextSong.id == _lastPreloadedSongId ||
-        nextSong.id == _currentSong?.id) {
+    if (nextSong == null || nextSong.id == _currentSong?.id) {
       return;
     }
 
-    _lastPreloadedSongId = nextSong.id;
-    _preloadSong(nextSong);
-    if (_crossfadeService.isEnabled && !_isCrossfadingOut && !_isRenderingRemotely) {
+    if (nextSong.id != _lastPreloadedSongId) {
+      _lastPreloadedSongId = nextSong.id;
+      _preloadSong(nextSong);
+    }
+
+    // Only buffer the standby audio deck when we are genuinely close to the transition (12s before end)
+    // so it doesn't steal network bandwidth from the song that is currently playing!
+    if (secondsRemaining <= 12 &&
+        secondsRemaining > 0 &&
+        _crossfadeService.isEnabled &&
+        !_isCrossfadingOut &&
+        !_isRenderingRemotely) {
       _prebufferStandbyDeck(nextSong).catchError((e) {
         debugPrint('[Player] Standby deck pre-buffer error: $e');
       });
@@ -2400,7 +2407,8 @@ class PlayerProvider extends ChangeNotifier
         _transcodingService.enabled ? _transcodingService.format : null;
     final url = _subsonicService.getStreamUrl(song.id,
         maxBitRate: maxBitRate, format: format);
-    if (_transcodingService.enabled && !_gaplessEnabled) {
+
+    try {
       final cacheDir = await getTemporaryDirectory();
       final cacheFile = File(
         '${cacheDir.path}/musly_stream_${song.id.hashCode}.tmp',
@@ -2411,7 +2419,7 @@ class PlayerProvider extends ChangeNotifier
         cacheFile: cacheFile,
         tag: song.id,
       );
-    } else {
+    } catch (_) {
       return AudioSource.uri(
         Uri.parse(url),
         tag: song.id,
@@ -2762,13 +2770,8 @@ class PlayerProvider extends ChangeNotifier
 
     debugPrint('[Player] DJ Crossfade completed smoothly to "${nextSong.title}" at position ${_position.inSeconds}s');
 
-    // 6. Pre-buffer the NEXT song on the newly freed standby deck
-    final upcoming = _getNextSongToPreload();
-    if (upcoming != null && upcoming.id != nextSong.id) {
-      _prebufferStandbyDeck(upcoming).catchError((e) {
-        debugPrint('[Player] Standby pre-buffering error: $e');
-      });
-    }
+    // Standby deck will be pre-buffered automatically within the final 12s of this track
+    // to preserve 100% of network bandwidth for seamless, stutter-free playback.
   }
 
   Future<void> _startSimultaneousCrossfade(Song nextSong, int crossfadeSec) async {
@@ -2792,7 +2795,7 @@ class PlayerProvider extends ChangeNotifier
       }));
 
       final totalMs = crossfadeSec * 1000;
-      final stepMs = 30; // 30ms for silky smooth 33fps volume curves
+      final stepMs = 50; // 50ms for smooth 20fps volume curve without flooding AudioTrack channels
       final steps = (totalMs ~/ stepMs).clamp(10, 300);
       _crossfadeStartVol = _audioPlayer.volume > 0 ? _audioPlayer.volume : _volume;
       _crossfadeTargetVol = getEffectiveVolumeForSong(nextSong);
@@ -2898,7 +2901,7 @@ class PlayerProvider extends ChangeNotifier
               '[Player] âŸ³ Buffering: "${_currentSong?.title ?? 'unknown'}"');
         }
 
-        if (state.processingState == ProcessingState.ready ||
+        if ((state.processingState == ProcessingState.ready && !wasPlaying) ||
             (state.playing && !wasPlaying)) {
           if (!_isFading) {
             _applyReplayGain(_currentSong).catchError((_) {});
