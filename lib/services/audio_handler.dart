@@ -10,44 +10,27 @@ import 'package:rxdart/rxdart.dart';
 import 'android_auto_service.dart';
 
 class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
-  AudioPlayer _activePlayer = AudioPlayer(
+  final AudioPlayer _playerA = AudioPlayer(
     handleAudioSessionActivation: false,
     handleInterruptions: false,
   );
-  AudioPlayer? _standbyPlayer;
+  final AudioPlayer _playerB = AudioPlayer(
+    handleAudioSessionActivation: false,
+    handleInterruptions: false,
+  );
+  late AudioPlayer _activePlayer = _playerA;
 
   AudioPlayer get player => _activePlayer;
-  AudioPlayer? get standbyPlayer => _standbyPlayer;
+  AudioPlayer get standbyPlayer => _activePlayer == _playerA ? _playerB : _playerA;
 
-  AudioPlayer createStandbyPlayer() {
-    _standbyPlayer?.dispose().catchError((_) {});
-    _standbyPlayer = AudioPlayer(
-      handleAudioSessionActivation: false,
-      handleInterruptions: false,
-    );
-    return _standbyPlayer!;
-  }
-
-  void discardStandbyPlayer() {
-    _standbyPlayer?.dispose().catchError((_) {});
-    _standbyPlayer = null;
-  }
-
-  void completeHandover() {
-    if (_standbyPlayer == null) return;
-    final oldPlayer = _activePlayer;
-    _activePlayer = _standbyPlayer!;
-    _standbyPlayer = null;
-
+  void swapPlayers() {
     _localStateSub?.cancel();
+    _activePlayer = standbyPlayer;
     _localStateSub = _activePlayer.playbackEventStream.listen((event) {
       if (_remotePlayback) return;
       playbackState.add(_buildPlaybackState(event));
     });
     playbackState.add(_buildPlaybackState(_activePlayer.playbackEvent));
-
-    // Completely release native ExoPlayer & AudioTrack of the old deck!
-    oldPlayer.dispose().catchError((_) {});
   }
   static const _pitchChannel = MethodChannel('com.devid.musly/pitch');
 
@@ -504,7 +487,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
         await sub.close();
       }
       _childrenSubjects.clear();
-      await _activePlayer.dispose(); await _standbyPlayer?.dispose(); _standbyPlayer = null;
+      await _playerA.dispose(); await _playerB.dispose();
     }
   }
 }

@@ -9,7 +9,6 @@ import 'package:audio_session/audio_session.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -53,9 +52,10 @@ class PlayerProvider extends ChangeNotifier
   final ReplayGainService _replayGainService = ReplayGainService();
   final AutoDjService _autoDjService = AutoDjService();
   final CrossfadeService _crossfadeService = CrossfadeService();
+  AudioPlayer get _standbyPlayer => _audioHandler.standbyPlayer;
   Timer? _crossfadeTimer;
-  final Map<String, CancelToken> _precacheCancelTokens = {};
-  final Set<String> _precachingSongIds = {};
+  bool _isStandbyPreloaded = false;
+  String? _standbyPreloadedSongId;
   late final DiscordRpcService _discordRpcService;
   final CastService _castService;
   late final UpnpService _upnpService;
@@ -664,25 +664,26 @@ class PlayerProvider extends ChangeNotifier
     if (totalSeconds <= 5) return;
 
     final secondsRemaining = totalSeconds - position.inSeconds;
+    final progressRatio = position.inSeconds / totalSeconds;
 
-    // Wait until the current song has played for at least 15s (initial buffer is fully established)
-    // or when nearing the end of the song:
-    final hasSafeBuffer = position.inSeconds >= 15 ||
-        (_audioPlayer.bufferedPosition - position).inSeconds >= 20;
-
-    final shouldPreload = hasSafeBuffer ||
-        (secondsRemaining <= 45 && secondsRemaining > 0);
+    final shouldPreload = (secondsRemaining <= 30 && secondsRemaining > 0) ||
+        (progressRatio >= 0.60 && position.inSeconds >= 10);
 
     if (!shouldPreload) return;
 
     final nextSong = _getNextSongToPreload();
-    if (nextSong == null || nextSong.id == _currentSong?.id) {
+    if (nextSong == null ||
+        nextSong.id == _lastPreloadedSongId ||
+        nextSong.id == _currentSong?.id) {
       return;
     }
 
-    if (nextSong.id != _lastPreloadedSongId) {
-      _lastPreloadedSongId = nextSong.id;
-      _preloadSong(nextSong);
+    _lastPreloadedSongId = nextSong.id;
+    _preloadSong(nextSong);
+    if (_crossfadeService.isEnabled && !_isCrossfadingOut && !_isRenderingRemotely) {
+      _prebufferStandbyDeck(nextSong).catchError((e) {
+        debugPrint('[Player] Standby deck pre-buffer error: $e');
+      });
     }
   }
 
@@ -715,9 +716,6 @@ class PlayerProvider extends ChangeNotifier
     debugPrint(
       '[Player Preload] âš¡ Pre-buffering next song: "${nextSong.title}" (${nextSong.id})',
     );
-
-    // Pre-cache full audio bytes to local flash storage!
-    unawaited(_precacheSongAudioFile(nextSong));
 
     if (nextSong.isLocal != true) {
       final cleanId = nextSong.id.replaceFirst('ytmusic://', '');
@@ -1492,7 +1490,9 @@ class PlayerProvider extends ChangeNotifier
         _isCrossfadingOut = false;
         _crossfadeTimer?.cancel();
         _crossfadeTimer = null;
-        _audioHandler.discardStandbyPlayer();
+        _standbyPlayer.stop().catchError((_) {});
+        _isStandbyPreloaded = false;
+        _standbyPreloadedSongId = null;
 
         final youtubeSource = song.isLocal != true
             ? await _subsonicService.getYoutubeAudioSource(song)
@@ -1735,7 +1735,7 @@ class PlayerProvider extends ChangeNotifier
     }
 
     _crossfadeTimer?.cancel();
-    _audioHandler.discardStandbyPlayer();
+    _standbyPlayer.pause().catchError((_) {});
     try {
       await _fadeOut(onComplete: () async {
         await _audioPlayer.pause();
@@ -1757,7 +1757,7 @@ class PlayerProvider extends ChangeNotifier
     _crossfadeTimer?.cancel();
     _crossfadeTimer = null;
     _isCrossfadingOut = false;
-    _audioHandler.discardStandbyPlayer();
+    _standbyPlayer.stop().catchError((_) {});
 
     if (_castService.isConnected) {
       await _castService.stop();
@@ -1885,7 +1885,7 @@ class PlayerProvider extends ChangeNotifier
         _crossfadeTimer?.cancel();
         _crossfadeTimer = null;
         _isCrossfadingOut = false;
-        _audioHandler.discardStandbyPlayer();
+        _standbyPlayer.stop().catchError((_) {});
         _applyReplayGain(_currentSong).catchError((_) {});
       }
       await _audioPlayer.seek(position);
@@ -1905,7 +1905,7 @@ class PlayerProvider extends ChangeNotifier
       _crossfadeTimer = null;
       _isCrossfadingOut = false;
       _crossfadeNextSong = null;
-      _audioHandler.discardStandbyPlayer();
+      _standbyPlayer.stop().catchError((_) {});
     }
 
     if (_currentSong != null && _recommendationService != null) {
@@ -2036,7 +2036,7 @@ class PlayerProvider extends ChangeNotifier
       _crossfadeTimer = null;
       _isCrossfadingOut = false;
       _crossfadeNextSong = null;
-      _audioHandler.discardStandbyPlayer();
+      _standbyPlayer.stop().catchError((_) {});
     }
 
     if (_jukeboxService.enabled) {
@@ -2389,18 +2389,6 @@ class PlayerProvider extends ChangeNotifier
     if (offlinePath != null) {
       return AudioSource.uri(Uri.file(offlinePath));
     }
-
-    try {
-      final cacheDir = await getTemporaryDirectory();
-      final cacheFile = File('${cacheDir.path}/musly_precache_${song.id.hashCode}.audio');
-      if (cacheFile.existsSync() && cacheFile.lengthSync() > 50 * 1024) {
-        debugPrint('[Player] ⚡ Serving "${song.title}" instantly from local precached flash storage!');
-        return AudioSource.uri(
-          Uri.file(cacheFile.path),
-          tag: song.id,
-        );
-      }
-    } catch (_) {}
     if (_subsonicService.isYoutube) {
       final ytSource = await _subsonicService.getYoutubeAudioSource(song);
       if (ytSource != null) return ytSource;
@@ -2412,8 +2400,7 @@ class PlayerProvider extends ChangeNotifier
         _transcodingService.enabled ? _transcodingService.format : null;
     final url = _subsonicService.getStreamUrl(song.id,
         maxBitRate: maxBitRate, format: format);
-
-    try {
+    if (_transcodingService.enabled && !_gaplessEnabled) {
       final cacheDir = await getTemporaryDirectory();
       final cacheFile = File(
         '${cacheDir.path}/musly_stream_${song.id.hashCode}.tmp',
@@ -2424,7 +2411,7 @@ class PlayerProvider extends ChangeNotifier
         cacheFile: cacheFile,
         tag: song.id,
       );
-    } catch (_) {
+    } else {
       return AudioSource.uri(
         Uri.parse(url),
         tag: song.id,
@@ -2656,94 +2643,22 @@ class PlayerProvider extends ChangeNotifier
         .catchError((_) {});
   }
 
-    Future<void> _precacheSongAudioFile(Song song) async {
-    if (song.isLocal == true || _offlineService.getLocalPath(song.id) != null) {
-      return;
-    }
-    if (_precachingSongIds.contains(song.id)) return;
-
+  Future<void> _prebufferStandbyDeck(Song nextSong) async {
+    if (_standbyPreloadedSongId == nextSong.id && _isStandbyPreloaded) return;
     try {
-      final cacheDir = await getTemporaryDirectory();
-      final cacheFile = File('${cacheDir.path}/musly_precache_${song.id.hashCode}.audio');
-      if (cacheFile.existsSync() && cacheFile.lengthSync() > 100 * 1024) {
-        return;
-      }
-
-      _precachingSongIds.add(song.id);
-      final cancelToken = CancelToken();
-      _precacheCancelTokens[song.id]?.cancel();
-      _precacheCancelTokens[song.id] = cancelToken;
-
-      final maxBitRate =
-          _transcodingService.enabled ? _transcodingService.currentBitRate : null;
-      final format =
-          _transcodingService.enabled ? _transcodingService.format : null;
-
-      String streamUrl;
-      if (_subsonicService.isYoutube) {
-        streamUrl = await _subsonicService.resolveStreamUrlAsync(song);
-      } else {
-        streamUrl = _subsonicService.getStreamUrl(
-          song.id,
-          maxBitRate: maxBitRate,
-          format: format,
-        );
-      }
-
-      if (streamUrl.isEmpty) return;
-
-      final tempPartFile = File('${cacheFile.path}.part');
-      if (tempPartFile.existsSync()) {
-        try { tempPartFile.deleteSync(); } catch (_) {}
-      }
-
-      final dio = Dio();
-      dio.options.connectTimeout = const Duration(seconds: 15);
-      dio.options.receiveTimeout = const Duration(seconds: 60);
-
-      debugPrint('[Player Precache] Downloading next song into flash disk: "${song.title}"');
-      await dio.download(
-        streamUrl,
-        tempPartFile.path,
-        cancelToken: cancelToken,
-      );
-
-      if (tempPartFile.existsSync() && tempPartFile.lengthSync() > 50 * 1024) {
-        if (cacheFile.existsSync()) {
-          try { cacheFile.deleteSync(); } catch (_) {}
-        }
-        await tempPartFile.rename(cacheFile.path);
-        debugPrint('[Player Precache] ✓ Successfully pre-cached audio (${(cacheFile.lengthSync() / 1024).round()} KB) for "${song.title}"');
-        _cleanOldPrecacheFiles(cacheDir).catchError((_) {});
-      }
+      final source = await _buildAudioSourceForSong(nextSong);
+      await _standbyPlayer.setAudioSource(source);
+      await _standbyPlayer.setVolume(0.0);
+      await _standbyPlayer.pause();
+      _isStandbyPreloaded = true;
+      _standbyPreloadedSongId = nextSong.id;
+      debugPrint('[Player] Standby deck pre-buffered for "${nextSong.title}"');
     } catch (e) {
-      if (e is! DioException || e.type != DioExceptionType.cancel) {
-        debugPrint('[Player Precache] Pre-cache download error: $e');
-      }
-    } finally {
-      _precachingSongIds.remove(song.id);
-      _precacheCancelTokens.remove(song.id);
+      debugPrint('[Player] Standby pre-buffering failed: $e');
+      _isStandbyPreloaded = false;
+      _standbyPreloadedSongId = null;
     }
   }
-
-  Future<void> _cleanOldPrecacheFiles(Directory cacheDir) async {
-    try {
-      final files = cacheDir
-          .listSync()
-          .whereType<File>()
-          .where((f) => f.path.contains('musly_precache_'))
-          .toList();
-      if (files.length > 25) {
-        files.sort((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
-        for (int i = 0; i < files.length - 25; i++) {
-          try {
-            files[i].deleteSync();
-          } catch (_) {}
-        }
-      }
-    } catch (_) {}
-  }
-
 
   void _checkCrossfade(Duration position) {
     if (!_crossfadeService.isEnabled ||
@@ -2802,11 +2717,17 @@ class PlayerProvider extends ChangeNotifier
     _currentIndexSub?.cancel();
     _currentIndexSub = null;
 
-    // 2. Complete handover: old player is disposed releasing its AudioTrack; standby deck becomes active player
-    _audioHandler.completeHandover();
+    final outgoingPlayer = _audioPlayer;
+
+    // 2. Swap active deck in audio handler: the standby player is now the active player
+    _audioHandler.swapPlayers();
 
     // 3. Ensure the new active player is at target volume
     await _audioPlayer.setVolume(targetVol);
+
+    // 4. Safely stop and reset the old deck in background now that it's disconnected
+    outgoingPlayer.stop().catchError((_) {});
+    outgoingPlayer.setVolume(startVol).catchError((_) {});
 
     retireCurrentTrack();
 
@@ -2830,6 +2751,8 @@ class PlayerProvider extends ChangeNotifier
     // 5. Rebind streams to the new active player
     _rebindPlayerStreams();
 
+    _isStandbyPreloaded = false;
+    _standbyPreloadedSongId = null;
     _nextShuffledIndex = null;
 
     notifyListeners();
@@ -2839,8 +2762,13 @@ class PlayerProvider extends ChangeNotifier
 
     debugPrint('[Player] DJ Crossfade completed smoothly to "${nextSong.title}" at position ${_position.inSeconds}s');
 
-    // Standby deck will be pre-buffered automatically within the final 12s of this track
-    // to preserve 100% of network bandwidth for seamless, stutter-free playback.
+    // 6. Pre-buffer the NEXT song on the newly freed standby deck
+    final upcoming = _getNextSongToPreload();
+    if (upcoming != null && upcoming.id != nextSong.id) {
+      _prebufferStandbyDeck(upcoming).catchError((e) {
+        debugPrint('[Player] Standby pre-buffering error: $e');
+      });
+    }
   }
 
   Future<void> _startSimultaneousCrossfade(Song nextSong, int crossfadeSec) async {
@@ -2851,17 +2779,20 @@ class PlayerProvider extends ChangeNotifier
     _crossfadeTimer = null;
 
     try {
-      final standby = _audioHandler.createStandbyPlayer();
-      debugPrint('[Player] Preparing standby deck for crossfade to "${nextSong.title}"');
-      final source = await _buildAudioSourceForSong(nextSong);
-      await standby.setAudioSource(source);
-      await standby.setVolume(0.0).catchError((_) {});
-      unawaited(standby.play().catchError((e) {
+      if (!_isStandbyPreloaded || _standbyPreloadedSongId != nextSong.id) {
+        debugPrint('[Player] Standby not preloaded, loading now for "${nextSong.title}"');
+        final source = await _buildAudioSourceForSong(nextSong);
+        await _standbyPlayer.setAudioSource(source);
+        _isStandbyPreloaded = true;
+        _standbyPreloadedSongId = nextSong.id;
+      }
+      _standbyPlayer.setVolume(0.0).catchError((_) {});
+      unawaited(_standbyPlayer.play().catchError((e) {
         debugPrint('[Player] Standby deck play error: $e');
       }));
 
       final totalMs = crossfadeSec * 1000;
-      final stepMs = 50; // 50ms for smooth 20fps volume curve without flooding AudioTrack channels
+      final stepMs = 30; // 30ms for silky smooth 33fps volume curves
       final steps = (totalMs ~/ stepMs).clamp(10, 300);
       _crossfadeStartVol = _audioPlayer.volume > 0 ? _audioPlayer.volume : _volume;
       _crossfadeTargetVol = getEffectiveVolumeForSong(nextSong);
@@ -2873,18 +2804,17 @@ class PlayerProvider extends ChangeNotifier
         if (!_isCrossfadingOut) {
           timer.cancel();
           _crossfadeTimer = null;
-          _audioHandler.discardStandbyPlayer();
+          _standbyPlayer.stop().catchError((_) {});
           return;
         }
 
         currentStep++;
         final progress = (currentStep / steps).clamp(0.0, 1.0);
-
         final outVol = (startVol * CrossfadeService.equalPowerFadeOut(progress)).clamp(0.0, 1.0);
         final inVol = (targetVol * CrossfadeService.equalPowerFadeIn(progress)).clamp(0.0, 1.0);
 
         _audioPlayer.setVolume(outVol).catchError((_) {});
-        standby.setVolume(inVol).catchError((_) {});
+        _standbyPlayer.setVolume(inVol).catchError((_) {});
 
         if (currentStep >= steps) {
           await _completeCrossfadeHandover(nextSong, targetVol, startVol);
@@ -2896,7 +2826,7 @@ class PlayerProvider extends ChangeNotifier
       _crossfadeNextSong = null;
       _crossfadeTimer?.cancel();
       _crossfadeTimer = null;
-      _audioHandler.discardStandbyPlayer();
+      _standbyPlayer.stop().catchError((_) {});
     }
   }
 
@@ -2968,7 +2898,7 @@ class PlayerProvider extends ChangeNotifier
               '[Player] âŸ³ Buffering: "${_currentSong?.title ?? 'unknown'}"');
         }
 
-        if ((state.processingState == ProcessingState.ready && !wasPlaying) ||
+        if (state.processingState == ProcessingState.ready ||
             (state.playing && !wasPlaying)) {
           if (!_isFading) {
             _applyReplayGain(_currentSong).catchError((_) {});
@@ -3156,7 +3086,7 @@ class PlayerProvider extends ChangeNotifier
     }
 
     _crossfadeTimer?.cancel();
-    _audioHandler.discardStandbyPlayer();
+    _standbyPlayer.stop().catchError((_) {});
     _audioPlayer.stop().catchError((_) {});
     _audioPlayer.dispose().catchError((_) {});
 
