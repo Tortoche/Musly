@@ -664,10 +664,14 @@ class PlayerProvider extends ChangeNotifier
     if (totalSeconds <= 5) return;
 
     final secondsRemaining = totalSeconds - position.inSeconds;
-    final progressRatio = position.inSeconds / totalSeconds;
 
-    final shouldPreload = (secondsRemaining <= 30 && secondsRemaining > 0) ||
-        (progressRatio >= 0.75 && position.inSeconds >= 15);
+    // Wait until the current song has played for at least 15s (initial buffer is fully established)
+    // or when nearing the end of the song:
+    final hasSafeBuffer = position.inSeconds >= 15 ||
+        (_audioPlayer.bufferedPosition - position).inSeconds >= 20;
+
+    final shouldPreload = hasSafeBuffer ||
+        (secondsRemaining <= 45 && secondsRemaining > 0);
 
     if (!shouldPreload) return;
 
@@ -681,13 +685,12 @@ class PlayerProvider extends ChangeNotifier
       _preloadSong(nextSong);
     }
 
-    // Only buffer the standby audio deck when we are genuinely close to the transition (12s before end)
-    // so it doesn't steal network bandwidth from the song that is currently playing!
-    if (secondsRemaining <= 12 &&
-        secondsRemaining > 0 &&
-        _crossfadeService.isEnabled &&
+    // Pre-buffer the standby audio deck in advance so it is ALREADY loaded,
+    // paused, and fully buffered before the crossfade threshold is reached!
+    if (_crossfadeService.isEnabled &&
         !_isCrossfadingOut &&
-        !_isRenderingRemotely) {
+        !_isRenderingRemotely &&
+        (!_isStandbyPreloaded || _standbyPreloadedSongId != nextSong.id)) {
       _prebufferStandbyDeck(nextSong).catchError((e) {
         debugPrint('[Player] Standby deck pre-buffer error: $e');
       });
@@ -2651,8 +2654,13 @@ class PlayerProvider extends ChangeNotifier
         .catchError((_) {});
   }
 
+  bool _isStandbyPreloading = false;
+
   Future<void> _prebufferStandbyDeck(Song nextSong) async {
-    if (_standbyPreloadedSongId == nextSong.id && _isStandbyPreloaded) return;
+    if ((_standbyPreloadedSongId == nextSong.id && _isStandbyPreloaded) || _isStandbyPreloading) {
+      return;
+    }
+    _isStandbyPreloading = true;
     try {
       final source = await _buildAudioSourceForSong(nextSong);
       await _standbyPlayer.setAudioSource(source);
@@ -2660,11 +2668,13 @@ class PlayerProvider extends ChangeNotifier
       await _standbyPlayer.pause();
       _isStandbyPreloaded = true;
       _standbyPreloadedSongId = nextSong.id;
-      debugPrint('[Player] Standby deck pre-buffered for "${nextSong.title}"');
+      debugPrint('[Player] Standby deck 100% pre-buffered & ready for "${nextSong.title}"');
     } catch (e) {
       debugPrint('[Player] Standby pre-buffering failed: $e');
       _isStandbyPreloaded = false;
       _standbyPreloadedSongId = null;
+    } finally {
+      _isStandbyPreloading = false;
     }
   }
 
