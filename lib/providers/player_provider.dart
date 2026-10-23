@@ -680,9 +680,9 @@ class PlayerProvider extends ChangeNotifier
       _preloadSong(nextSong);
     }
 
-    // 2. Pre-buffer the standby audio deck ~8 seconds BEFORE the crossfade threshold!
+    // 2. Pre-buffer the standby audio deck ~20 seconds BEFORE the crossfade threshold!
     // This gives ExoPlayer ample time to warm up and buffer the stream in advance,
-    // while keeping the standby deck completely idle during 90% of the song to
+    // while keeping the standby deck completely idle during 85-90% of the song to
     // eliminate AudioTrack HAL conflicts and micro-cuts.
     if (_crossfadeService.isEnabled &&
         !_isCrossfadingOut &&
@@ -699,9 +699,9 @@ class PlayerProvider extends ChangeNotifier
         lastLyricSeconds: _currentSongLastLyricSec,
       );
 
-      final prebufferThreshold = threshold - const Duration(seconds: 8);
+      final prebufferThreshold = threshold - const Duration(seconds: 20);
       final shouldPrebufferStandby = position >= prebufferThreshold ||
-          secondsRemaining <= (crossfadeSec + 8);
+          secondsRemaining <= (crossfadeSec + 20);
 
       if (shouldPrebufferStandby &&
           (!_isStandbyPreloaded || _standbyPreloadedSongId != nextSong.id)) {
@@ -1913,6 +1913,17 @@ class PlayerProvider extends ChangeNotifier
         _standbyPlayer.stop().catchError((_) {});
         _applyReplayGain(_currentSong).catchError((_) {});
       }
+      if (_crossfadeService.isEnabled && !_isRenderingRemotely) {
+        final totalSeconds = _duration.inSeconds > 0
+            ? _duration.inSeconds
+            : (_currentSong?.duration ?? 0);
+        if (totalSeconds > 10 && position.inSeconds >= totalSeconds - 25) {
+          final nextSong = _getNextSongToPreload();
+          if (nextSong != null && nextSong.id != _currentSong?.id) {
+            _prebufferStandbyDeck(nextSong).catchError((_) {});
+          }
+        }
+      }
       await _audioPlayer.seek(position);
     }
   }
@@ -2814,7 +2825,14 @@ class PlayerProvider extends ChangeNotifier
         _isStandbyPreloaded = true;
         _standbyPreloadedSongId = nextSong.id;
       }
-      _standbyPlayer.setVolume(0.0).catchError((_) {});
+      _crossfadeStartVol = _audioPlayer.volume > 0 ? _audioPlayer.volume : _volume;
+      _crossfadeTargetVol = getEffectiveVolumeForSong(nextSong);
+      final startVol = _crossfadeStartVol;
+      final targetVol = _crossfadeTargetVol;
+
+      // DJ Power Drop: Incoming track starts immediately with punch (~35% volume)
+      final initialInVol = (targetVol * 0.35).clamp(0.0, 1.0);
+      _standbyPlayer.setVolume(initialInVol).catchError((_) {});
       unawaited(_standbyPlayer.play().catchError((e) {
         debugPrint('[Player] Standby deck play error: $e');
       }));
@@ -2822,10 +2840,6 @@ class PlayerProvider extends ChangeNotifier
       final totalMs = crossfadeSec * 1000;
       final stepMs = 30; // 30ms for silky smooth 33fps volume curves
       final steps = (totalMs ~/ stepMs).clamp(10, 300);
-      _crossfadeStartVol = _audioPlayer.volume > 0 ? _audioPlayer.volume : _volume;
-      _crossfadeTargetVol = getEffectiveVolumeForSong(nextSong);
-      final startVol = _crossfadeStartVol;
-      final targetVol = _crossfadeTargetVol;
       var currentStep = 0;
 
       _crossfadeTimer = Timer.periodic(Duration(milliseconds: stepMs), (timer) async {
@@ -2838,8 +2852,8 @@ class PlayerProvider extends ChangeNotifier
 
         currentStep++;
         final progress = (currentStep / steps).clamp(0.0, 1.0);
-        final outVol = (startVol * CrossfadeService.equalPowerFadeOut(progress)).clamp(0.0, 1.0);
-        final inVol = (targetVol * CrossfadeService.equalPowerFadeIn(progress)).clamp(0.0, 1.0);
+        final outVol = (startVol * CrossfadeService.djPowerDropFadeOut(progress)).clamp(0.0, 1.0);
+        final inVol = (targetVol * CrossfadeService.djPowerDropFadeIn(progress)).clamp(0.0, 1.0);
 
         _audioPlayer.setVolume(outVol).catchError((_) {});
         _standbyPlayer.setVolume(inVol).catchError((_) {});
@@ -2910,13 +2924,25 @@ class PlayerProvider extends ChangeNotifier
         if (state.processingState == ProcessingState.completed) {
           if (_isCrossfadingOut && _crossfadeNextSong != null) {
             debugPrint(
-                '[Player] Outgoing deck completed: fast-forwarding handover to "${_crossfadeNextSong!.title}"');
+                '[Player] Outgoing deck completed: finalizing handover to "${_crossfadeNextSong!.title}"');
             _completeCrossfadeHandover(
                 _crossfadeNextSong!, _crossfadeTargetVol, _crossfadeStartVol);
             return;
           }
+
+          // Verrou anti-coupure: If crossfade is enabled, NEVER let the track end abruptly!
+          if (_crossfadeService.isEnabled && !_isRenderingRemotely) {
+            final nextSong = _getNextSongToPreload();
+            if (nextSong != null && nextSong.id != _currentSong?.id) {
+              debugPrint(
+                  '[Player] Anti-cut guard: initiating instant DJ transition to "${nextSong.title}"');
+              _startSimultaneousCrossfade(nextSong, 3);
+              return;
+            }
+          }
+
           debugPrint(
-              '[Player] âœ“ Song completed: "${_currentSong?.title ?? 'unknown'}"');
+              '[Player] ✓ Song completed: "${_currentSong?.title ?? 'unknown'}"');
           _onSongComplete().catchError(
               (e) => debugPrint('[Player] _onSongComplete error: $e'));
         }

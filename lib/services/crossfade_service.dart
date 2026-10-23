@@ -127,14 +127,13 @@ class CrossfadeService {
     Duration threshold = duration - Duration(seconds: crossfadeSec);
 
     if (lastLyricSeconds != null && lastLyricSeconds > 0) {
-      // Let the final word breathe for 1.2s before the incoming track enters
       final vocalEndDuration = Duration(
         milliseconds: ((lastLyricSeconds + 1.2) * 1000).round(),
       );
 
-      final earliestAllowed = Duration(
-        milliseconds: (duration.inMilliseconds * 0.65).round(),
-      );
+      // Only allow vocal end trigger if it's near the end (within 10s of duration)
+      // to avoid cutting off long musical outros
+      final earliestAllowed = duration - Duration(seconds: crossfadeSec + 5);
       final latestAllowed = duration - const Duration(seconds: 2);
 
       if (vocalEndDuration >= earliestAllowed && vocalEndDuration <= latestAllowed) {
@@ -165,6 +164,23 @@ class CrossfadeService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// DJ Power Drop: Keeps outgoing track at full power for the first 25%, then plunges dynamically
+  static double djPowerDropFadeOut(double progress) {
+    final p = progress.clamp(0.0, 1.0);
+    if (p < 0.25) {
+      return 1.0;
+    }
+    final plunge = (p - 0.25) / 0.75;
+    return (1.0 - pow(plunge, 1.5)).clamp(0.0, 1.0).toDouble();
+  }
+
+  /// DJ Power Drop: Drops the incoming track with instant presence (~35% vol) and fast power surge
+  static double djPowerDropFadeIn(double progress) {
+    final p = progress.clamp(0.0, 1.0);
+    if (p <= 0.0) return 0.0;
+    return (0.35 + 0.65 * pow(p, 0.6)).clamp(0.0, 1.0).toDouble();
   }
 
   /// Equal-Power crossfade curve: cos(t * pi / 2) maintains perceived loudness (no 3dB volume drop)
