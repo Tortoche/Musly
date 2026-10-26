@@ -10,13 +10,30 @@ import 'package:rxdart/rxdart.dart';
 import 'android_auto_service.dart';
 
 class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
+  static const _loadConfig = AudioLoadConfiguration(
+    androidLoadControl: AndroidLoadControl(
+      minBufferDuration: Duration(seconds: 15),
+      maxBufferDuration: Duration(seconds: 40),
+      bufferForPlaybackDuration: Duration(milliseconds: 350),
+      bufferForPlaybackAfterRebufferDuration: Duration(milliseconds: 1500),
+      prioritizeTimeOverSizeThresholds: true,
+      backBufferDuration: Duration(seconds: 10),
+    ),
+    darwinLoadControl: DarwinLoadControl(
+      automaticallyWaitsToMinimizeStalling: false,
+      preferredForwardBufferDuration: Duration(seconds: 20),
+    ),
+  );
+
   final AudioPlayer _playerA = AudioPlayer(
     handleAudioSessionActivation: false,
     handleInterruptions: false,
+    audioLoadConfiguration: _loadConfig,
   );
   final AudioPlayer _playerB = AudioPlayer(
     handleAudioSessionActivation: false,
     handleInterruptions: false,
+    audioLoadConfiguration: _loadConfig,
   );
   late AudioPlayer _activePlayer = _playerA;
 

@@ -183,11 +183,19 @@ class AlbumArtwork extends StatelessWidget {
           : 600; // normal (at least 600px)
     }
 
-    // For small thumbnails (e.g. lists, mini player), decode in memory at device resolution
-    // rather than decoding a full 600px+ raster, saving ~90% RAM during long list scrolling.
-    final int? memCacheSize = cacheSize == 0
-        ? null
-        : (validSize <= 80 ? baseSize.clamp(64, 200) : cacheSize);
+    // Dynamic memory cache sizing: always decode bitmaps to fit the device's physical
+    // pixel footprint (baseSize = validSize * dpr). This avoids decoding 4K/full-res
+    // bitmaps into RAM for cards and thumbnails, reducing image memory usage by up to 80%.
+    final int? memCacheSize;
+    if (resolutionSetting == 'high') {
+      memCacheSize = validSize <= 220
+          ? baseSize.clamp(64, 600)
+          : (baseSize > 0 ? baseSize.clamp(64, 1080) : null);
+    } else {
+      memCacheSize = validSize <= 220
+          ? baseSize.clamp(64, 500)
+          : cacheSize.clamp(64, 800);
+    }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final resolvedShadow = _resolvedShadow(

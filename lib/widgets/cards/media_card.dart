@@ -75,7 +75,7 @@ class _MediaCardState extends State<MediaCard> {
               width: widget.size,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1C1C1E) : AppTheme.lightCard,
+                color: isDark ? const Color(0xFF0C0C0E) : AppTheme.lightCard,
                 borderRadius: BorderRadius.circular(8),
                 border: isTv && _isFocused
                     ? Border.all(color: Colors.white, width: 3.0)

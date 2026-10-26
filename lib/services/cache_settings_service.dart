@@ -3,6 +3,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'bpm_analyzer_service.dart';
+import 'audio_precache_service.dart';
 
 class CacheSettingsService {
   static const String _keyImageCacheEnabled = 'cache_images_enabled';
@@ -91,6 +92,18 @@ class CacheSettingsService {
         }
       }
 
+      final rollingCacheDir = Directory('${tempDir.path}/musly_rolling_cache');
+      if (rollingCacheDir.existsSync()) {
+        await for (final entity
+            in rollingCacheDir.list(recursive: true, followLinks: false)) {
+          if (entity is File) {
+            try {
+              total += await entity.length();
+            } catch (_) {}
+          }
+        }
+      }
+
       if (tempDir.existsSync()) {
         await for (final entity in tempDir.list(followLinks: false)) {
           if (entity is File && entity.path.contains('musly_stream_')) {
@@ -143,10 +156,15 @@ class CacheSettingsService {
 
   Future<void> clearAudioCache() async {
     try {
+      await AudioPrecacheService().clearAll();
       final tempDir = await getTemporaryDirectory();
       final ytCacheDir = Directory('${tempDir.path}/musly_yt_cache');
       if (ytCacheDir.existsSync()) {
         await ytCacheDir.delete(recursive: true);
+      }
+      final rollingCacheDir = Directory('${tempDir.path}/musly_rolling_cache');
+      if (rollingCacheDir.existsSync()) {
+        await rollingCacheDir.delete(recursive: true);
       }
       if (tempDir.existsSync()) {
         await for (final entity in tempDir.list(followLinks: false)) {

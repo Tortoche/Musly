@@ -3228,6 +3228,7 @@ class PlayerProvider extends ChangeNotifier
 
     _crossfadeTimer?.cancel();
     _standbyPlayer.stop().catchError((_) {});
+    _standbyPlayer.dispose().catchError((_) {});
     _audioPlayer.stop().catchError((_) {});
     _audioPlayer.dispose().catchError((_) {});
 

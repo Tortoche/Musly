@@ -6,7 +6,7 @@ import '../models/models.dart';
 
 class LibraryDatabaseService {
   static const String _dbName = 'musly_library.db';
-  static const int _dbVersion = 3;
+  static const int _dbVersion = 4;
   static const int _batchSize = 1000;
 
   Database? _db;
@@ -23,6 +23,15 @@ class LibraryDatabaseService {
     return openDatabase(
       dbPath,
       version: _dbVersion,
+      onConfigure: (db) async {
+        try {
+          await db.execute('PRAGMA journal_mode = WAL;');
+          await db.execute('PRAGMA synchronous = NORMAL;');
+          await db.execute('PRAGMA cache_size = -16000;');
+          await db.execute('PRAGMA busy_timeout = 5000;');
+          await db.execute('PRAGMA foreign_keys = ON;');
+        } catch (_) {}
+      },
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -46,6 +55,16 @@ class LibraryDatabaseService {
       try {
         await db
             .execute('ALTER TABLE albums ADD COLUMN starred INTEGER DEFAULT 0');
+      } catch (_) {}
+    }
+    if (oldVersion < 4) {
+      try {
+        await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_song_album_track ON songs(albumId, track)');
+        await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_playlist_name ON playlists(name)');
+        await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_artist_name ON artists(name)');
       } catch (_) {}
     }
   }
@@ -142,6 +161,19 @@ class LibraryDatabaseService {
         .execute('CREATE INDEX IF NOT EXISTS idx_album_name ON albums(name)');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_album_isLocal ON albums(isLocal)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_song_album_track ON songs(albumId, track)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_playlist_name ON playlists(name)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_artist_name ON artists(name)');
+  }
+
+  Future<void> optimizeDatabase() async {
+    try {
+      final db = await database;
+      await db.execute('PRAGMA optimize;');
+    } catch (_) {}
   }
 
   Future<void> insertSongsBatch(List<Song> songs) async {

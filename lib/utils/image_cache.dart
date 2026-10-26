@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 
 class ImageCacheConfig {
   static void configure() {
-    PaintingBinding.instance.imageCache.maximumSize = 1000;
-    PaintingBinding.instance.imageCache.maximumSizeBytes = 150 << 20;
+    PaintingBinding.instance.imageCache.maximumSize = 350;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 64 << 20; // 64 MB memory ceiling
   }
 }
 

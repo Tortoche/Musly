@@ -56,10 +56,16 @@ class SongTile extends StatelessWidget {
       isTv = TvDetectionService().isTvMode;
     }
 
-    return Consumer<PlayerProvider>(
-      builder: (context, playerProvider, child) {
-        final isCurrentSong = playerProvider.currentSong?.id == song.id;
-        final isPlaying = isCurrentSong && playerProvider.isPlaying;
+    return RepaintBoundary(
+      child: Selector<PlayerProvider, ({bool isCurrentSong, bool isPlaying})>(
+        selector: (_, playerProvider) => (
+          isCurrentSong: playerProvider.currentSong?.id == song.id,
+          isPlaying: playerProvider.currentSong?.id == song.id &&
+              playerProvider.isPlaying,
+        ),
+        builder: (context, playbackState, child) {
+          final isCurrentSong = playbackState.isCurrentSong;
+          final isPlaying = playbackState.isPlaying;
 
         final actualOnTap = onTap ?? () => _playSong(context);
         final actualOnLongPress = onLongPress ?? () => _showOptions(context);
@@ -94,7 +100,7 @@ class SongTile extends StatelessWidget {
         if (enableSwipeToQueue) {
           finalTile = SwipeableSongTile(
             onSwipeToQueue: () {
-              playerProvider.addToQueue(song);
+              Provider.of<PlayerProvider>(context, listen: false).addToQueue(song);
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -134,7 +140,8 @@ class SongTile extends StatelessWidget {
         }
 
         return finalTile;
-      },
+        },
+      ),
     );
   }
 
