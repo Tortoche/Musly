@@ -374,4 +374,111 @@ class DeezerService {
     }
     return [];
   }
+
+  Album? _cachedTopAlbum;
+
+  /// Récupérer le Top Album du moment d'après les charts Deezer
+  Future<Album?> getChartTopAlbum() async {
+    if (_cachedTopAlbum != null) return _cachedTopAlbum;
+    final url = Uri.parse('$_baseUrl/chart/0/albums?limit=1');
+
+    try {
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final List list = data['data'] ?? [];
+        if (list.isNotEmpty) {
+          final top = list.first;
+          final id = top['id']?.toString() ?? '';
+          final artistData = top['artist'] as Map<String, dynamic>?;
+          final cover = top['cover_xl'] ?? top['cover_big'] ?? top['cover_medium'];
+
+          _cachedTopAlbum = Album(
+            id: id.startsWith('ext_dz_') ? id : 'ext_dz_$id',
+            name: top['title'] ?? '',
+            artist: artistData?['name'] ?? 'Artiste inconnu',
+            coverArt: cover,
+          );
+          return _cachedTopAlbum;
+        }
+      }
+    } catch (e) {
+      debugPrint('[DeezerService] Erreur getChartTopAlbum: $e');
+    }
+    return null;
+  }
+
+  Artist? _cachedSuggestedArtist;
+
+  /// Récupérer un Artiste Découverte suggéré selon les artistes écoutés par l'utilisateur
+  Future<Artist?> getSuggestedDiscoveryArtist({List<String>? seedArtists}) async {
+    if (_cachedSuggestedArtist != null) return _cachedSuggestedArtist;
+
+    final seeds = (seedArtists ?? [])
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty && s.length >= 2)
+        .toList();
+
+    try {
+      // 1. Tenter de trouver un artiste connexe (related) à partir du profil d'écoute
+      if (seeds.isNotEmpty) {
+        for (final seed in seeds.take(3)) {
+          final dzArtist = await searchArtistByName(seed);
+          if (dzArtist != null && dzArtist.id.isNotEmpty) {
+            final relUrl = Uri.parse('$_baseUrl/artist/${dzArtist.id}/related?limit=8');
+            final relRes = await http.get(relUrl);
+            if (relRes.statusCode == 200) {
+              final relData = jsonDecode(relRes.body);
+              final List relList = relData['data'] ?? [];
+              for (final r in relList) {
+                final name = (r['name'] as String?)?.trim() ?? '';
+                final isAlreadyKnown = seeds.any(
+                  (s) => s.toLowerCase() == name.toLowerCase(),
+                );
+                if (!isAlreadyKnown && name.isNotEmpty) {
+                  final id = r['id']?.toString() ?? '';
+                  final picture = r['picture_xl'] ?? r['picture_big'] ?? r['picture_medium'];
+                  _cachedSuggestedArtist = Artist(
+                    id: id.startsWith('ext_dz_') ? id : 'ext_dz_$id',
+                    name: name,
+                    coverArt: picture,
+                    artistImageUrl: picture,
+                  );
+                  return _cachedSuggestedArtist;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Repli : Artiste tendance émergent du chart Deezer
+      final chartUrl = Uri.parse('$_baseUrl/chart/0/artists?limit=10');
+      final chartRes = await http.get(chartUrl);
+      if (chartRes.statusCode == 200) {
+        final chartData = jsonDecode(chartRes.body);
+        final List chartList = chartData['data'] ?? [];
+        for (final a in chartList) {
+          final name = (a['name'] as String?)?.trim() ?? '';
+          final isAlreadyKnown = seeds.any(
+            (s) => s.toLowerCase() == name.toLowerCase(),
+          );
+          if (!isAlreadyKnown && name.isNotEmpty) {
+            final id = a['id']?.toString() ?? '';
+            final picture = a['picture_xl'] ?? a['picture_big'] ?? a['picture_medium'];
+            _cachedSuggestedArtist = Artist(
+              id: id.startsWith('ext_dz_') ? id : 'ext_dz_$id',
+              name: name,
+              coverArt: picture,
+              artistImageUrl: picture,
+            );
+            return _cachedSuggestedArtist;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[DeezerService] Erreur getSuggestedDiscoveryArtist: $e');
+    }
+    return null;
+  }
 }

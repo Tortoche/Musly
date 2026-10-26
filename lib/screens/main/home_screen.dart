@@ -42,6 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingCharts = false;
   List<Song> _deezerPersonalizedTracks = const [];
   bool _isLoadingPersonalized = false;
+  Album? _topDeezerAlbum;
+  Artist? _suggestedDiscoveryArtist;
 
   @override
   void initState() {
@@ -50,9 +52,49 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadDeezerPersonalized();
+        _loadQuickAccessData();
         _triggerDiscoveryGeneration();
       }
     });
+  }
+
+  Future<void> _loadQuickAccessData() async {
+    try {
+      final libraryProvider =
+          Provider.of<LibraryProvider>(context, listen: false);
+      final recommendationService =
+          Provider.of<RecommendationService>(context, listen: false);
+
+      final Set<String> seedArtists = {};
+      for (final a in recommendationService.getRecommendedArtists(limit: 5)) {
+        if (a.trim().isNotEmpty) seedArtists.add(a.trim());
+      }
+      for (final alb in libraryProvider.recentAlbums.take(5)) {
+        if (alb.artist != null && alb.artist!.trim().isNotEmpty) {
+          seedArtists.add(alb.artist!.trim());
+        }
+      }
+      for (final s in (libraryProvider.starred?.songs ?? []).take(8)) {
+        if (s.artist != null && s.artist!.trim().isNotEmpty) {
+          seedArtists.add(s.artist!.trim());
+        }
+      }
+
+      final deezerService = DeezerService();
+      final topAlb = await deezerService.getChartTopAlbum();
+      final artist = await deezerService.getSuggestedDiscoveryArtist(
+        seedArtists: seedArtists.toList(),
+      );
+
+      if (mounted) {
+        setState(() {
+          _topDeezerAlbum = topAlb;
+          _suggestedDiscoveryArtist = artist;
+        });
+      }
+    } catch (e) {
+      debugPrint('[HomeScreen] Erreur chargement quick access: $e');
+    }
   }
 
   Future<void> _triggerDiscoveryGeneration({bool force = false}) async {
@@ -709,6 +751,29 @@ class _HomeScreenState extends State<HomeScreen> {
     required double hPad,
   }) {
     final cols = isDesktop ? 4 : 2;
+    final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+    final favService = FavoritePlaylistsService();
+
+    // 1. Déterminer la playlist la plus écoutée / favorite de l'utilisateur
+    Playlist? topPlaylist;
+    final favIds = favService.getFavoriteIds();
+    if (favIds.isNotEmpty) {
+      for (final p in playlists) {
+        if (favIds.contains(p.id)) {
+          topPlaylist = p;
+          break;
+        }
+      }
+    }
+    topPlaylist ??= playlists.isNotEmpty ? playlists.first : null;
+
+    final String playlistName = topPlaylist != null
+        ? topPlaylist.name
+            .replaceAll(
+                RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]', unicode: true),
+                '')
+            .trim()
+        : 'Ma playlist';
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad),
@@ -722,10 +787,12 @@ class _HomeScreenState extends State<HomeScreen> {
             spacing: spacing,
             runSpacing: spacing,
             children: [
+              // Case 1 : Titres likés
               SizedBox(
                 width: cardWidth,
                 child: QuickAccessTile(
                   title: 'Titres likés',
+                  subtitle: '${libraryProvider.starred?.songs.length ?? 0} titres',
                   customArtwork: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -743,57 +810,60 @@ class _HomeScreenState extends State<HomeScreen> {
                       NavigationHelper.push(context, const FavoritesScreen()),
                 ),
               ),
-              ...playlists.take(2).map((playlist) {
-                final cleanName = playlist.name
-                    .replaceAll(
-                        RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]',
-                            unicode: true),
-                        '')
-                    .trim();
-                return SizedBox(
-                  width: cardWidth,
-                  child: QuickAccessTile(
-                    title: cleanName.isEmpty ? playlist.name : cleanName,
-                    imageUrl: playlist.coverArt,
-                    onTap: () => _openPlaylist(context, playlist),
-                  ),
-                );
-              }),
-              if (recentAlbums.isNotEmpty)
-                ...recentAlbums.take(cols == 4 ? 5 : 3).map((album) {
-                  return SizedBox(
-                    width: cardWidth,
-                    child: QuickAccessTile(
-                      title: album.name,
-                      imageUrl: album.coverArt,
-                      onTap: () => _openAlbum(context, album.id, album: album),
-                      onPlayPressed: () => _playAlbum(context, album.id),
-                    ),
-                  );
-                })
-              else
-                ...mixes.entries.take(cols == 4 ? 5 : 3).map((entry) {
-                  final songs = entry.value;
-                  final firstCover =
-                      songs.isNotEmpty ? songs.first.coverArt : null;
-                  return SizedBox(
-                    width: cardWidth,
-                    child: QuickAccessTile(
-                      title: entry.key,
-                      imageUrl: firstCover,
-                      onTap: () {
-                        if (songs.isNotEmpty) {
-                          _playSong(context, songs.first, songs);
-                        }
-                      },
-                      onPlayPressed: () {
-                        if (songs.isNotEmpty) {
-                          _playSong(context, songs.first, songs);
-                        }
-                      },
-                    ),
-                  );
-                }),
+
+              // Case 2 : Playlist la plus écoutée / favorite
+              SizedBox(
+                width: cardWidth,
+                child: QuickAccessTile(
+                  title: playlistName.isEmpty ? 'Ma playlist' : playlistName,
+                  subtitle: 'Ma playlist',
+                  imageUrl: topPlaylist?.coverArt,
+                  onTap: () {
+                    if (topPlaylist != null) {
+                      _openPlaylist(context, topPlaylist);
+                    }
+                  },
+                ),
+              ),
+
+              // Case 3 : Top Album du moment d'après Deezer
+              SizedBox(
+                width: cardWidth,
+                child: QuickAccessTile(
+                  title: _topDeezerAlbum?.name ??
+                      (recentAlbums.isNotEmpty ? recentAlbums.first.name : 'Top Album'),
+                  subtitle: _topDeezerAlbum?.artist != null
+                      ? '${_topDeezerAlbum!.artist} • Deezer'
+                      : 'Top Album Deezer',
+                  imageUrl: _topDeezerAlbum?.coverArt ??
+                      (recentAlbums.isNotEmpty ? recentAlbums.first.coverArt : null),
+                  onTap: () {
+                    if (_topDeezerAlbum != null) {
+                      _openAlbum(context, _topDeezerAlbum!.id, album: _topDeezerAlbum);
+                    } else if (recentAlbums.isNotEmpty) {
+                      _openAlbum(context, recentAlbums.first.id, album: recentAlbums.first);
+                    }
+                  },
+                  onPlayPressed: _topDeezerAlbum != null
+                      ? () => _playAlbum(context, _topDeezerAlbum!.id)
+                      : null,
+                ),
+              ),
+
+              // Case 4 : Artiste Découverte suggéré selon ce qu'écoute l'utilisateur
+              SizedBox(
+                width: cardWidth,
+                child: QuickAccessTile(
+                  title: _suggestedDiscoveryArtist?.name ?? 'Artiste Découverte',
+                  subtitle: 'Découverte suggérée',
+                  imageUrl: _suggestedDiscoveryArtist?.coverArt,
+                  onTap: () {
+                    if (_suggestedDiscoveryArtist != null) {
+                      _openArtist(context, _suggestedDiscoveryArtist!.id);
+                    }
+                  },
+                ),
+              ),
             ],
           );
         },
