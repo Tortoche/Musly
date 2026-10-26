@@ -893,28 +893,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
 
-    // Dynamically harmonize gradient with Musly theme and active accent
-    final hsl = HSLColor.fromColor(primary);
-    final Color startColor;
-    final Color midColor;
-    final Color endColor;
-
-    if (primary == AppTheme.brandRed ||
-        primary.toARGB32() == AppTheme.brandRed.toARGB32()) {
-      startColor = const Color(0xFF991B1B);
-      midColor = AppTheme.brandRed;
-      endColor = AppTheme.brandPink;
-    } else {
-      startColor = hsl
-          .withLightness((hsl.lightness * 0.72).clamp(0.18, 0.8))
-          .toColor();
-      midColor = primary;
-      endColor = hsl
-          .withHue((hsl.hue + 14) % 360)
-          .withLightness((hsl.lightness * 1.12).clamp(0.2, 0.88))
-          .toColor();
-    }
+    // Background sober and aligned with theme (black/dark surface in dark mode, white in light mode)
+    final cardBg = isDark
+        ? (theme.scaffoldBackgroundColor == Colors.black
+            ? const Color(0xFF0F0F12)
+            : const Color(0xFF18181C))
+        : Colors.white;
+    final borderColor =
+        isDark ? const Color(0x1FFFFFFF) : const Color(0x14000000);
 
     final cleanTitle = discoveryPlaylist.name
         .replaceAll(
@@ -931,17 +919,14 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             height: isDesktop ? 180 : 155,
             decoration: BoxDecoration(
+              color: cardBg,
               borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
-                colors: [startColor, midColor, endColor],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              border: Border.all(color: borderColor, width: 0.8),
               boxShadow: [
                 BoxShadow(
-                  color: primary.withValues(alpha: 0.32),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -953,7 +938,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Icon(
                     CupertinoIcons.sparkles,
                     size: 140,
-                    color: Colors.white.withValues(alpha: 0.12),
+                    color: primary.withValues(alpha: isDark ? 0.05 : 0.03),
                   ),
                 ),
                 Padding(
@@ -967,18 +952,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.22),
+                              color: primary.withValues(alpha: isDark ? 0.16 : 0.12),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(CupertinoIcons.sparkles, color: Colors.white, size: 13),
-                                SizedBox(width: 5),
+                                Icon(CupertinoIcons.sparkles, color: primary, size: 13),
+                                const SizedBox(width: 5),
                                 Text(
                                   'DÉCOUVERTES DU JOUR #1',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: primary,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 11,
                                     letterSpacing: 1.1,
@@ -991,7 +976,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             '${discoveryPlaylist.songCount ?? 35} titres',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
+                              color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF8E8E93),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1008,8 +993,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   cleanTitle.isEmpty ? discoveryPlaylist.name : cleanTitle,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: primary,
                                     fontSize: 19,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: -0.4,
@@ -1021,7 +1006,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.85),
+                                    color: isDark ? const Color(0xFF9E9E9E) : const Color(0xFF6E6E73),
                                     fontSize: 12,
                                   ),
                                 ),
@@ -1044,20 +1029,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Container(
                               width: 50,
                               height: 50,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
+                              decoration: BoxDecoration(
+                                color: primary,
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 3),
+                                    color: primary.withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.play_arrow_rounded,
-                                color: primary,
+                                color: Colors.white,
                                 size: 32,
                               ),
                             ),
