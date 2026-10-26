@@ -1,3 +1,4 @@
+import '../services/favorite_songs_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'dart:async';
@@ -3125,47 +3126,41 @@ class PlayerProvider extends ChangeNotifier
   Future<void> toggleFavorite() async {
     if (_currentSong == null) return;
 
-    final isStarred = _currentSong!.starred == true;
+    final song = _currentSong!;
+    final newStarred = await FavoriteSongsService().toggleFavorite(
+      song,
+      _subsonicService,
+      offlineService: _offlineService,
+      libraryProvider: _libraryProvider,
+    );
 
-    final newSong = _currentSong!.copyWith(starred: !isStarred);
-    _currentSong = newSong;
-    notifyListeners();
-
-    try {
-      if (isStarred) {
-        await _subsonicService.unstar(id: newSong.id);
-      } else {
-        await _subsonicService.star(id: newSong.id);
-        await _offlineService.autoDownloadIfEnabled(
-            newSong, _subsonicService, _libraryProvider);
-      }
-      _libraryProvider?.loadStarred();
-    } catch (e) {
-      debugPrint('Error toggling favorite: $e');
-      _currentSong = _currentSong!.copyWith(starred: isStarred);
-      notifyListeners();
+    _currentSong = _currentSong!.copyWith(starred: newStarred);
+    if (_currentIndex >= 0 && _currentIndex < _queue.length) {
+      _queue[_currentIndex] =
+          _queue[_currentIndex].copyWith(starred: newStarred);
     }
+    notifyListeners();
+    _libraryProvider?.loadStarred();
   }
 
   Future<void> toggleFavoriteForSong(Song song) async {
-    final isStarred = song.starred == true;
-    try {
-      if (isStarred) {
-        await _subsonicService.unstar(id: song.id);
-      } else {
-        await _subsonicService.star(id: song.id);
-        await _offlineService.autoDownloadIfEnabled(
-            song, _subsonicService, _libraryProvider);
-      }
-      _libraryProvider?.loadStarred();
+    final newStarred = await FavoriteSongsService().toggleFavorite(
+      song,
+      _subsonicService,
+      offlineService: _offlineService,
+      libraryProvider: _libraryProvider,
+    );
 
-      if (_currentSong?.id == song.id) {
-        _currentSong = _currentSong!.copyWith(starred: !isStarred);
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('Error toggling favorite for song: $e');
+    if (_currentSong?.id == song.id) {
+      _currentSong = _currentSong!.copyWith(starred: newStarred);
     }
+    for (int i = 0; i < _queue.length; i++) {
+      if (_queue[i].id == song.id) {
+        _queue[i] = _queue[i].copyWith(starred: newStarred);
+      }
+    }
+    notifyListeners();
+    _libraryProvider?.loadStarred();
   }
 
   Future<void> setRating(String songId, int rating) async {

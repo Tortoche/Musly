@@ -25,3 +25,5 @@ export 'playlist_import_service.dart';
 export 'wakelock_service.dart';
 export 'deezer_service.dart';
 export 'crossfade_service.dart';
+
+export 'favorite_songs_service.dart';

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../services/subsonic_service.dart';
 import '../../services/offline_service.dart';
+import '../../services/favorite_songs_service.dart';
 import '../../providers/player_provider.dart';
 import '../../utils/navigation_helper.dart';
 import '../../widgets/widgets.dart';
@@ -34,11 +35,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     try {
       final subsonic = Provider.of<SubsonicService>(context, listen: false);
+      final favoriteService = FavoriteSongsService();
+      await favoriteService.initialize(subsonic);
+      final songs = await favoriteService.getFavoriteSongs(subsonic);
       final starred = await subsonic.getStarred();
 
       if (mounted) {
         setState(() {
-          _favoriteSongs = starred.songs;
+          _favoriteSongs = songs;
           _favoriteAlbums = starred.albums;
           _isLoading = false;
         });
@@ -228,7 +232,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 listen: false,
               );
               try {
-                await subsonic.unstar(id: song.id);
+                await FavoriteSongsService().toggleFavorite(song, subsonic);
                 setState(() {
                   _favoriteSongs.removeAt(index);
                 });

@@ -1,3 +1,4 @@
+import '../../services/favorite_songs_service.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -792,7 +793,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: cardWidth,
                 child: QuickAccessTile(
                   title: 'Titres likés',
-                  subtitle: '${libraryProvider.starred?.songs.length ?? 0} titres',
+                  subtitle: '${FavoriteSongsService().count > 0 ? FavoriteSongsService().count : (libraryProvider.starred?.songs.length ?? 0)} titres',
                   customArtwork: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(

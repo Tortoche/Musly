@@ -377,13 +377,19 @@ class SubsonicService {
       final response = await _dio.get(url);
       final data = response.data;
 
+      Map<String, dynamic> responseMap;
       if (data is String) {
-        return json.decode(data);
+        responseMap = json.decode(data) as Map<String, dynamic>;
+      } else if (data is Map<String, dynamic>) {
+        responseMap = data;
+      } else {
+        throw Exception('Invalid response format');
       }
 
-      final subsonicResponse = data['subsonic-response'];
+      final subsonicResponse =
+          responseMap['subsonic-response'] as Map<String, dynamic>?;
       if (subsonicResponse == null) {
-        throw Exception('Invalid response format');
+        throw Exception('Invalid response format: missing subsonic-response');
       }
 
       if (subsonicResponse['status'] != 'ok') {

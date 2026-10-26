@@ -15,6 +15,7 @@ import 'package:musly/models/song.dart';
 import 'package:musly/services/palette_service.dart';
 import 'package:musly/services/subsonic_service.dart';
 import 'package:musly/services/offline_service.dart';
+import 'package:musly/services/favorite_songs_service.dart';
 import 'package:musly/services/lrc_ttml_parser.dart';
 import 'package:musly/widgets/now_playing/queue_view.dart';
 import 'package:musly/widgets/now_playing/now_playing_more_menu.dart';
@@ -627,20 +628,28 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               ],
             ),
           ),
-          IconButton(
-            tooltip: isStarred ? 'Remove from favorites' : 'Add to favorites',
-            icon: Icon(
-              isStarred
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              color: isStarred
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.white,
-              size: isLandscape ? 22 : 24,
-            ),
-            onPressed: () {
-              if (currentSong == null) return;
-              provider.toggleFavorite();
+          ListenableBuilder(
+            listenable: FavoriteSongsService().starredSongIds,
+            builder: (context, _) {
+              final isFav = currentSong != null &&
+                  (FavoriteSongsService().isStarred(currentSong.id) ||
+                      currentSong.starred == true);
+              return IconButton(
+                tooltip: isFav ? 'Remove from favorites' : 'Add to favorites',
+                icon: Icon(
+                  isFav
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: isFav
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.white,
+                  size: isLandscape ? 22 : 24,
+                ),
+                onPressed: () {
+                  if (currentSong == null) return;
+                  provider.toggleFavorite();
+                },
+              );
             },
           ),
           _buildDownloadButton(context, currentSong, isLandscape),
@@ -836,7 +845,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         final currentSong = provider.currentSong ?? widget.song;
         final title = currentSong?.title ?? widget.title;
         final artist = currentSong?.artist ?? widget.artist;
-        final isStarred = currentSong?.starred ?? false;
+        final isStarred = currentSong != null && (FavoriteSongsService().isStarred(currentSong.id) || currentSong.starred == true);
 
         if (isLandscape) {
           return _buildLandscapeLayout(

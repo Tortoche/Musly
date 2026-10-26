@@ -162,6 +162,9 @@ void main() async {
   FavoritePlaylistsService().initialize().catchError((e) {
     debugPrint('Failed to initialize favorite playlists service: $e');
   });
+  FavoriteSongsService().initialize(subsonicService).catchError((e) {
+    debugPrint('Failed to initialize favorite songs service: $e');
+  });
 
   PlaylistCoverService().init().catchError((e) {
     debugPrint('Failed to initialize playlist cover service: $e');
