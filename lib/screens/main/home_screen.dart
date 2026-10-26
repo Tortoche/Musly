@@ -78,9 +78,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ? libraryProvider.cachedAllSongs
           : libraryProvider.randomSongs;
 
+      final subsonicService = Provider.of<SubsonicService>(context, listen: false);
       await DiscoveryService().generateDailyDiscovery(
         userTopArtists: topArtists.toList(),
         userLibrarySongs: librarySongs,
+        subsonicService: subsonicService,
         forceRefresh: force,
       );
       if (mounted) setState(() {});
