@@ -1044,19 +1044,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final primary = theme.colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Background sober and aligned with theme (black/dark surface in dark mode, white in light mode)
-    final cardBg = isDark
-        ? (theme.scaffoldBackgroundColor == Colors.black
-            ? const Color(0xFF0F0F12)
-            : const Color(0xFF18181C))
-        : Colors.white;
-    final borderColor =
-        isDark ? const Color(0x1FFFFFFF) : const Color(0x14000000);
-
     final cleanTitle = discoveryPlaylist.name
         .replaceAll(
             RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]', unicode: true), '')
         .trim();
+
+    final coverArt = discoveryPlaylist.coverArt;
+    final bannerHeight = isDesktop ? 190.0 : 165.0;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 4),
@@ -1064,50 +1058,119 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openPlaylist(context, discoveryPlaylist),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           child: Container(
-            height: isDesktop ? 180 : 155,
+            height: bannerHeight,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: borderColor, width: 0.8),
+              color: isDark ? const Color(0xFF0C0C0F) : Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isDark ? const Color(0x24FFFFFF) : const Color(0x14000000),
+                width: 0.8,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                  blurRadius: 14,
+                  color: primary.withValues(alpha: isDark ? 0.22 : 0.12),
+                  blurRadius: 24,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.08),
+                  blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: Stack(
               children: [
-                Positioned(
-                  right: -15,
-                  bottom: -15,
-                  child: Icon(
-                    CupertinoIcons.sparkles,
-                    size: 140,
-                    color: primary.withValues(alpha: isDark ? 0.05 : 0.03),
+                // 1. Dégradé de fond riche et vibrant style Apple Music
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [
+                                primary.withValues(alpha: 0.28),
+                                const Color(0xFF8B5CF6).withValues(alpha: 0.16),
+                                const Color(0xFF090A0F),
+                              ]
+                            : [
+                                primary.withValues(alpha: 0.15),
+                                const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+                                Colors.white,
+                              ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        stops: const [0.0, 0.55, 1.0],
+                      ),
+                    ),
                   ),
                 ),
+
+                // 2. Halo lumineux radial dans l'angle supérieur gauche
+                Positioned(
+                  top: -40,
+                  left: -40,
+                  child: Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          primary.withValues(alpha: isDark ? 0.35 : 0.25),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 3. Pochette de l'album en filigrane dynamique à droite (effet glassmorphism)
+                if (coverArt != null && coverArt.isNotEmpty)
+                  Positioned(
+                    right: -25,
+                    top: -25,
+                    bottom: -25,
+                    width: bannerHeight + 50,
+                    child: Opacity(
+                      opacity: isDark ? 0.20 : 0.14,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: AlbumArtwork(
+                          coverArt: coverArt,
+                          size: bannerHeight + 50,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 4. Contenu au premier plan
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // Badge supérieur
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
                             decoration: BoxDecoration(
-                              color: primary.withValues(alpha: isDark ? 0.16 : 0.12),
+                              color: primary.withValues(alpha: isDark ? 0.25 : 0.18),
                               borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: primary.withValues(alpha: 0.35),
+                                width: 0.6,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(CupertinoIcons.sparkles, color: primary, size: 13),
+                                Icon(CupertinoIcons.sparkles, color: primary, size: 12.5),
                                 const SizedBox(width: 5),
                                 Text(
                                   'À LA UNE • MIX DU JOUR',
@@ -1122,48 +1185,82 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           const Spacer(),
-                          Text(
-                            '${discoveryPlaylist.songCount ?? 35} titres',
-                            style: TextStyle(
-                              color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF8E8E93),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.06),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${discoveryPlaylist.songCount ?? 35} titres',
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFFC7C7CC) : const Color(0xFF636366),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
                       ),
+
+                      // Titre & Sous-titre & Bouton Play avec artwork miniature
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
+                          if (coverArt != null && coverArt.isNotEmpty) ...[
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primary.withValues(alpha: 0.40),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: AlbumArtwork(
+                                  coverArt: coverArt,
+                                  size: 58,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                          ],
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   cleanTitle.isEmpty ? discoveryPlaylist.name : cleanTitle,
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: primary,
-                                    fontSize: 19,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: -0.4,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                    height: 1.15,
                                   ),
                                 ),
-                                const SizedBox(height: 3),
+                                const SizedBox(height: 4),
                                 Text(
-                                  'Sélectionné pour vous d\'après vos artistes préférés',
+                                  '35 pépites selon vos écoutes',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: isDark ? const Color(0xFF9E9E9E) : const Color(0xFF6E6E73),
+                                    color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF6B7280),
                                     fontSize: 12,
-                                    letterSpacing: -0.2,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 12),
                           GestureDetector(
                             onTap: () async {
                               final libraryProvider =
@@ -1184,9 +1281,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: primary.withValues(alpha: 0.35),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 3),
+                                    color: primary.withValues(alpha: 0.45),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
@@ -1209,6 +1306,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
 }
 
 class _FavoritePlaylistRow extends StatefulWidget {
