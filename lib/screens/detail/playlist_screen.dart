@@ -44,7 +44,8 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.playlistId == DiscoveryService.kDiscoveryPlaylistId) {
+    if (widget.playlistId == DiscoveryService.kDiscoveryPlaylistId ||
+        widget.playlistId.startsWith('pl_discovery_')) {
       _playlist = DiscoveryService().currentDiscoveryPlaylist;
       if (_playlist != null && _playlist!.songs != null && _playlist!.songs!.isNotEmpty) {
         _isLoading = false;
@@ -98,9 +99,21 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     );
 
     try {
-      if (widget.playlistId == DiscoveryService.kDiscoveryPlaylistId) {
-        final disc = DiscoveryService().currentDiscoveryPlaylist;
-        if (disc != null && mounted) {
+      if (widget.playlistId == DiscoveryService.kDiscoveryPlaylistId ||
+          widget.playlistId.startsWith('pl_discovery_')) {
+        var disc = DiscoveryService().currentDiscoveryPlaylist;
+        if (disc == null) {
+          final topArtists = libraryProvider.artists.map((a) => a.name).take(10).toList();
+          final libSongs = libraryProvider.cachedAllSongs.isNotEmpty
+              ? libraryProvider.cachedAllSongs
+              : libraryProvider.randomSongs;
+          disc = await DiscoveryService().generateDailyDiscovery(
+            userTopArtists: topArtists,
+            userLibrarySongs: libSongs,
+            subsonicService: subsonicService,
+          );
+        }
+        if (mounted) {
           setState(() {
             _playlist = disc;
             _isLoading = false;

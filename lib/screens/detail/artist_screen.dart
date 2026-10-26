@@ -12,8 +12,15 @@ import 'package:musly/utils/navigation_helper.dart';
 
 class ArtistScreen extends StatefulWidget {
   final String artistId;
+  final String? artistName;
+  final Artist? initialArtist;
 
-  const ArtistScreen({super.key, required this.artistId});
+  const ArtistScreen({
+    super.key,
+    required this.artistId,
+    this.artistName,
+    this.initialArtist,
+  });
 
   @override
   State<ArtistScreen> createState() => _ArtistScreenState();
@@ -33,6 +40,11 @@ class _ArtistScreenState extends State<ArtistScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialArtist != null) {
+      _artist = widget.initialArtist;
+    } else if (widget.artistName != null && widget.artistName!.isNotEmpty) {
+      _artist = Artist(id: widget.artistId, name: widget.artistName!);
+    }
     _loadArtistDetails();
   }
 
@@ -148,18 +160,40 @@ class _ArtistScreenState extends State<ArtistScreen> {
         }
 
         // Enrichissement universel Deezer :
-        // 1. Trouver le Deezer artist ID si l'artiste vient de Subsonic
+        // 1. Trouver le Deezer artist ID si l'artiste vient de Subsonic ou Deezer
         String? deezerArtistId = widget.artistId.startsWith('ext_dz_')
-            ? widget.artistId.replaceAll('ext_dz_', '')
+            ? widget.artistId.replaceAll('ext_dz_', '').replaceAll('ar-', '')
             : (int.tryParse(widget.artistId) != null ? widget.artistId : null);
 
-        if (deezerArtistId == null && artist?.name != null) {
+        if (deezerArtistId == null && (artist?.name != null || widget.artistName != null)) {
+          final queryName = artist?.name ?? widget.artistName;
+          if (queryName != null && queryName.isNotEmpty) {
+            try {
+              final matched = await DeezerService().searchArtistByName(queryName);
+              if (matched != null) {
+                deezerArtistId = matched.id;
+                artist ??= matched;
+              }
+            } catch (_) {}
+          }
+        }
+
+        if (artist == null && deezerArtistId != null) {
           try {
-            final matched = await DeezerService().searchArtistByName(artist!.name);
-            if (matched != null) {
-              deezerArtistId = matched.id;
+            final dzArtist = await DeezerService().getArtist(deezerArtistId);
+            if (dzArtist != null) {
+              artist = dzArtist;
             }
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('[ArtistScreen] Error fetching Deezer artist: $e');
+          }
+        }
+
+        if (artist == null && widget.initialArtist != null) {
+          artist = widget.initialArtist;
+        }
+        if (artist == null && widget.artistName != null && widget.artistName!.isNotEmpty) {
+          artist = Artist(id: widget.artistId, name: widget.artistName!);
         }
 
         // 2. Récupérer les vrais albums officiels studio Deezer

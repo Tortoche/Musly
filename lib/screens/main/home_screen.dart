@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    DiscoveryService().addListener(_onDiscoveryChanged);
     _loadDeezerCharts();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -58,6 +59,16 @@ class _HomeScreenState extends State<HomeScreen> {
         _triggerDiscoveryGeneration();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    DiscoveryService().removeListener(_onDiscoveryChanged);
+    super.dispose();
+  }
+
+  void _onDiscoveryChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadQuickAccessData() async {
@@ -272,10 +283,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openArtist(BuildContext context, String artistId) {
+  void _openArtist(BuildContext context, String artistId, {String? artistName, Artist? artist}) {
     NavigationHelper.push(
       context,
-      ArtistScreen(artistId: artistId),
+      ArtistScreen(
+        artistId: artistId,
+        artistName: artistName ?? artist?.name,
+        initialArtist: artist,
+      ),
     );
   }
 
@@ -861,7 +876,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   imageUrl: _suggestedDiscoveryArtist?.coverArt,
                   onTap: () {
                     if (_suggestedDiscoveryArtist != null) {
-                      _openArtist(context, _suggestedDiscoveryArtist!.id);
+                      _openArtist(
+                        context,
+                        _suggestedDiscoveryArtist!.id,
+                        artist: _suggestedDiscoveryArtist,
+                      );
                     }
                   },
                 ),

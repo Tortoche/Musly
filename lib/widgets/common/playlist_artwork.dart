@@ -34,43 +34,7 @@ class PlaylistArtwork extends StatelessWidget {
       builder: (context, _, __) {
         final playlistId = playlist?.id ?? '';
 
-        var effectiveCoverArt = coverArt ?? playlist?.coverArt;
-        if ((effectiveCoverArt == null || effectiveCoverArt.isEmpty) &&
-            playlistId.isNotEmpty) {
-          try {
-            final lib = Provider.of<LibraryProvider>(context, listen: false);
-            final found = lib.playlists.firstWhere(
-              (p) => p.id == playlistId,
-              orElse: () => playlist!,
-            );
-            if (found.coverArt != null && found.coverArt!.isNotEmpty) {
-              effectiveCoverArt = found.coverArt;
-            }
-          } catch (_) {}
-        }
-
-        if (effectiveCoverArt != null && effectiveCoverArt.isNotEmpty) {
-          return AlbumArtwork(
-            coverArt: effectiveCoverArt,
-            size: validSize,
-            borderRadius: borderRadius,
-            shadow: shadow,
-          );
-        }
-
-        if (playlistId.isNotEmpty) {
-          final cachedMosaicPath =
-              PlaylistCoverService().getCoverPath(playlistId);
-          if (cachedMosaicPath != null) {
-            return AlbumArtwork(
-              coverArt: cachedMosaicPath,
-              size: validSize,
-              borderRadius: borderRadius,
-              shadow: shadow,
-            );
-          }
-        }
-
+        // 1. Récupérer les chansons pour le collage 2x2 (top 4 morceaux)
         List<Song> allSongs = songs ?? playlist?.songs ?? [];
         if (allSongs.isEmpty && playlist != null) {
           try {
@@ -95,6 +59,7 @@ class PlaylistArtwork extends StatelessWidget {
           }
         }
 
+        // Si la playlist possède 2 morceaux ou plus, on privilégie TOUJOURS la grille 2x2
         if (distinctCovers.length >= 4) {
           return _build2x2Grid(
             validSize,
@@ -128,15 +93,46 @@ class PlaylistArtwork extends StatelessWidget {
           );
         }
 
-        final explicitArt = coverArt ?? playlist?.coverArt;
-        if (explicitArt != null && explicitArt.isNotEmpty) {
+        // 2. Si les chansons ne sont pas encore en mémoire, vérifier si une mosaïque 2x2 est en cache
+        if (playlistId.isNotEmpty) {
+          final cachedMosaicPath =
+              PlaylistCoverService().getCoverPath(playlistId);
+          if (cachedMosaicPath != null) {
+            return AlbumArtwork(
+              coverArt: cachedMosaicPath,
+              size: validSize,
+              borderRadius: borderRadius,
+              shadow: shadow,
+            );
+          }
+        }
+
+        // 3. Repli : pochette explicite ou pochette du serveur
+        var effectiveCoverArt = coverArt ?? playlist?.coverArt;
+        if ((effectiveCoverArt == null || effectiveCoverArt.isEmpty) &&
+            playlistId.isNotEmpty) {
+          try {
+            final lib = Provider.of<LibraryProvider>(context, listen: false);
+            final found = lib.playlists.firstWhere(
+              (p) => p.id == playlistId,
+              orElse: () => playlist!,
+            );
+            if (found.coverArt != null && found.coverArt!.isNotEmpty) {
+              effectiveCoverArt = found.coverArt;
+            }
+          } catch (_) {}
+        }
+
+        if (effectiveCoverArt != null && effectiveCoverArt.isNotEmpty) {
           return AlbumArtwork(
-            coverArt: explicitArt,
+            coverArt: effectiveCoverArt,
             size: validSize,
             borderRadius: borderRadius,
             shadow: shadow,
           );
         }
+
+
 
         return Container(
           width: validSize,

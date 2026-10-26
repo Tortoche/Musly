@@ -354,9 +354,13 @@ class _PlaylistSelectionBottomSheetState
                       }
 
                       try {
-                        await subsonic.updatePlaylist(
-                            playlistId: playlist.id,
-                            songIdsToAdd: [widget.song.id]);
+                        final libProvider = Provider.of<
+                            musly_library_provider.LibraryProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await libProvider.addSongToPlaylist(
+                            playlist.id, widget.song);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(

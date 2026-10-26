@@ -162,15 +162,13 @@ class SongOptionsModal extends StatefulWidget {
                                 'Attempting to add song ${song.id} (${song.title}) to playlist ${playlist.id} (${playlist.name})',
                               );
 
-                              await subsonicService.updatePlaylist(
-                                playlistId: playlist.id,
-                                songIdsToAdd: [song.id],
+                              await libProvider.addSongToPlaylist(
+                                playlist.id,
+                                song,
                               );
 
                               debugPrint(
-                                  'Successfully added song to playlist via API');
-
-                              await libProvider.loadPlaylists();
+                                  'Successfully added song to playlist');
 
                               debugPrint('Playlists refreshed');
 

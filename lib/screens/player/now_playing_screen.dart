@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:musly/widgets/common/blurred_gradient_background.dart';
@@ -31,7 +32,45 @@ import 'package:musly/theme/app_theme.dart';
 import 'package:musly/services/theme_service.dart';
 
 class NowPlayingScreen extends StatefulWidget {
+  static bool _isOpen = false;
+
+  static ImageProvider resolveImageProvider(Song? song, SubsonicService? subsonic) {
+    if (song == null) {
+      return const AssetImage('assets/logo.png');
+    }
+    final offline = OfflineService();
+    if (offline.isSongDownloaded(song.id)) {
+      final localPath = offline.getLocalCoverArtPath(song.id);
+      if (localPath != null && File(localPath).existsSync()) {
+        return FileImage(File(localPath));
+      }
+    }
+    if (song.coverArt != null && song.coverArt!.isNotEmpty) {
+      final ca = song.coverArt!;
+      if (ca.startsWith('/') || (ca.length > 2 && ca[1] == ':')) {
+        if (File(ca).existsSync()) {
+          return FileImage(File(ca));
+        }
+      }
+      final offlineCover = offline.getLocalCoverArtPathByCoverArtId(ca);
+      if (offlineCover != null && File(offlineCover).existsSync()) {
+        return FileImage(File(offlineCover));
+      }
+      if (ca.startsWith('http://') || ca.startsWith('https://')) {
+        return CachedNetworkImageProvider(ca);
+      }
+      if (subsonic != null) {
+        final url = subsonic.getCoverArtUrl(ca, size: 800);
+        if (url.isNotEmpty) {
+          return CachedNetworkImageProvider(url);
+        }
+      }
+    }
+    return const AssetImage('assets/logo.png');
+  }
+
   static void open(BuildContext context, {Song? song}) {
+    if (_isOpen) return;
     try {
       final player = Provider.of<PlayerProvider>(context, listen: false);
       final targetSong = song ?? player.currentSong;
@@ -41,14 +80,10 @@ class NowPlayingScreen extends StatefulWidget {
       if (isTv) return;
 
       final subsonic = Provider.of<SubsonicService>(context, listen: false);
-      final coverUrl = targetSong.coverArt != null
-          ? subsonic.getCoverArtUrl(targetSong.coverArt, size: 800)
-          : null;
-      final imageProvider = (coverUrl != null && coverUrl.isNotEmpty)
-          ? CachedNetworkImageProvider(coverUrl) as ImageProvider
-          : const AssetImage('assets/logo.png') as ImageProvider;
+      final imageProvider = resolveImageProvider(targetSong, subsonic);
       final topPadding = MediaQuery.of(context).padding.top;
 
+      _isOpen = true;
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -66,8 +101,11 @@ class NowPlayingScreen extends StatefulWidget {
           heroTag: 'cover_${targetSong.id}',
           song: targetSong,
         ),
-      );
+      ).whenComplete(() {
+        _isOpen = false;
+      });
     } catch (e) {
+      _isOpen = false;
       debugPrint('[NowPlayingScreen] open error: $e');
     }
   }
@@ -135,13 +173,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
   Future<void> _updateImageProviderAndColors() async {
     if (_lastSong == null) return;
     final subsonic = Provider.of<SubsonicService>(context, listen: false);
-    final coverUrl = _lastSong!.coverArt != null
-        ? subsonic.getCoverArtUrl(_lastSong!.coverArt, size: 800)
-        : null;
-    if (coverUrl != null && coverUrl.isNotEmpty) {
-      _currentImageProvider = CachedNetworkImageProvider(coverUrl);
+    final provider = NowPlayingScreen.resolveImageProvider(_lastSong, subsonic);
+    if (mounted) {
+      setState(() {
+        _currentImageProvider = provider;
+      });
     } else {
-      _currentImageProvider = const AssetImage('assets/logo.png');
+      _currentImageProvider = provider;
     }
     _extractColors();
   }
@@ -969,8 +1007,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                               }
                             },
                             child: AlbumArtView(
+                              song: currentSong,
+                              coverArt: currentSong?.coverArt,
                               image: _currentImageProvider ?? widget.image,
-                              tag: currentSong?.id ?? widget.heroTag,
+                              tag: 'cover_${currentSong?.id ?? widget.heroTag}',
                               dominantColor: accentColor,
                             ),
                           ),
@@ -1166,8 +1206,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                           }
                         },
                         child: AlbumArtView(
+                          song: currentSong,
+                          coverArt: currentSong?.coverArt,
                           image: _currentImageProvider ?? widget.image,
-                          tag: currentSong?.id ?? widget.heroTag,
+                          tag: 'cover_${currentSong?.id ?? widget.heroTag}',
                           dominantColor: accentColor,
                         ),
                       ),
