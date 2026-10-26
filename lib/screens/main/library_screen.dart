@@ -427,10 +427,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     if (_selectedFilter == 'Downloaded') {
-      final downloadedIds = offlineService.getDownloadedSongIds();
-      final downloadedSongs = libraryProvider.cachedAllSongs
-          .where((s) => downloadedIds.contains(s.id))
-          .toList();
+      final downloadedSongs = offlineService
+          .getDownloadedSongsSync(libraryProvider.cachedAllSongs);
       for (final song in downloadedSongs) {
         items.add(
           _LibraryItem(

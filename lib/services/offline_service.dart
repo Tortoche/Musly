@@ -1,3 +1,4 @@
+import 'library_database_service.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -86,6 +87,8 @@ class OfflineService {
   bool _isBackgroundDownloadActive = false;
 
   static const String _keyDownloadedSongs = 'offline_downloaded_songs';
+  static const String _keyDownloadedSongsData = 'offline_downloaded_songs_data';
+  final Map<String, Song> _downloadedSongsMap = {};
   static const String _keyPendingScrobbles = 'pending_scrobbles';
   static const String _keyExpectedSizes = 'offline_expected_sizes';
   static const String _keyQueuedPlaylists = 'offline_queued_playlists';
@@ -149,6 +152,19 @@ class OfflineService {
     final offlineDirectory = Directory(_offlineDir!);
     if (!await offlineDirectory.exists()) {
       await offlineDirectory.create(recursive: true);
+    }
+
+    final songsDataJson = _prefs?.getString(_keyDownloadedSongsData);
+    if (songsDataJson != null) {
+      try {
+        final decoded = json.decode(songsDataJson) as Map<String, dynamic>;
+        decoded.forEach((k, v) {
+          try {
+            _downloadedSongsMap[k] =
+                Song.fromJson(Map<String, dynamic>.from(v as Map));
+          } catch (_) {}
+        });
+      } catch (_) {}
     }
 
     final sizesJson = _prefs?.getString(_keyExpectedSizes);
@@ -460,6 +476,11 @@ class OfflineService {
       }
 
       downloadedSongIds.value = {...downloadedSongIds.value, song.id};
+      _downloadedSongsMap[song.id] = song;
+      await _persistDownloadedSongsData();
+      try {
+        await LibraryDatabaseService().insertOrUpdateSong(song);
+      } catch (_) {}
 
       try {
         if (song.coverArt != null) {
@@ -730,6 +751,115 @@ class OfflineService {
       onProgress: onProgress,
       onComplete: onComplete,
     );
+  }
+
+    List<Song> getDownloadedSongsSync([List<Song>? fallbackSongs]) {
+    final ids = downloadedSongIds.value.isNotEmpty
+        ? downloadedSongIds.value
+        : getDownloadedSongIds().toSet();
+
+    if (fallbackSongs != null && fallbackSongs.isNotEmpty) {
+      for (final s in fallbackSongs) {
+        if (ids.contains(s.id) && !_downloadedSongsMap.containsKey(s.id)) {
+          _downloadedSongsMap[s.id] = s;
+        }
+      }
+    }
+
+    final songs = <Song>[];
+    for (final id in ids) {
+      if (_downloadedSongsMap.containsKey(id)) {
+        songs.add(_downloadedSongsMap[id]!);
+      } else {
+        songs.add(
+          Song(
+            id: id,
+            title: 'Titre téléchargé',
+            artist: 'Artiste inconnu',
+          ),
+        );
+      }
+    }
+    return songs;
+  }
+
+  Future<List<Song>> getDownloadedSongs({
+    SubsonicService? subsonicService,
+    List<Song>? fallbackSongs,
+  }) async {
+    if (_offlineDir == null) await initialize();
+
+    final ids = downloadedSongIds.value.isNotEmpty
+        ? downloadedSongIds.value
+        : getDownloadedSongIds().toSet();
+
+    if (fallbackSongs != null && fallbackSongs.isNotEmpty) {
+      for (final s in fallbackSongs) {
+        if (ids.contains(s.id) && !_downloadedSongsMap.containsKey(s.id)) {
+          _downloadedSongsMap[s.id] = s;
+        }
+      }
+    }
+
+    final result = <Song>[];
+    final missingIds = <String>[];
+
+    for (final id in ids) {
+      if (_downloadedSongsMap.containsKey(id)) {
+        result.add(_downloadedSongsMap[id]!);
+      } else {
+        missingIds.add(id);
+      }
+    }
+
+    if (missingIds.isNotEmpty) {
+      try {
+        final dbSongs = await LibraryDatabaseService().getSongs(missingIds);
+        for (final s in dbSongs) {
+          _downloadedSongsMap[s.id] = s;
+          result.add(s);
+          missingIds.remove(s.id);
+        }
+      } catch (_) {}
+
+      if (missingIds.isNotEmpty && subsonicService != null && subsonicService.isConfigured) {
+        for (final id in List<String>.from(missingIds)) {
+          try {
+            final s = await subsonicService.getSong(id);
+            if (s != null) {
+              _downloadedSongsMap[s.id] = s;
+              result.add(s);
+              missingIds.remove(s.id);
+              await LibraryDatabaseService().insertOrUpdateSong(s);
+            }
+          } catch (_) {}
+        }
+      }
+
+      for (final id in missingIds) {
+        final fallback = Song(
+          id: id,
+          title: 'Morceau hors-ligne',
+          artist: 'Musly',
+        );
+        _downloadedSongsMap[id] = fallback;
+        result.add(fallback);
+      }
+
+      await _persistDownloadedSongsData();
+    }
+
+    return result;
+  }
+
+  Future<void> _persistDownloadedSongsData() async {
+    try {
+      final jsonMap = <String, dynamic>{};
+      _downloadedSongsMap.forEach((k, v) {
+        jsonMap[k] = v.toJson();
+      });
+      await _prefs?.setString(_keyDownloadedSongsData, json.encode(jsonMap));
+    } catch (_) {}
   }
 
   Future<bool> deleteSong(String songId) async {

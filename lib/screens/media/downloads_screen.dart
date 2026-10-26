@@ -1,3 +1,4 @@
+import '../../services/subsonic_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/models.dart';
@@ -35,22 +36,44 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           Provider.of<OfflineService>(context, listen: false);
       final libraryProvider =
           Provider.of<LibraryProvider>(context, listen: false);
+      final subsonic =
+          Provider.of<SubsonicService>(context, listen: false);
 
       await offlineService.initialize();
-      final downloadedIds = offlineService.getDownloadedSongIds();
+      final downloadedSongs = await offlineService.getDownloadedSongs(
+        subsonicService: subsonic,
+        fallbackSongs: libraryProvider.cachedAllSongs,
+      );
 
-      _downloadedSongs = libraryProvider.cachedAllSongs
-          .where((s) => downloadedIds.contains(s.id))
-          .toList();
+      _downloadedSongs = downloadedSongs;
 
       final albumIdsWithDownloads = _downloadedSongs
           .map((s) => s.albumId)
           .where((id) => id != null)
           .toSet();
 
-      _downloadedAlbums = libraryProvider.recentAlbums
-          .where((a) => albumIdsWithDownloads.contains(a.id))
-          .toList();
+      final albumsMap = <String, Album>{};
+      for (final a in libraryProvider.recentAlbums) {
+        if (albumIdsWithDownloads.contains(a.id)) {
+          albumsMap[a.id] = a;
+        }
+      }
+      for (final s in _downloadedSongs) {
+        if (s.albumId != null && !albumsMap.containsKey(s.albumId)) {
+          albumsMap[s.albumId!] = Album(
+            id: s.albumId!,
+            name: s.album ?? 'Album téléchargé',
+            artist: s.artist,
+            artistId: s.artistId,
+            coverArt: s.coverArt,
+            year: s.year,
+            songCount: _downloadedSongs
+                .where((sub) => sub.albumId == s.albumId)
+                .length,
+          );
+        }
+      }
+      _downloadedAlbums = albumsMap.values.toList();
     } catch (e) {
       debugPrint('Error loading downloads: $e');
     }

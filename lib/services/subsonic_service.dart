@@ -1033,6 +1033,17 @@ class SubsonicService {
     await _request('setRating', {'id': id, 'rating': rating.toString()});
   }
 
+    Future<Song?> getSong(String id) async {
+    try {
+      final response = await _request('getSong', {'id': id});
+      final songData = response['song'];
+      if (songData != null) {
+        return Song.fromJson(songData as Map<String, dynamic>);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<SearchResult> getStarred() async {
     if (_jellyfin != null) return _jellyfin!.getStarred();
     if (_youtube != null) return _youtube!.getStarred();
