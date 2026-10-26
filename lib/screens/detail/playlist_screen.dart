@@ -1,3 +1,4 @@
+import 'package:musly/screens/player/now_playing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -156,6 +157,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
       songs.shuffle();
     }
 
+    NowPlayingScreen.open(context, song: songs.first);
     playerProvider.playSong(songs.first, playlist: songs.cast(), startIndex: 0);
   }
 

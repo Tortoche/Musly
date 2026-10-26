@@ -1,3 +1,4 @@
+import 'package:musly/screens/player/now_playing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -242,6 +243,7 @@ class _SongCollectionScreenState extends State<SongCollectionScreen> {
     final player = Provider.of<PlayerProvider>(context, listen: false);
     final playlist = List<Song>.from(_filteredSongs);
     if (shuffle) playlist.shuffle();
+    NowPlayingScreen.open(context, song: playlist.first);
     player.playSong(playlist.first, playlist: playlist, startIndex: 0);
   }
 

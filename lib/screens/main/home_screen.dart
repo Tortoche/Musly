@@ -969,11 +969,9 @@ class _HomeScreenState extends State<HomeScreen> {
       BuildContext context, Song song, List<Song> queue) async {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final idx = queue.indexOf(song);
-    await playerProvider.playSong(song,
+    NowPlayingScreen.open(context, song: song);
+    playerProvider.playSong(song,
         playlist: queue, startIndex: idx >= 0 ? idx : 0);
-    if (context.mounted) {
-      NowPlayingScreen.open(context, song: song);
-    }
   }
 
   Future<void> _playAlbum(BuildContext context, String albumId) async {
@@ -984,7 +982,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Provider.of<PlayerProvider>(context, listen: false);
       final songs = await subsonicService.getAlbumSongs(albumId);
       if (songs.isNotEmpty) {
-        await playerProvider.playSong(songs.first,
+        if (context.mounted) {
+          if (context.mounted) NowPlayingScreen.open(context, song: songs.first);
+        }
+        playerProvider.playSong(songs.first,
             playlist: songs, startIndex: 0);
       }
     } catch (e) {
@@ -1377,7 +1378,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               final full = await libraryProvider.getPlaylist(discoveryPlaylist.id);
                               final songs = full.songs ?? [];
                               if (songs.isNotEmpty) {
-                                await playerProvider.playSong(songs.first, playlist: songs, startIndex: 0);
+                                if (context.mounted) NowPlayingScreen.open(context, song: songs.first);
+                                playerProvider.playSong(songs.first, playlist: songs, startIndex: 0);
                               }
                             },
                             child: Container(

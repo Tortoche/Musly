@@ -1,3 +1,4 @@
+import 'package:musly/screens/player/now_playing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:musly/l10n/app_localizations.dart';
 import 'package:flutter/cupertino.dart';
@@ -359,6 +360,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
       songs.shuffle();
     }
 
+    NowPlayingScreen.open(context, song: songs.first);
     playerProvider.playSong(songs.first, playlist: songs, startIndex: 0);
   }
 
@@ -378,6 +380,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
                 .toList()
             : await subsonicService.getAlbumSongs(album.id);
         if (songs.isNotEmpty) {
+          if (context.mounted) NowPlayingScreen.open(context, song: songs.first);
           playerProvider.playSong(songs.first, playlist: songs, startIndex: 0);
           return;
         }

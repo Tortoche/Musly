@@ -33,6 +33,7 @@ import 'package:musly/services/theme_service.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   static bool _isOpen = false;
+  static DateTime _lastOpenTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   static ImageProvider resolveImageProvider(Song? song, SubsonicService? subsonic) {
     if (song == null) {
@@ -70,7 +71,11 @@ class NowPlayingScreen extends StatefulWidget {
   }
 
   static void open(BuildContext context, {Song? song}) {
-    if (_isOpen) return;
+    final now = DateTime.now();
+    if (_isOpen && now.difference(_lastOpenTime).inMilliseconds < 400) {
+      return;
+    }
+    _lastOpenTime = now;
     try {
       final player = Provider.of<PlayerProvider>(context, listen: false);
       final targetSong = song ?? player.currentSong;
@@ -89,6 +94,9 @@ class NowPlayingScreen extends StatefulWidget {
         isScrollControlled: true,
         useRootNavigator: true,
         backgroundColor: Colors.transparent,
+        elevation: 0,
+        barrierColor: Colors.black.withValues(alpha: 0.6),
+        enableDrag: true,
         constraints: const BoxConstraints(maxWidth: double.infinity),
         builder: (ctx) => NowPlayingScreen(
           topPadding: topPadding,
@@ -154,8 +162,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     _fetchedLyrics = widget.lyrics;
     _currentImageProvider = widget.image;
     _lastSong = widget.song;
-    _extractColors();
-    _fetchLyrics();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 320), () {
+        if (mounted) {
+          _extractColors();
+          _fetchLyrics();
+        }
+      });
+    });
   }
 
   @override
@@ -311,6 +325,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
   @override
   void dispose() {
+    NowPlayingScreen._isOpen = false;
     WidgetsBinding.instance.removeObserver(this);
     PlayerUiSettingsService()
         .lyricsKeepScreenOnNotifier
@@ -325,7 +340,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
   void _onVerticalDragEnd(DragEndDetails details) {
     if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
       WakelockService().disable('lyrics_view');
-      Navigator.of(context).pop();
+      Navigator.of(context, rootNavigator: true).pop();
     }
   }
 
@@ -408,41 +423,43 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                           effectiveLeftPadding: effectiveLeftPadding,
                           effectiveRightPadding: effectiveRightPadding,
                         ),
-                        _fetchedLyrics.isNotEmpty
-                            ? StreamBuilder<Duration>(
-                                stream: Provider.of<PlayerProvider>(context,
-                                        listen: false)
-                                    .positionStream,
-                                initialData: Provider.of<PlayerProvider>(
-                                        context,
-                                        listen: false)
-                                    .position,
-                                builder: (context, snapshot) {
-                                  return LyricsScreen(
-                                    lyrics: _fetchedLyrics,
-                                    currentTime: snapshot.data ?? Duration.zero,
-                                    onSeek: (duration) {
-                                      Provider.of<PlayerProvider>(context,
-                                              listen: false)
-                                          .seek(duration);
+                        _currentPage == 1
+                            ? (_fetchedLyrics.isNotEmpty
+                                ? StreamBuilder<Duration>(
+                                    stream: Provider.of<PlayerProvider>(context,
+                                            listen: false)
+                                        .positionStream,
+                                    initialData: Provider.of<PlayerProvider>(
+                                            context,
+                                            listen: false)
+                                        .position,
+                                    builder: (context, snapshot) {
+                                      return LyricsScreen(
+                                        lyrics: _fetchedLyrics,
+                                        currentTime: snapshot.data ?? Duration.zero,
+                                        onSeek: (duration) {
+                                          Provider.of<PlayerProvider>(context,
+                                                  listen: false)
+                                              .seek(duration);
+                                        },
+                                      );
                                     },
-                                  );
-                                },
-                              )
-                            : Center(
-                                child: _isLoadingLyrics
-                                    ? const CircularProgressIndicator(
-                                        color: Colors.white)
-                                    : Text(
-                                        AppLocalizations.of(context)
-                                                ?.noLyricsFound ??
-                                            "No lyrics available",
-                                        style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 18),
-                                      ),
-                              ),
-                        const QueueView(),
+                                  )
+                                : Center(
+                                    child: _isLoadingLyrics
+                                        ? const CircularProgressIndicator(
+                                            color: Colors.white)
+                                        : Text(
+                                            AppLocalizations.of(context)
+                                                    ?.noLyricsFound ??
+                                                "No lyrics available",
+                                            style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 18),
+                                          ),
+                                  ))
+                            : const SizedBox.shrink(),
+                        _currentPage == 2 ? const QueueView() : const SizedBox.shrink(),
                       ],
                     ),
                   ),
@@ -494,7 +511,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                               duration: const Duration(milliseconds: 300),
                               curve: Curves.easeInOut);
                         } else {
-                          Navigator.of(context).pop();
+                          Navigator.of(context, rootNavigator: true).pop();
                         }
                       },
                     ),

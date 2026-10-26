@@ -1,3 +1,4 @@
+import 'package:musly/screens/player/now_playing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/models.dart';
@@ -64,6 +65,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       songs.shuffle();
     }
 
+    NowPlayingScreen.open(context, song: songs.first);
     player.playSong(songs.first, playlist: songs, startIndex: 0);
   }
 
