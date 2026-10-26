@@ -672,9 +672,9 @@ class LibraryProvider extends ChangeNotifier
   Future<void> loadRandomSongs() async {
     if (_serverOfflineMode) return;
     try {
-      final songs = await _subsonicService.getRandomSongs(size: 50);
+      final songs = await _subsonicService.getFlatSongs(limit: 50, sort: 'recent');
       _randomSongs = songs;
-      if (_subsonicService.isYoutube && songs.isNotEmpty) {
+      if (songs.isNotEmpty) {
         final existingMap = {for (final song in _cachedAllSongs) song.id: song};
         for (final song in songs) {
           existingMap[song.id] = song;
@@ -843,7 +843,61 @@ class LibraryProvider extends ChangeNotifier
     if (_localOnlyMode) {
       return _searchLocal(query);
     }
-    return await _subsonicService.search(query);
+
+    final subsonicFuture = _subsonicService
+        .search(query)
+        .catchError((_) => SearchResult(artists: [], albums: [], songs: []));
+    final deezerSongsFuture =
+        DeezerService().searchTracks(query).catchError((_) => <Song>[]);
+    final deezerArtistsFuture =
+        DeezerService().searchArtists(query).catchError((_) => <Artist>[]);
+    final deezerAlbumsFuture =
+        DeezerService().searchAlbums(query).catchError((_) => <Album>[]);
+
+    final results = await Future.wait([
+      subsonicFuture,
+      deezerSongsFuture,
+      deezerArtistsFuture,
+      deezerAlbumsFuture,
+    ]);
+
+    final subResult = results[0] as SearchResult;
+    final deezerSongs = results[1] as List<Song>;
+    final deezerArtists = results[2] as List<Artist>;
+    final deezerAlbums = results[3] as List<Album>;
+
+    // Fusionner les titres : bibliothèque serveur d'abord, puis catalogue universel Deezer dédupliqué
+    final Set<String> seenIds = subResult.songs.map((s) => s.id).toSet();
+    final List<Song> mergedSongs = List.from(subResult.songs);
+    for (final s in deezerSongs) {
+      if (seenIds.add(s.id)) {
+        mergedSongs.add(s);
+      }
+    }
+
+    final Set<String> seenArtistNames =
+        subResult.artists.map((a) => a.name.toLowerCase()).toSet();
+    final List<Artist> mergedArtists = List.from(subResult.artists);
+    for (final a in deezerArtists) {
+      if (seenArtistNames.add(a.name.toLowerCase())) {
+        mergedArtists.add(a);
+      }
+    }
+
+    final Set<String> seenAlbumNames =
+        subResult.albums.map((a) => a.name.toLowerCase()).toSet();
+    final List<Album> mergedAlbums = List.from(subResult.albums);
+    for (final alb in deezerAlbums) {
+      if (seenAlbumNames.add(alb.name.toLowerCase())) {
+        mergedAlbums.add(alb);
+      }
+    }
+
+    return SearchResult(
+      artists: mergedArtists,
+      albums: mergedAlbums,
+      songs: mergedSongs,
+    );
   }
 
   Future<void> cacheSongLocally(Song song) async {

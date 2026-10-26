@@ -329,7 +329,7 @@ class WrappedService {
     });
 
     String chronotypeId = 'midnight_wanderer';
-    String chronotypeName = 'Midnight Wanderer 🌙';
+    String chronotypeName = 'Midnight Wanderer ';
     String chronotypeDesc =
         'Your deepest music moments unfold late at night when the world is quiet.';
 
@@ -338,19 +338,19 @@ class WrappedService {
         morningPlays >= eveningPlays &&
         morningPlays > 0) {
       chronotypeId = 'sunrise_harmonizer';
-      chronotypeName = 'Sunrise Harmonizer ☀️';
+      chronotypeName = 'Sunrise Harmonizer ️';
       chronotypeDesc =
           'You kickstart every morning with rhythm, setting the soundtrack for the entire day.';
     } else if (afternoonPlays >= nightPlays &&
         afternoonPlays >= eveningPlays &&
         afternoonPlays > 0) {
       chronotypeId = 'afternoon_flow';
-      chronotypeName = 'Afternoon Flow ⚡';
+      chronotypeName = 'Afternoon Flow ';
       chronotypeDesc =
           'Midday is your prime listening peak, powering through your momentum with high-energy sound.';
     } else if (eveningPlays >= nightPlays && eveningPlays > 0) {
       chronotypeId = 'twilight_lounger';
-      chronotypeName = 'Twilight Lounger 🌆';
+      chronotypeName = 'Twilight Lounger ';
       chronotypeDesc =
           'Evenings are made for unwinding and losing yourself in immersive album journeys.';
     }
@@ -367,7 +367,7 @@ class WrappedService {
       archetype = const PersonalityArchetype(
         id: 'luminary',
         name: 'The Luminary',
-        emoji: '✨',
+        emoji: '',
         badge: 'SONIC EXPLORER',
         title: 'The Luminary',
         description:
@@ -384,7 +384,7 @@ class WrappedService {
       archetype = const PersonalityArchetype(
         id: 'devotee',
         name: 'The Devotee',
-        emoji: '💎',
+        emoji: '',
         badge: 'SUPERFAN',
         title: 'The Devotee',
         description:
@@ -400,7 +400,7 @@ class WrappedService {
       archetype = const PersonalityArchetype(
         id: 'night_owl',
         name: 'The Night Owl',
-        emoji: '🌙',
+        emoji: '',
         badge: 'NOCTURNAL VIBES',
         title: 'The Night Owl',
         description:
@@ -416,7 +416,7 @@ class WrappedService {
       archetype = const PersonalityArchetype(
         id: 'sunrise_harmonizer',
         name: 'The Sunrise Harmonizer',
-        emoji: '☀️',
+        emoji: '️',
         badge: 'ENERGY CATALYST',
         title: 'The Sunrise Harmonizer',
         description:
@@ -432,7 +432,7 @@ class WrappedService {
       archetype = const PersonalityArchetype(
         id: 'alchemist',
         name: 'The Sonic Alchemist',
-        emoji: '🔮',
+        emoji: '',
         badge: 'VIBE CURATOR',
         title: 'The Sonic Alchemist',
         description:

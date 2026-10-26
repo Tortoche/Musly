@@ -6,8 +6,9 @@ import 'package:musly/models/models.dart';
 import 'package:musly/providers/providers.dart';
 import 'package:musly/widgets/widgets.dart';
 import 'album_screen.dart';
-import 'package:musly/utils/navigation_helper.dart';
 import 'package:musly/services/offline_service.dart';
+import 'package:musly/services/deezer_service.dart';
+import 'package:musly/utils/navigation_helper.dart';
 
 class ArtistScreen extends StatefulWidget {
   final String artistId;
@@ -21,9 +22,13 @@ class ArtistScreen extends StatefulWidget {
 class _ArtistScreenState extends State<ArtistScreen> {
   Artist? _artist;
   ArtistInfo? _artistInfo;
-  List<Song> _topSongs = [];
+  List<Song> _officialTopSongs = [];
+  List<Song> _allSongs = [];
   List<Album> _albums = [];
   bool _isLoading = true;
+  bool _showAllSongs = false;
+  bool _showSearch = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -40,8 +45,11 @@ class _ArtistScreenState extends State<ArtistScreen> {
 
     try {
       Artist? artist;
+      ArtistInfo? artistInfo;
       List<Song> topSongs = [];
       List<Album> albums = [];
+      List<Song> allSongs = [];
+      final Set<String> songIds = {};
 
       if (libraryProvider.isLocalOnlyMode) {
         artist = libraryProvider.artists.firstWhere(
@@ -49,10 +57,10 @@ class _ArtistScreenState extends State<ArtistScreen> {
           orElse: () => Artist(id: widget.artistId, name: 'Unknown Artist'),
         );
         albums = await libraryProvider.getArtistAlbums(widget.artistId);
-
-        topSongs = libraryProvider.cachedAllSongs
+        allSongs = libraryProvider.cachedAllSongs
             .where((s) => s.artistId == widget.artistId)
             .toList();
+        topSongs = allSongs;
       } else {
         final artistFuture = subsonicService
             .getArtist(widget.artistId)
@@ -82,7 +90,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
         ]);
 
         artist = results[0] as Artist?;
-        _artistInfo = results[1] as ArtistInfo?;
+        artistInfo = results[1] as ArtistInfo?;
         topSongs = results[2] as List<Song>? ?? [];
         albums = results[3] as List<Album>? ?? [];
 
@@ -111,12 +119,145 @@ class _ArtistScreenState extends State<ArtistScreen> {
             name: albums.first.artist ?? 'Unknown Artist',
           );
         }
+
+        // Ajouter d'abord les top songs de Subsonic
+        for (final s in topSongs) {
+          if (songIds.add(s.id)) {
+            allSongs.add(s);
+          }
+        }
+
+        // Récupérer les chansons de tous les albums
+        if (albums.isNotEmpty) {
+          try {
+            final albumSongLists = await Future.wait(
+              albums.map((album) => subsonicService
+                  .getAlbumSongs(album.id)
+                  .catchError((_) => <Song>[])),
+            );
+            for (final list in albumSongLists) {
+              for (final s in list) {
+                if (songIds.add(s.id)) {
+                  allSongs.add(s);
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('[ArtistScreen] Error fetching album songs: $e');
+          }
+        }
+
+        // Enrichissement universel Deezer :
+        // 1. Trouver le Deezer artist ID si l'artiste vient de Subsonic
+        String? deezerArtistId = widget.artistId.startsWith('ext_dz_')
+            ? widget.artistId.replaceAll('ext_dz_', '')
+            : (int.tryParse(widget.artistId) != null ? widget.artistId : null);
+
+        if (deezerArtistId == null && artist?.name != null) {
+          try {
+            final matched = await DeezerService().searchArtistByName(artist!.name);
+            if (matched != null) {
+              deezerArtistId = matched.id;
+            }
+          } catch (_) {}
+        }
+
+        // 2. Récupérer les vrais albums officiels studio Deezer
+        if (deezerArtistId != null) {
+          try {
+            final deezerAlbums = await DeezerService().getArtistAlbums(deezerArtistId);
+            if (deezerAlbums.isNotEmpty) {
+              // Remplacer ou fusionner avec les albums studio officiels complets
+              final Set<String> seenAlbumNames = {};
+              final List<Album> realAlbums = [];
+              for (final alb in deezerAlbums) {
+                final norm = alb.name.toLowerCase().trim();
+                if (seenAlbumNames.add(norm)) {
+                  realAlbums.add(alb);
+                }
+              }
+              albums = realAlbums;
+            }
+
+            // Récupérer également le catalogue complet des titres officiels
+            final deezerTracks =
+                await DeezerService().getArtistTopTracks(deezerArtistId, limit: 50);
+            for (final s in deezerTracks) {
+              if (songIds.add(s.id)) {
+                allSongs.add(s);
+              }
+            }
+            if (topSongs.isEmpty) {
+              topSongs = deezerTracks;
+            }
+          } catch (e) {
+            debugPrint('[ArtistScreen] Deezer universal enrichment error: $e');
+          }
+        }
+      }
+
+      // Filtrer et trier pour obtenir les VRAIS morceaux officiels
+      bool isReworkOrNoise(String title) {
+        final lower = title.toLowerCase();
+        return lower.contains('rework') ||
+            lower.contains('remix') ||
+            lower.contains('edit radio') ||
+            lower.contains('radio edit') ||
+            lower.contains('club mix') ||
+            lower.contains('instrumental') ||
+            lower.contains('acapella') ||
+            lower.contains('karaoke') ||
+            lower.contains('(live') ||
+            lower.contains('[live]') ||
+            lower.contains('version live');
+      }
+
+      String normalizeTitle(String title) {
+        return title
+            .replaceAll(RegExp(r'\([^)]*\)'), '')
+            .replaceAll(RegExp(r'\[[^\]]*\]'), '')
+            .replaceAll(RegExp(r'[-–—].*'), '')
+            .trim()
+            .toLowerCase();
+      }
+
+      final cleanTop = <Song>[];
+      final seenNormalizedTitles = <String>{};
+
+      // 1. Ajouter les top songs officielles
+      final basePool = topSongs.isNotEmpty ? topSongs : allSongs;
+      for (final s in basePool) {
+        if (!isReworkOrNoise(s.title)) {
+          final norm = normalizeTitle(s.title);
+          if (seenNormalizedTitles.add(norm)) {
+            cleanTop.add(s);
+          }
+        }
+      }
+
+      // 2. Si moins de 5, compléter avec le reste de allSongs
+      if (cleanTop.length < 5) {
+        for (final s in allSongs) {
+          if (!isReworkOrNoise(s.title)) {
+            final norm = normalizeTitle(s.title);
+            if (seenNormalizedTitles.add(norm)) {
+              cleanTop.add(s);
+            }
+          }
+        }
+      }
+
+      // 3. Fallback ultime si tout était marqué bruit
+      if (cleanTop.isEmpty) {
+        cleanTop.addAll(basePool);
       }
 
       if (mounted) {
         setState(() {
           _artist = artist;
-          _topSongs = topSongs;
+          _artistInfo = artistInfo;
+          _officialTopSongs = cleanTop;
+          _allSongs = allSongs;
           _albums = albums;
           _isLoading = false;
         });
@@ -130,60 +271,27 @@ class _ArtistScreenState extends State<ArtistScreen> {
   }
 
   Future<void> _addArtistToQueue() async {
-    if (_albums.isEmpty) return;
+    final list = _officialTopSongs.isNotEmpty ? _officialTopSongs : _allSongs;
+    if (list.isEmpty) return;
 
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    final libraryProvider = Provider.of<LibraryProvider>(
-      context,
-      listen: false,
-    );
-    final subsonicService = libraryProvider.subsonicService;
+    playerProvider.addAllToQueue(list);
 
-    final messenger = ScaffoldMessenger.of(context);
+    if (!mounted) return;
     final loc = AppLocalizations.of(context);
-
-    try {
-      final songsToQueue = <Song>[];
-      for (final album in _albums) {
-        final albumSongs = libraryProvider.isLocalOnlyMode
-            ? libraryProvider.cachedAllSongs
-                .where((s) => s.albumId == album.id)
-                .toList()
-            : await subsonicService.getAlbumSongs(album.id);
-
-        songsToQueue.addAll(albumSongs);
-      }
-
-      if (songsToQueue.isNotEmpty) {
-        playerProvider.addAllToQueue(songsToQueue);
-      }
-
-      if (!mounted) return;
-
-      final addedToQueueMessage =
-          loc?.addedArtistToQueue ?? 'Added artist to Queue';
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(addedToQueueMessage),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      final addedToQueueErrorMessage =
-          loc?.addedArtistToQueueError ?? 'Failed adding artist to Queue';
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(addedToQueueErrorMessage),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
+    final addedToQueueMessage =
+        loc?.addedArtistToQueue ?? 'Morceaux ajoutés à la file';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(addedToQueueMessage),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
-  Future<void> _downloadArtistAlbums() async {
-    if (_albums.isEmpty) return;
+  Future<void> _downloadArtistSongs() async {
+    final list = _officialTopSongs.isNotEmpty ? _officialTopSongs : _allSongs;
+    if (list.isEmpty) return;
 
     final offlineService = OfflineService();
     final libraryProvider =
@@ -193,41 +301,26 @@ class _ArtistScreenState extends State<ArtistScreen> {
     await offlineService.initialize();
     if (!mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
-    int queuedSongs = 0;
+    offlineService.queuePlaylistDownload(
+        'artist_${widget.artistId}', list, subsonicService);
 
-    for (final album in _albums) {
-      final albumSongs = libraryProvider.isLocalOnlyMode
-          ? libraryProvider.cachedAllSongs
-              .where((s) => s.albumId == album.id)
-              .toList()
-          : await subsonicService.getAlbumSongs(album.id);
-
-      if (albumSongs.isNotEmpty) {
-        offlineService.queuePlaylistDownload(
-            album.id, albumSongs, subsonicService);
-        queuedSongs += albumSongs.length;
-      }
-    }
-
-    if (mounted && queuedSongs > 0) {
-      final l10n = AppLocalizations.of(context)!;
-      messenger.showSnackBar(
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(l10n.queuedSongsFromAlbumsForDownload(
-              queuedSongs, _albums.length)),
+          content: Text('${list.length} morceaux ajoutés aux téléchargements'),
           duration: const Duration(seconds: 2),
         ),
       );
     }
   }
 
-  void _playTopSongs({bool shuffle = false}) {
-    if (_topSongs.isEmpty) return;
+  void _playSongs({bool shuffle = false}) {
+    final list = _officialTopSongs.isNotEmpty ? _officialTopSongs : _allSongs;
+    if (list.isEmpty) return;
 
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
 
-    var songs = List<Song>.from(_topSongs);
+    var songs = List<Song>.from(list);
     if (shuffle) {
       songs.shuffle();
     }
@@ -235,14 +328,55 @@ class _ArtistScreenState extends State<ArtistScreen> {
     playerProvider.playSong(songs.first, playlist: songs, startIndex: 0);
   }
 
+  Future<void> _onAlbumTap(Album album) async {
+    // Si l'album ne contient qu'une seule piste (Single) : lecture directe immédiate sans page vide
+    if (album.songCount == 1) {
+      final libraryProvider =
+          Provider.of<LibraryProvider>(context, listen: false);
+      final subsonicService = libraryProvider.subsonicService;
+      final playerProvider =
+          Provider.of<PlayerProvider>(context, listen: false);
+
+      try {
+        final songs = libraryProvider.isLocalOnlyMode
+            ? libraryProvider.cachedAllSongs
+                .where((s) => s.albumId == album.id)
+                .toList()
+            : await subsonicService.getAlbumSongs(album.id);
+        if (songs.isNotEmpty) {
+          playerProvider.playSong(songs.first, playlist: songs, startIndex: 0);
+          return;
+        }
+      } catch (e) {
+        debugPrint('[ArtistScreen] Single direct play fallback error: $e');
+      }
+    }
+
+    if (!mounted) return;
+    NavigationHelper.push(
+      context,
+      AlbumScreen(albumId: album.id),
+    );
+  }
+
+  Widget? _buildBottomPlayer(BuildContext context) {
+    final isInner =
+        Navigator.of(context) == NavigationHelper.appNavigatorKey.currentState;
+    if (isInner) return null;
+    return const _ArtistBottomPlayer();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final isDark = theme.brightness == Brightness.dark;
 
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(),
         body: const Center(child: CircularProgressIndicator()),
+        bottomNavigationBar: _buildBottomPlayer(context),
       );
     }
 
@@ -250,12 +384,27 @@ class _ArtistScreenState extends State<ArtistScreen> {
       return Scaffold(
         appBar: AppBar(),
         body: Center(
-          child: Text(AppLocalizations.of(context)!.artistDataNotFound),
+          child: Text(l10n.artistDataNotFound),
         ),
+        bottomNavigationBar: _buildBottomPlayer(context),
       );
     }
 
+    final pool = _officialTopSongs.isNotEmpty ? _officialTopSongs : _allSongs;
+    final displaySongs = _searchQuery.isEmpty
+        ? (_showAllSongs ? pool : pool.take(5).toList())
+        : pool
+            .where((s) =>
+                s.title.toLowerCase().contains(_searchQuery) ||
+                (s.album?.toLowerCase().contains(_searchQuery) ?? false))
+            .toList();
+
+    // Vrais albums studio uniquement (exclure tout ce qui n'a qu'un seul morceau)
+    final effectiveAlbums =
+        _albums.where((a) => (a.songCount ?? 0) > 1).toList();
+
     return Scaffold(
+      bottomNavigationBar: _buildBottomPlayer(context),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -306,206 +455,201 @@ class _ArtistScreenState extends State<ArtistScreen> {
             ),
             actions: [
               IconButton(
+                icon: Icon(_showSearch
+                    ? CupertinoIcons.search_circle_fill
+                    : CupertinoIcons.search),
+                tooltip: 'Rechercher un titre',
+                onPressed: () {
+                  setState(() {
+                    _showSearch = !_showSearch;
+                    if (!_showSearch) _searchQuery = '';
+                  });
+                },
+              ),
+              IconButton(
                 icon: const Icon(CupertinoIcons.cloud_download),
-                tooltip: AppLocalizations.of(context)!.downloadAllAlbums,
-                onPressed:
-                    _albums.isEmpty ? null : () => _downloadArtistAlbums(),
+                tooltip: 'Télécharger les morceaux officiels',
+                onPressed: pool.isEmpty ? null : () => _downloadArtistSongs(),
               ),
               IconButton(
                 icon: const Icon(Icons.queue_music_rounded),
-                tooltip: AppLocalizations.of(context)!.addToQueue,
-                onPressed: _albums.isEmpty ? null : () => _addArtistToQueue(),
+                tooltip: l10n.addToQueue,
+                onPressed: pool.isEmpty ? null : () => _addArtistToQueue(),
               ),
             ],
           ),
-          if (_topSongs.isNotEmpty)
+          if (pool.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _PlayButton(
-                        icon: CupertinoIcons.play_fill,
-                        label: AppLocalizations.of(context)!.play,
-                        onTap: () => _playTopSongs(),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _PlayButton(
+                            icon: CupertinoIcons.play_fill,
+                            label: l10n.play,
+                            onTap: () => _playSongs(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _PlayButton(
+                            icon: CupertinoIcons.shuffle,
+                            label: l10n.shuffle,
+                            onTap: () => _playSongs(shuffle: true),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PlayButton(
-                        icon: CupertinoIcons.shuffle,
-                        label: AppLocalizations.of(context)!.shuffle,
-                        onTap: () => _playTopSongs(shuffle: true),
+                    if (_showSearch) ...[
+                      const SizedBox(height: 12),
+                      CupertinoSearchTextField(
+                        placeholder: 'Filtrer les titres...',
+                        style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black),
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val.trim().toLowerCase();
+                          });
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Morceaux populaires',
+                          style: theme.textTheme.headlineSmall,
+                        ),
+                        if (_searchQuery.isNotEmpty)
+                          Text(
+                            l10n.songsCount(displaySongs.length),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            ),
+          // Liste des titres populaires
+          SliverFixedExtentList(
+            itemExtent: 68.0,
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final song = displaySongs[index];
+                return SongTile(
+                  song: song,
+                  playlist: displaySongs,
+                  index: index,
+                  showAlbum: true,
+                  showArtwork: true,
+                  showArtist: false,
+                );
+              },
+              childCount: displaySongs.length,
+            ),
+          ),
+          // Bouton Voir Plus / Voir Moins
+          if (_searchQuery.isEmpty && pool.length > 5)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _showAllSongs = !_showAllSongs;
+                    });
+                  },
+                  icon: Icon(
+                    _showAllSongs
+                        ? CupertinoIcons.chevron_up
+                        : CupertinoIcons.chevron_down,
+                    size: 16,
+                  ),
+                  label: Text(
+                    _showAllSongs
+                        ? 'Voir moins'
+                        : 'Voir plus (${pool.length - 5} autres titres)',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // Section Albums directement (sans section Singles)
+          if (effectiveAlbums.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 28, 16, 12),
+                child: Text(
+                  AppLocalizations.of(context)!.sectionAlbums,
+                  style: theme.textTheme.headlineSmall,
+                ),
+              ),
+            ),
+          if (effectiveAlbums.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 180,
+                  childAspectRatio: 0.78,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final album = effectiveAlbums[index];
+                    return AlbumCard(
+                      album: album,
+                      size: double.infinity,
+                      onTap: () => _onAlbumTap(album),
+                    );
+                  },
+                  childCount: effectiveAlbums.length,
+                ),
+              ),
+            ),
+          // Section À propos
+          if (_artistInfo?.biography != null &&
+              _artistInfo!.biography!.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'À propos de ${_artist!.name}',
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _artistInfo!.biography!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color
+                            ?.withValues(alpha: 0.8),
+                        height: 1.5,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_topSongs.isNotEmpty) ...[
-                    Text(
-                      AppLocalizations.of(context)!.topSongs,
-                      style: theme.textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemExtent: 68.0,
-                      itemCount: _topSongs.take(5).length,
-                      itemBuilder: (context, index) {
-                        final song = _topSongs[index];
-                        return SongTile(
-                          song: song,
-                          playlist: _topSongs,
-                          index: index,
-                          showAlbum: true,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  Builder(
-                    builder: (context) {
-                      final albums = _albums
-                          .where((a) => (a.songCount ?? 0) >= 7)
-                          .toList();
-                      final eps = _albums.where((a) {
-                        final count = a.songCount ?? 0;
-                        return count >= 3 && count <= 6;
-                      }).toList();
-                      final singles = _albums
-                          .where((a) => (a.songCount ?? 0) <= 2)
-                          .toList();
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (albums.isNotEmpty) ...[
-                            Text(
-                              AppLocalizations.of(context)!.sectionAlbums,
-                              style: theme.textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: 8),
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 180,
-                                childAspectRatio: 0.8,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                              ),
-                              itemCount: albums.length,
-                              itemBuilder: (context, index) {
-                                final album = albums[index];
-                                return AlbumCard(
-                                  album: album,
-                                  size: double.infinity,
-                                  onTap: () => NavigationHelper.push(
-                                    context,
-                                    AlbumScreen(albumId: album.id),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-                          if (eps.isNotEmpty) ...[
-                            Text(
-                              AppLocalizations.of(context)!.sectionEPs,
-                              style: theme.textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: 8),
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 180,
-                                childAspectRatio: 0.8,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                              ),
-                              itemCount: eps.length,
-                              itemBuilder: (context, index) {
-                                final album = eps[index];
-                                return AlbumCard(
-                                  album: album,
-                                  size: double.infinity,
-                                  onTap: () => NavigationHelper.push(
-                                    context,
-                                    AlbumScreen(albumId: album.id),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-                          if (singles.isNotEmpty) ...[
-                            Text(
-                              AppLocalizations.of(context)!.sectionSingles,
-                              style: theme.textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: 8),
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 180,
-                                childAspectRatio: 0.8,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                              ),
-                              itemCount: singles.length,
-                              itemBuilder: (context, index) {
-                                final album = singles[index];
-                                return AlbumCard(
-                                  album: album,
-                                  size: double.infinity,
-                                  onTap: () => NavigationHelper.push(
-                                    context,
-                                    AlbumScreen(albumId: album.id),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                          if (_artistInfo?.biography != null &&
-                              _artistInfo!.biography!.isNotEmpty) ...[
-                            const SizedBox(height: 32),
-                            Text(
-                              'About ${_artist!.name}',
-                              style: theme.textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _artistInfo!.biography!,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.textTheme.bodyMedium?.color
-                                    ?.withValues(alpha: 0.8),
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
-          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 150)),
         ],
       ),
     );
@@ -526,7 +670,6 @@ class _PlayButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final accent = Theme.of(context).colorScheme.primary;
 
     return Material(
@@ -561,6 +704,18 @@ class _PlayButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ArtistBottomPlayer extends StatelessWidget {
+  const _ArtistBottomPlayer();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SafeArea(
+      top: false,
+      child: MiniPlayer(),
     );
   }
 }

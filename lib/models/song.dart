@@ -74,6 +74,17 @@ class Song {
 
     final replayGain = json['replayGain'] as Map<String, dynamic>?;
 
+    String? cover = json['coverArt']?.toString();
+    if (cover == null && json['cover_url'] != null) {
+      final coverUrl = json['cover_url'].toString();
+      final uri = Uri.tryParse(coverUrl);
+      if (uri != null && uri.queryParameters.containsKey('id')) {
+        cover = uri.queryParameters['id'];
+      } else {
+        cover = coverUrl;
+      }
+    }
+
     return Song(
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? 'Unknown Title',
@@ -84,7 +95,7 @@ class Song {
       track: json['track'] as int?,
       year: json['year'] as int?,
       genre: json['genre']?.toString(),
-      coverArt: json['coverArt']?.toString(),
+      coverArt: cover,
       duration: json['duration'] as int?,
       bitRate: json['bitRate'] as int?,
       suffix: json['suffix']?.toString(),

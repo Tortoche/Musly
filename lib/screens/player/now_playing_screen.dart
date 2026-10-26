@@ -616,7 +616,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                   artists: currentSong?.artistParticipants,
                   artistFallback: artist,
                   artistIdFallback: currentSong?.artistId,
-                  onBeforeNavigate: () => Navigator.pop(context),
+                  onBeforeNavigate: () =>
+                      Navigator.of(context, rootNavigator: true).pop(),
                   style: TextStyle(
                     fontSize: isLandscape ? 14 : (isSmall ? 15 : 18),
                     color: Colors.white.withValues(alpha: 0.75),

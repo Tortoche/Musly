@@ -88,7 +88,7 @@ class SubsonicService {
           sw?.stop();
           final ms = sw?.elapsedMilliseconds ?? 0;
           final safe = _sanitizeUrl(e.requestOptions.uri.toString());
-          debugPrint('[Musly] ✗ ${e.type.name} $safe (${ms}ms) — ${e.message}');
+          debugPrint('[Musly] ${e.type.name} $safe (${ms}ms) — ${e.message}');
           if (e.error != null) debugPrint('[Musly]   cause: ${e.error}');
           handler.next(e);
         },
@@ -940,6 +940,52 @@ class SubsonicService {
           .toList();
     }
     return [];
+  }
+
+  Future<List<Song>> getFlatSongs({
+    int limit = 50,
+    int offset = 0,
+    String sort = 'recent',
+  }) async {
+    if (_jellyfin != null) {
+      return _jellyfin!.getRandomSongs(size: limit);
+    }
+    if (_youtube != null) {
+      return _youtube!.getRandomSongs(size: limit);
+    }
+
+    // 1. Try dedicated REST flat songs API
+    try {
+      final base = activeBaseUrl.isNotEmpty
+          ? activeBaseUrl
+          : (_config?.normalizedUrl ?? 'https://music.corentinjanin.fr');
+      final uri = Uri.parse('$base/api/music/songs?limit=$limit&offset=$offset&sort=$sort');
+      final resp = await _dio.getUri(uri).timeout(const Duration(seconds: 4));
+      if (resp.statusCode == 200 && resp.data is Map<String, dynamic>) {
+        final songList = resp.data['songs'];
+        if (songList is List && songList.isNotEmpty) {
+          return songList
+              .map((s) => Song.fromJson(s as Map<String, dynamic>))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[SubsonicService] getFlatSongs dedicated API fallback: $e');
+    }
+
+    // 2. Try discovery playlist pl_discovery_{username}
+    try {
+      final username = _config?.username ?? '';
+      if (username.isNotEmpty) {
+        final discoveryPl = await getPlaylist('pl_discovery_$username');
+        if (discoveryPl.songs != null && discoveryPl.songs!.isNotEmpty) {
+          return discoveryPl.songs!;
+        }
+      }
+    } catch (_) {}
+
+    // 3. Fallback to getRandomSongs
+    return getRandomSongs(size: limit);
   }
 
   Future<void> star({String? id, String? albumId, String? artistId}) async {

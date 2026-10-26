@@ -24,6 +24,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
   dio: ^5.4.0
+  http: ^1.2.0
   just_audio: ^0.9.46
   just_audio_windows: ^0.2.2
   just_audio_media_kit: ^2.1.0  # Linux (and macOS) audio backend via libmpv

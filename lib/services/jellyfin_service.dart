@@ -80,7 +80,7 @@ class JellyfinService {
           },
           onError: (e, handler) {
             final safe = _sanitizeUrl(e.requestOptions.uri.toString());
-            debugPrint('[Jellyfin] ✗ ${e.type.name} $safe — ${e.message}');
+            debugPrint('[Jellyfin] ${e.type.name} $safe — ${e.message}');
             handler.next(e);
           },
         ),

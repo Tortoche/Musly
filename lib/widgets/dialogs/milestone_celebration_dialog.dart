@@ -148,7 +148,7 @@ class _MilestoneCelebrationDialogState extends State<MilestoneCelebrationDialog>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '🏆 ${l10n.milestone50SongsBadge}',
+                        '${l10n.milestone50SongsBadge}',
                         style: const TextStyle(
                           color: Color(0xFFFFD700),
                           fontSize: 12,

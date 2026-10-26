@@ -8,7 +8,9 @@ import 'package:musly/l10n/app_localizations.dart';
 import 'package:musly/models/artist_ref.dart';
 import 'package:musly/screens/detail/artist_screen.dart';
 import 'package:musly/services/subsonic_service.dart';
+import 'package:musly/services/deezer_service.dart';
 import 'package:musly/theme/app_theme.dart';
+import 'package:musly/utils/navigation_helper.dart';
 import 'album_artwork.dart';
 
 class MultiArtistWidget extends StatelessWidget {
@@ -46,18 +48,16 @@ class MultiArtistWidget extends StatelessWidget {
 
   void _navigate(BuildContext context, ArtistRef artist) {
     if (artist.id.isNotEmpty) {
-      final navigator = Navigator.of(context);
       onBeforeNavigate?.call();
-      navigator.push(MaterialPageRoute(
-        builder: (_) => ArtistScreen(artistId: artist.id),
-      ));
+      final targetContext =
+          NavigationHelper.appNavigatorKey.currentContext ?? context;
+      NavigationHelper.push(targetContext, ArtistScreen(artistId: artist.id));
     } else if (artist.name.isNotEmpty) {
       _searchAndNavigate(context, artist.name);
     }
   }
 
   Future<void> _searchAndNavigate(BuildContext context, String name) async {
-    final navigator = Navigator.of(context);
     final subsonic = Provider.of<SubsonicService>(context, listen: false);
     try {
       final result = await subsonic.search(
@@ -73,20 +73,50 @@ class MultiArtistWidget extends StatelessWidget {
           orElse: () => result.artists.first,
         );
         onBeforeNavigate?.call();
-        navigator.push(MaterialPageRoute(
-          builder: (_) => ArtistScreen(artistId: matched.id),
-        ));
+        final targetContext =
+            NavigationHelper.appNavigatorKey.currentContext ?? context;
+        NavigationHelper.push(targetContext, ArtistScreen(artistId: matched.id));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.artistNotFound(name),
+        // Fallback: recherche directe sur Deezer si l'artiste n'est pas encore synchronisé
+        final deezerArtists =
+            await DeezerService().searchArtists(name, limit: 1);
+        if (deezerArtists.isNotEmpty) {
+          onBeforeNavigate?.call();
+          final targetContext = NavigationHelper.appNavigatorKey.currentContext;
+          if (targetContext != null) {
+            NavigationHelper.push(
+                targetContext, ArtistScreen(artistId: deezerArtists.first.id));
+          }
+          return;
+        }
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.artistNotFound(name),
+              ),
+              duration: const Duration(seconds: 2),
             ),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
+      // Fallback Deezer en cas d'erreur réseau Subsonic
+      try {
+        final deezerArtists =
+            await DeezerService().searchArtists(name, limit: 1);
+        if (deezerArtists.isNotEmpty) {
+          onBeforeNavigate?.call();
+          final targetContext = NavigationHelper.appNavigatorKey.currentContext;
+          if (targetContext != null) {
+            NavigationHelper.push(
+                targetContext, ArtistScreen(artistId: deezerArtists.first.id));
+          }
+          return;
+        }
+      } catch (_) {}
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

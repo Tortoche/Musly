@@ -28,6 +28,7 @@ import 'package:flutter_chrome_cast/flutter_chrome_cast.dart';
 import '../services/upnp_service.dart';
 import '../services/jukebox_service.dart';
 import '../services/audio_handler.dart';
+import '../services/deezer_service.dart';
 import '../services/fade_settings_service.dart';
 import '../services/crossfade_service.dart';
 
@@ -1211,8 +1212,21 @@ class PlayerProvider extends ChangeNotifier
       {bool isRefill = false}) async {
     if (!isRefill && _currentSong?.id != song.id) return;
     try {
-      List<Song> similar =
-          await _subsonicService.getSimilarSongs(song.id, count: 25);
+      List<Song> similar = [];
+
+      // 1. Autoplay intelligent Deezer Radio « Dans le même style »
+      if (song.artistId != null && song.artistId!.trim().isNotEmpty) {
+        try {
+          similar = await DeezerService()
+              .fetchSimilarArtistTracks(song.artistId!, limit: 15);
+        } catch (_) {}
+      }
+
+      // 2. Fallback Subsonic getSimilarSongs
+      if (similar.isEmpty) {
+        similar =
+            await _subsonicService.getSimilarSongs(song.id, count: 25);
+      }
 
       if (similar.isEmpty &&
           song.genre != null &&
@@ -2942,7 +2956,7 @@ class PlayerProvider extends ChangeNotifier
           }
 
           debugPrint(
-              '[Player] ✓ Song completed: "${_currentSong?.title ?? 'unknown'}"');
+              '[Player] Song completed: "${_currentSong?.title ?? 'unknown'}"');
           _onSongComplete().catchError(
               (e) => debugPrint('[Player] _onSongComplete error: $e'));
         }

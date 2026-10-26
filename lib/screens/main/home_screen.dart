@@ -22,6 +22,7 @@ import 'package:musly/screens/media/favorites_screen.dart';
 import 'package:musly/screens/settings/settings_screen.dart';
 import 'package:musly/screens/wrapped/wrapped_screen.dart';
 import 'package:musly/services/wrapped_service.dart';
+import 'package:musly/services/deezer_service.dart';
 import 'package:musly/l10n/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -36,6 +37,30 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Song> _cachedPersonalized = const [];
   List<Song> _cachedListenAgain = const [];
   List<Song> _cachedTopHits = const [];
+  List<Song> _deezerChartTracks = const [];
+  bool _isLoadingCharts = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDeezerCharts();
+  }
+
+  Future<void> _loadDeezerCharts() async {
+    if (_deezerChartTracks.isNotEmpty || _isLoadingCharts) return;
+    setState(() => _isLoadingCharts = true);
+    try {
+      final tracks = await DeezerService().getChartTracks(limit: 30);
+      if (mounted) {
+        setState(() {
+          _deezerChartTracks = tracks;
+          _isLoadingCharts = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingCharts = false);
+    }
+  }
 
   String _selectedCategory = 'All';
 
@@ -54,11 +79,17 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _isDesktop =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
-  void _openAlbum(BuildContext context, String albumId) {
-    NavigationHelper.push(
-      context,
-      AlbumScreen(albumId: albumId),
-    );
+  void _openAlbum(BuildContext context, String albumId, {Album? album}) async {
+    if (album?.songCount == 1) {
+      await _playAlbum(context, albumId);
+      return;
+    }
+    if (context.mounted) {
+      NavigationHelper.push(
+        context,
+        AlbumScreen(albumId: albumId),
+      );
+    }
   }
 
   void _openPlaylist(BuildContext context, Playlist playlist) {
@@ -94,8 +125,9 @@ class _HomeScreenState extends State<HomeScreen> {
             _cachedPersonalized = const [];
             _cachedListenAgain = const [];
             _cachedTopHits = const [];
-
+            _deezerChartTracks = const [];
           });
+          _loadDeezerCharts();
           final libraryProvider =
               Provider.of<LibraryProvider>(context, listen: false);
           await libraryProvider.refresh();
@@ -216,6 +248,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   var playlists = libraryProvider.playlists;
                   var artists = libraryProvider.artists;
 
+                  // Pinned #1: Discovery Playlist (« pl_discovery_{user} » / « DÉCOUVERTES - POUR VOUS »)
+                  Playlist? discoveryPlaylist;
+                  for (final p in playlists) {
+                    if (p.id.startsWith('pl_discovery_') || p.name.contains('DÉCOUVERTES')) {
+                      discoveryPlaylist = p;
+                      break;
+                    }
+                  }
+                  if (discoveryPlaylist == null && playlists.isNotEmpty) {
+                    discoveryPlaylist = playlists.first;
+                  }
+
                   if (artists.isEmpty && recommendationService.enabled) {
                     final topNames =
                         recommendationService.getRecommendedArtists(limit: 10);
@@ -281,6 +325,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildWrappedBanner(context, hPad, isDesktop),
                           const SizedBox(height: 12),
                         ],
+                        if (discoveryPlaylist != null &&
+                            (_selectedCategory == 'All' ||
+                                _selectedCategory == 'MadeForYou')) ...[
+                          _buildDiscoveryHeroBanner(
+                            context,
+                            discoveryPlaylist: discoveryPlaylist,
+                            isDesktop: isDesktop,
+                            hPad: hPad,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         if (_selectedCategory == 'All' ||
                             _selectedCategory == 'Music') ...[
                           const SizedBox(height: 8),
@@ -294,6 +349,27 @@ class _HomeScreenState extends State<HomeScreen> {
                             hPad: hPad,
                           ),
                           const SizedBox(height: 24),
+                        ],
+                        if ((_selectedCategory == 'All' ||
+                                _selectedCategory == 'Music') &&
+                            _deezerChartTracks.isNotEmpty) ...[
+                          HorizontalScrollSection(
+                            title: 'Tendances & Tops du Jour',
+                            padding: EdgeInsets.symmetric(horizontal: hPad),
+                            cardSize: isDesktop ? 180 : 155,
+                            children: _deezerChartTracks.take(15).map((song) {
+                              final cardSize = isDesktop ? 180.0 : 155.0;
+                              return MediaCard(
+                                title: song.title,
+                                subtitle: song.artist,
+                                coverArt: song.coverArt,
+                                size: cardSize,
+                                onTap: () => _playSong(context, song, _deezerChartTracks),
+                                onPlayPressed: () => _playSong(context, song, _deezerChartTracks),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 28),
                         ],
                         if (_selectedCategory == 'All' ||
                             _selectedCategory == 'Playlists')
@@ -316,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 subtitle: album.artist,
                                 coverArt: album.coverArt,
                                 size: isDesktop ? 180 : 155,
-                                onTap: () => _openAlbum(context, album.id),
+                                onTap: () => _openAlbum(context, album.id, album: album),
                                 onPlayPressed: () =>
                                     _playAlbum(context, album.id),
                               );
@@ -535,7 +611,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: QuickAccessTile(
                       title: album.name,
                       imageUrl: album.coverArt,
-                      onTap: () => _openAlbum(context, album.id),
+                      onTap: () => _openAlbum(context, album.id, album: album),
                       onPlayPressed: () => _playAlbum(context, album.id),
                     ),
                   );
@@ -795,6 +871,166 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const Icon(CupertinoIcons.chevron_forward,
                     color: Colors.white, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDiscoveryHeroBanner(
+    BuildContext context, {
+    required Playlist discoveryPlaylist,
+    required bool isDesktop,
+    required double hPad,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openPlaylist(context, discoveryPlaylist),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            height: isDesktop ? 180 : 155,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF5B21B6), Color(0xFF9333EA), Color(0xFFEC4899)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF9333EA).withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -15,
+                  bottom: -15,
+                  child: Icon(
+                    CupertinoIcons.sparkles,
+                    size: 140,
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(CupertinoIcons.sparkles, color: Colors.white, size: 13),
+                                SizedBox(width: 5),
+                                Text(
+                                  'DÉCOUVERTES DU JOUR #1',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${discoveryPlaylist.songCount ?? 35} titres',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  discoveryPlaylist.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: -0.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Mix personnalisé quotidien pré-téléchargé en studio FLAC/320k',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          GestureDetector(
+                            onTap: () async {
+                              final libraryProvider =
+                                  Provider.of<LibraryProvider>(context, listen: false);
+                              final playerProvider =
+                                  Provider.of<PlayerProvider>(context, listen: false);
+                              final full = await libraryProvider.getPlaylist(discoveryPlaylist.id);
+                              final songs = full.songs ?? [];
+                              if (songs.isNotEmpty) {
+                                await playerProvider.playSong(songs.first, playlist: songs, startIndex: 0);
+                              }
+                            },
+                            child: Container(
+                              width: 50,
+                              height: 50,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 8,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.black,
+                                size: 32,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

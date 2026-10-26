@@ -422,9 +422,8 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
                         icon: Icons.person_rounded,
                         title: 'Aller à l\'artiste',
                         onTap: () {
-                          final nav = Navigator.of(context);
-                          nav.pop();
-                          _navigateToArtist(nav);
+                          Navigator.pop(context);
+                          _navigateToArtist(context);
                         },
                       ),
                       _buildRatingTile(context),
@@ -750,7 +749,7 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
     }
   }
 
-  void _navigateToArtist(NavigatorState nav) {
+  void _navigateToArtist(BuildContext context) {
     final participants = ArtistRef.fromListOrFallback(
       widget.song.artistParticipants,
       fallbackName: widget.song.artist,
@@ -758,8 +757,7 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
     );
 
     if (participants.length > 1) {
-      final ctx = NavigationHelper.navigatorKey.currentContext;
-      if (ctx == null) return;
+      final ctx = NavigationHelper.navigatorKey.currentContext ?? context;
       showModalBottomSheet(
         context: ctx,
         backgroundColor: Colors.transparent,
@@ -767,7 +765,7 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
           artists: participants,
           onArtistTap: (artist) {
             Navigator.pop(sheetCtx);
-            _pushArtist(nav, artist);
+            _pushArtist(context, artist);
           },
         ),
       );
@@ -776,40 +774,46 @@ class _SongOptionsModalState extends State<SongOptionsModal> {
 
     final single = participants.firstOrNull;
     if (single != null) {
-      _pushArtist(nav, single);
+      _pushArtist(context, single);
       return;
     }
 
     final artistId = widget.song.artistId;
     if (artistId != null && artistId.isNotEmpty) {
-      nav.push(
-        MaterialPageRoute(builder: (_) => ArtistScreen(artistId: artistId)),
+      NavigationHelper.push(
+        context,
+        ArtistScreen(artistId: artistId),
       );
     }
   }
 
-  void _pushArtist(NavigatorState nav, ArtistRef artist) {
+  void _pushArtist(BuildContext context, ArtistRef artist) {
     if (artist.id.isNotEmpty) {
-      nav.push(
-        MaterialPageRoute(builder: (_) => ArtistScreen(artistId: artist.id)),
+      NavigationHelper.push(
+        context,
+        ArtistScreen(artistId: artist.id),
       );
     } else if (artist.name.isNotEmpty) {
-      final ctx = NavigationHelper.navigatorKey.currentContext;
-      if (ctx != null) {
-        final subsonic = Provider.of<SubsonicService>(ctx, listen: false);
-        subsonic
-            .search(artist.name, artistCount: 3, albumCount: 0, songCount: 0)
-            .then((res) {
-          if (res.artists.isNotEmpty) {
-            final matched = res.artists.firstWhere(
-              (a) => a.name.toLowerCase() == artist.name.toLowerCase(),
-              orElse: () => res.artists.first,
+      final ctx = NavigationHelper.navigatorKey.currentContext ?? context;
+      final subsonic = Provider.of<SubsonicService>(ctx, listen: false);
+      subsonic
+          .search(artist.name, artistCount: 3, albumCount: 0, songCount: 0)
+          .then((res) {
+        if (res.artists.isNotEmpty) {
+          final matched = res.artists.firstWhere(
+            (a) => a.name.toLowerCase() == artist.name.toLowerCase(),
+            orElse: () => res.artists.first,
+          );
+          final targetCtx =
+              NavigationHelper.navigatorKey.currentContext ?? context;
+          if (targetCtx.mounted) {
+            NavigationHelper.push(
+              targetCtx,
+              ArtistScreen(artistId: matched.id),
             );
-            nav.push(MaterialPageRoute(
-                builder: (_) => ArtistScreen(artistId: matched.id)));
           }
-        }).catchError((_) {});
-      }
+        }
+      }).catchError((_) {});
     }
   }
 }

@@ -10,6 +10,8 @@ import 'package:musly/widgets/widgets.dart';
 import 'package:musly/l10n/app_localizations.dart';
 import 'package:musly/utils/screen_helper.dart';
 import 'package:musly/services/offline_service.dart';
+import 'package:musly/services/deezer_service.dart';
+import 'package:musly/utils/navigation_helper.dart';
 
 class AlbumScreen extends StatefulWidget {
   final String albumId;
@@ -70,17 +72,60 @@ class _AlbumScreenState extends State<AlbumScreen> {
 
     try {
       Album? album;
+      List<Song> songs = [];
 
-      if (libraryProvider.isLocalOnlyMode) {
+      final isDeezerAlbum = widget.albumId.startsWith('ext_dz_') ||
+          (int.tryParse(widget.albumId) != null);
+
+      if (isDeezerAlbum) {
+        album = await DeezerService().getAlbum(widget.albumId);
+        if (album != null) {
+          songs = await DeezerService().getAlbumTracks(
+            widget.albumId,
+            defaultCover: album.coverArt,
+            defaultArtist: album.artist,
+          );
+        }
+      } else if (libraryProvider.isLocalOnlyMode) {
         album = libraryProvider.cachedAllAlbums.firstWhere(
           (a) => a.id == widget.albumId,
           orElse: () => Album(id: widget.albumId, name: 'Unknown Album'),
         );
+        songs = await libraryProvider.getAlbumSongs(widget.albumId);
       } else {
         album = await subsonicService.getAlbum(widget.albumId);
-      }
+        songs = await libraryProvider.getAlbumSongs(widget.albumId);
 
-      final songs = await libraryProvider.getAlbumSongs(widget.albumId);
+        // Si l'album Subsonic est incomplet (ex: 1 seul morceau alors que c'est un album studio Deezer)
+        if (songs.length <= 1 && album.name.isNotEmpty) {
+          try {
+            final searchQuery = '${album.artist ?? ''} ${album.name}'.trim();
+            final deezerAlbums = await DeezerService().searchAlbums(searchQuery, limit: 1);
+            if (deezerAlbums.isNotEmpty) {
+              final dAlb = deezerAlbums.first;
+              final fullTracks = await DeezerService().getAlbumTracks(
+                dAlb.id,
+                defaultCover: album.coverArt ?? dAlb.coverArt,
+                defaultArtist: album.artist ?? dAlb.artist,
+              );
+              if (fullTracks.length > 1) {
+                songs = fullTracks;
+                album = Album(
+                  id: album.id,
+                  name: album.name,
+                  artist: album.artist ?? dAlb.artist,
+                  artistId: album.artistId ?? dAlb.artistId,
+                  coverArt: album.coverArt ?? dAlb.coverArt,
+                  songCount: fullTracks.length,
+                  year: album.year ?? dAlb.year,
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint('[AlbumScreen] Fallback full album Deezer error: $e');
+          }
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -237,6 +282,16 @@ class _AlbumScreenState extends State<AlbumScreen> {
     );
   }
 
+  Widget? _buildBottomPlayer(BuildContext context) {
+    final isInner =
+        Navigator.of(context) == NavigationHelper.appNavigatorKey.currentState;
+    if (isInner) return null;
+    return const SafeArea(
+      top: false,
+      child: MiniPlayer(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -245,6 +300,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(),
+        bottomNavigationBar: _buildBottomPlayer(context),
         body: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
@@ -303,6 +359,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
     if (_album == null) {
       return Scaffold(
         appBar: AppBar(),
+        bottomNavigationBar: _buildBottomPlayer(context),
         body: Center(child: Text(AppLocalizations.of(context)!.albumNotFound)),
       );
     }
@@ -318,6 +375,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
         AuthState.offlineMode;
 
     return Scaffold(
+      bottomNavigationBar: _buildBottomPlayer(context),
       body: Stack(
         children: [
           CustomScrollView(

@@ -40,7 +40,7 @@ class TvDetectionService with ChangeNotifier {
           isTizenEnv) {
         _isTvMode = true;
         _initialized = true;
-        debugPrint('[TvDetectionService] 📺 Tizen/WebOS TV detected natively');
+        debugPrint('[TvDetectionService] Tizen/WebOS TV detected natively');
         notifyListeners();
         return true;
       }
@@ -51,7 +51,7 @@ class TvDetectionService with ChangeNotifier {
           _isTvMode = true;
           _initialized = true;
           debugPrint(
-              '[TvDetectionService] 📺 Android TV / TV Box detected natively');
+              '[TvDetectionService] Android TV / TV Box detected natively');
           notifyListeners();
           return true;
         }

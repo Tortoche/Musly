@@ -16,6 +16,7 @@ import 'package:path/path.dart' as p;
 import 'package:musly/widgets/settings/settings_section_card.dart';
 import 'package:musly/widgets/settings/settings_switch_tile.dart';
 import 'package:musly/widgets/settings/settings_list_tile.dart';
+import 'package:musly/utils/navigation_helper.dart';
 
 import 'package:musly/utils/context_extensions.dart';
 
@@ -668,10 +669,9 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
           title: l10n.playlistDownloads,
           subtitle: l10n.playlistSongsDownloadedCount(ids.length),
           trailing: const Icon(CupertinoIcons.chevron_right, size: 16),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const DownloadPlaylistStatusScreen(),
-            ),
+          onTap: () => NavigationHelper.push(
+            context,
+            const DownloadPlaylistStatusScreen(),
           ),
         );
       },

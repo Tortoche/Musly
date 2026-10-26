@@ -11,6 +11,7 @@ import 'ytdlp_service.dart';
 enum PlaylistImportSource {
   spotify,
   youtubeMusic,
+  deezer,
   unknown,
 }
 
@@ -126,6 +127,9 @@ class PlaylistImportService {
     if (trimmed.contains('spotify.com') || trimmed.startsWith('spotify:')) {
       return PlaylistImportSource.spotify;
     }
+    if (trimmed.contains('deezer.com') || trimmed.contains('deezer.page.link')) {
+      return PlaylistImportSource.deezer;
+    }
     if (trimmed.contains('youtube.com') ||
         trimmed.contains('youtu.be') ||
         trimmed.startsWith('PL') ||
@@ -162,20 +166,70 @@ class PlaylistImportService {
     return null;
   }
 
+  String? extractDeezerId(String input) {
+    final match = RegExp(r'playlist/([0-9]+)').firstMatch(input.trim());
+    if (match != null) return match.group(1);
+    if (RegExp(r'^[0-9]+$').hasMatch(input.trim())) return input.trim();
+    return null;
+  }
+
   Future<PlaylistImportPreview> fetchPreview(String input) async {
     final source = detectSource(input);
     switch (source) {
       case PlaylistImportSource.spotify:
         return fetchSpotifyPreview(input);
+      case PlaylistImportSource.deezer:
+        return fetchDeezerPreview(input);
       case PlaylistImportSource.youtubeMusic:
         return fetchYouTubeMusicPreview(input);
       case PlaylistImportSource.unknown:
         try {
           return await fetchSpotifyPreview(input);
         } catch (_) {
-          return await fetchYouTubeMusicPreview(input);
+          try {
+            return await fetchDeezerPreview(input);
+          } catch (_) {
+            return await fetchYouTubeMusicPreview(input);
+          }
         }
     }
+  }
+
+  Future<PlaylistImportPreview> fetchDeezerPreview(String input) async {
+    final id = extractDeezerId(input);
+    if (id == null) {
+      throw Exception('Lien ou identifiant de playlist Deezer non valide');
+    }
+    final url = Uri.parse('https://api.deezer.com/playlist/$id');
+    final req = await _client.getUrl(url);
+    final response = await req.close();
+    final body = await response.transform(utf8.decoder).join();
+    final data = jsonDecode(body) as Map<String, dynamic>;
+    if (data.containsKey('error')) {
+      throw Exception('Playlist Deezer introuvable ou privée');
+    }
+
+    final tracksList = (data['tracks']?['data'] as List?) ?? [];
+    final tracks = tracksList.map((t) {
+      final artistData = t['artist'] as Map<String, dynamic>?;
+      final albumData = t['album'] as Map<String, dynamic>?;
+      return PlaylistImportTrack(
+        title: t['title'] ?? '',
+        artist: artistData?['name'] ?? 'Artiste inconnu',
+        album: albumData?['title'],
+        duration: (t['duration'] as num?)?.toInt(),
+        coverArt: albumData?['cover_xl'] ?? albumData?['cover_big'],
+      );
+    }).toList();
+
+    return PlaylistImportPreview(
+      source: PlaylistImportSource.deezer,
+      id: id,
+      title: data['title'] ?? 'Playlist Deezer',
+      author: data['creator']?['name'],
+      coverArtUrl: data['picture_xl'] ?? data['picture_big'],
+      tracks: tracks,
+    );
   }
 
   Future<PlaylistImportPreview> fetchSpotifyPreview(String input) async {
@@ -746,5 +800,46 @@ class PlaylistImportService {
       customName: customName,
       onProgress: onProgress,
     );
+  }
+
+  /// Importation directe haute fidélité via l'API CJ Resolver sur notre serveur
+  /// POST https://music.corentinjanin.fr/api/music/playlist/import
+  Future<Playlist> importToServer({
+    required String sourceUrl,
+    required String username,
+    required String password,
+    String? customName,
+  }) async {
+    final client = HttpClient()..badCertificateCallback = (cert, host, port) => true;
+    try {
+      final request = await client.postUrl(
+        Uri.parse('https://music.corentinjanin.fr/api/music/playlist/import'),
+      );
+      request.headers.set('Content-Type', 'application/json');
+      request.write(jsonEncode({
+        'source': sourceUrl,
+        'user': username,
+        'password': password,
+      }));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      if (json['status'] == 'success') {
+        final subsonicId = json['subsonic_id']?.toString() ?? '';
+        final name = customName ?? (json['playlist_name']?.toString() ?? 'Playlist importée');
+        final totalTracks = (json['total_tracks'] as num?)?.toInt() ?? 0;
+        return Playlist(
+          id: subsonicId.isNotEmpty ? subsonicId : const Uuid().v4(),
+          name: name,
+          songCount: totalTracks,
+          created: DateTime.now(),
+          changed: DateTime.now(),
+        );
+      } else {
+        throw Exception(json['detail'] ?? json['message'] ?? 'Erreur lors de l\'importation');
+      }
+    } finally {
+      client.close();
+    }
   }
 }

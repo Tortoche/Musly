@@ -101,6 +101,53 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
     }
   }
 
+  Future<void> _startServerImport([String? url]) async {
+    final text = (url ?? _urlController.text).trim();
+    if (text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Veuillez entrer un lien Spotify ou Deezer';
+      });
+      return;
+    }
+
+    setState(() {
+      _currentStep = _ImportStep.importing;
+      _progressCurrent = 0;
+      _progressTotal = 1;
+      _progressStatus = 'Envoi au serveur CJ Stream et téléchargement studio...';
+      _errorMessage = null;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+
+      final user = authProvider.config?.username ?? 'test';
+      final pass = authProvider.config?.password ?? 'newmdpTest265';
+
+      final playlist = await PlaylistImportService().importToServer(
+        sourceUrl: text,
+        username: user,
+        password: pass,
+        customName: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : null,
+      );
+
+      await libraryProvider.refresh();
+
+      if (!mounted) return;
+      setState(() {
+        _importedPlaylist = playlist;
+        _currentStep = _ImportStep.success;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _currentStep = _ImportStep.input;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
   Future<void> _startImport() async {
     if (_preview == null) return;
 
@@ -261,7 +308,14 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
               icon: Icons.music_note_rounded,
               isActive: detected == PlaylistImportSource.spotify,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
+            _buildSourceBadge(
+              label: 'Deezer',
+              color: const Color(0xFFFF0055),
+              icon: CupertinoIcons.waveform,
+              isActive: detected == PlaylistImportSource.deezer,
+            ),
+            const SizedBox(width: 8),
             _buildSourceBadge(
               label: 'YouTube Music',
               color: const Color(0xFFFF0000),
@@ -321,23 +375,34 @@ class _ImportPlaylistDialogState extends State<ImportPlaylistDialog> {
         ],
         const SizedBox(height: 24),
         ElevatedButton.icon(
-          onPressed: _isLoadingPreview ? null : _fetchPreview,
-          icon: _isLoadingPreview
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(CupertinoIcons.arrow_right_circle),
-          label:
-              Text(_isLoadingPreview ? 'Chargement...' : 'Charger l\'aperçu'),
+          onPressed: _isLoadingPreview ? null : () => _startServerImport(),
+          icon: const Icon(CupertinoIcons.cloud_download, color: Colors.white),
+          label: const Text(
+            'Importer sur le Serveur (FLAC / 320k)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: _isLoadingPreview ? null : _fetchPreview,
+          icon: _isLoadingPreview
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(CupertinoIcons.eye),
+          label: Text(_isLoadingPreview ? 'Chargement...' : 'Aperçu des titres'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),

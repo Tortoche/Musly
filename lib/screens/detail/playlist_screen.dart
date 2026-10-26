@@ -12,6 +12,7 @@ import 'package:musly/theme/app_theme.dart';
 import 'package:musly/widgets/widgets.dart';
 import 'package:musly/l10n/app_localizations.dart';
 import 'package:musly/utils/screen_helper.dart';
+import 'package:musly/utils/navigation_helper.dart';
 
 class PlaylistScreen extends StatefulWidget {
   final String playlistId;
@@ -448,6 +449,16 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     );
   }
 
+  Widget? _buildBottomPlayer(BuildContext context) {
+    final isInner =
+        Navigator.of(context) == NavigationHelper.appNavigatorKey.currentState;
+    if (isInner) return null;
+    return const SafeArea(
+      top: false,
+      child: MiniPlayer(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -459,6 +470,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
           title:
               widget.playlistName != null ? Text(widget.playlistName!) : null,
         ),
+        bottomNavigationBar: _buildBottomPlayer(context),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -466,6 +478,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     if (_playlist == null) {
       return Scaffold(
         appBar: AppBar(),
+        bottomNavigationBar: _buildBottomPlayer(context),
         body:
             Center(child: Text(AppLocalizations.of(context)!.playlistNotFound)),
       );
@@ -490,6 +503,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
             ),
           ],
         ),
+        bottomNavigationBar: _buildBottomPlayer(context),
         body: Column(
           children: [
             Padding(
@@ -607,6 +621,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     }
 
     return Scaffold(
+      bottomNavigationBar: _buildBottomPlayer(context),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(

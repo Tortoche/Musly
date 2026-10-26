@@ -10,12 +10,9 @@ import 'package:musly/utils/navigation_helper.dart';
 import 'package:musly/screens/detail/album_screen.dart';
 import 'package:musly/screens/detail/playlist_screen.dart';
 import 'package:musly/screens/media/favorites_screen.dart';
-import 'package:musly/screens/media/album_collection_screen.dart';
 import 'library_search_delegate.dart';
 import 'package:musly/screens/detail/artist_screen.dart';
-import 'package:musly/screens/media/radio_screen.dart';
 import 'package:musly/screens/media/downloads_screen.dart';
-import 'package:musly/screens/media/song_collection_screen.dart';
 import 'package:musly/screens/auth/add_server_screen.dart';
 import 'package:musly/l10n/app_localizations.dart';
 import 'package:musly/services/offline_service.dart';
@@ -27,6 +24,7 @@ import 'package:musly/models/playlist.dart';
 import 'package:musly/models/album.dart';
 import 'package:musly/models/artist.dart';
 import 'package:musly/models/song.dart';
+import 'package:musly/widgets/common/song_tile.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -358,11 +356,32 @@ class _LibraryScreenState extends State<LibraryScreen> {
       }
     }
 
-    if ((_selectedFilter == null && !isYoutube) ||
-        _selectedFilter == 'Albums') {
-      var albums = _selectedFilter == 'Albums'
-          ? libraryProvider.cachedAllAlbums
-          : libraryProvider.recentAlbums;
+    if (_selectedFilter == null) {
+      // UX Spotify: Affichage direct des morceaux (Track Tiles)
+      var directSongs = libraryProvider.cachedAllSongs;
+      if (directSongs.isEmpty) {
+        directSongs = libraryProvider.randomSongs;
+      }
+      directSongs = _sortList(directSongs, (s) => s.title);
+      for (final song in directSongs) {
+        items.add(
+          _LibraryItem(
+            type: _LibraryItemType.song,
+            title: song.title,
+            subtitle: song.artist ?? 'Artiste inconnu',
+            data: song,
+            onTap: () {
+              final player =
+                  Provider.of<PlayerProvider>(context, listen: false);
+              player.playSong(song, playlist: directSongs);
+            },
+          ),
+        );
+      }
+    }
+
+    if (_selectedFilter == 'Albums') {
+      var albums = libraryProvider.cachedAllAlbums;
       albums = _sortList(albums, (a) => a.name);
       for (final a in albums) {
         items.add(
@@ -371,14 +390,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
             title: a.name,
             subtitle: 'Album \u2022 ${a.artist}',
             data: a,
-            onTap: () => _navigate(context, AlbumScreen(albumId: a.id)),
+            onTap: () async {
+              if (a.songCount == 1) {
+                try {
+                  final songs = await SubsonicService().getAlbumSongs(a.id);
+                  if (songs.isNotEmpty && context.mounted) {
+                    Provider.of<PlayerProvider>(context, listen: false)
+                        .playSong(songs.first, playlist: songs);
+                    return;
+                  }
+                } catch (_) {}
+              }
+              if (context.mounted) {
+                _navigate(context, AlbumScreen(albumId: a.id));
+              }
+            },
           ),
         );
       }
     }
 
-    if ((_selectedFilter == null && !isYoutube) ||
-        _selectedFilter == 'Artists') {
+    if (_selectedFilter == 'Artists') {
       var artists = libraryProvider.artists;
       artists = _sortList(artists, (a) => a.name);
       for (final art in artists) {
@@ -392,34 +424,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         );
       }
-    }
-
-    if (_selectedFilter == null && !isYoutube) {
-      items.add(
-        _LibraryItem(
-          type: _LibraryItemType.allSongs,
-          title: l10n?.songs ?? 'All Songs',
-          subtitle:
-              '${libraryProvider.cachedAllSongs.length} ${l10n?.songs.toLowerCase() ?? 'songs'}',
-          onTap: () => _navigate(context, const AllSongsScreen()),
-        ),
-      );
-      items.add(
-        _LibraryItem(
-          type: _LibraryItemType.radioStations,
-          title: l10n?.radioStations ?? 'Radio Stations',
-          subtitle: l10n?.radios ?? 'Radio',
-          onTap: () => _navigate(context, const RadioScreen()),
-        ),
-      );
-      items.add(
-        _LibraryItem(
-          type: _LibraryItemType.likedAlbums,
-          title: l10n?.likedAlbums ?? 'Liked Albums',
-          subtitle: l10n?.albums ?? 'Albums',
-          onTap: () => _navigate(context, const LikedAlbumsScreen()),
-        ),
-      );
     }
 
     if (_selectedFilter == 'Downloaded') {
@@ -1087,28 +1091,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
       case _LibraryItemType.song:
         final song = item.data as Song;
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-          leading: AlbumArtwork(
-            coverArt: song.coverArt,
-            size: 54,
-            borderRadius: 6,
-          ),
-          title: Text(
-            song.title,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            item.subtitle,
-            style: TextStyle(
-              fontSize: 13,
-              color: isDark
-                  ? AppTheme.darkSecondaryText
-                  : AppTheme.lightSecondaryText,
-            ),
-          ),
+        return SongTile(
+          song: song,
+          showArtwork: true,
+          showArtist: true,
+          showDuration: true,
           onTap: item.onTap,
         );
     }
