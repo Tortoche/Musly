@@ -595,10 +595,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               ...playlists.take(2).map((playlist) {
+                final cleanName = playlist.name
+                    .replaceAll(
+                        RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]',
+                            unicode: true),
+                        '')
+                    .trim();
                 return SizedBox(
                   width: cardWidth,
                   child: QuickAccessTile(
-                    title: playlist.name,
+                    title: cleanName.isEmpty ? playlist.name : cleanName,
                     imageUrl: playlist.coverArt,
                     onTap: () => _openPlaylist(context, playlist),
                   ),
@@ -885,6 +891,36 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isDesktop,
     required double hPad,
   }) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+
+    // Dynamically harmonize gradient with Musly theme and active accent
+    final hsl = HSLColor.fromColor(primary);
+    final Color startColor;
+    final Color midColor;
+    final Color endColor;
+
+    if (primary == AppTheme.brandRed ||
+        primary.toARGB32() == AppTheme.brandRed.toARGB32()) {
+      startColor = const Color(0xFF991B1B);
+      midColor = AppTheme.brandRed;
+      endColor = AppTheme.brandPink;
+    } else {
+      startColor = hsl
+          .withLightness((hsl.lightness * 0.72).clamp(0.18, 0.8))
+          .toColor();
+      midColor = primary;
+      endColor = hsl
+          .withHue((hsl.hue + 14) % 360)
+          .withLightness((hsl.lightness * 1.12).clamp(0.2, 0.88))
+          .toColor();
+    }
+
+    final cleanTitle = discoveryPlaylist.name
+        .replaceAll(
+            RegExp(r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]', unicode: true), '')
+        .trim();
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 4),
       child: Material(
@@ -896,14 +932,14 @@ class _HomeScreenState extends State<HomeScreen> {
             height: isDesktop ? 180 : 155,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF5B21B6), Color(0xFF9333EA), Color(0xFFEC4899)],
+              gradient: LinearGradient(
+                colors: [startColor, midColor, endColor],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF9333EA).withValues(alpha: 0.35),
+                  color: primary.withValues(alpha: 0.32),
                   blurRadius: 18,
                   offset: const Offset(0, 6),
                 ),
@@ -969,7 +1005,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  discoveryPlaylist.name,
+                                  cleanTitle.isEmpty ? discoveryPlaylist.name : cleanTitle,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -1019,9 +1055,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ],
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.play_arrow_rounded,
-                                color: Colors.black,
+                                color: primary,
                                 size: 32,
                               ),
                             ),
