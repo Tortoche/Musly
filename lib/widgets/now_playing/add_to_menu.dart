@@ -300,83 +300,38 @@ class _PlaylistSelectionBottomSheetState
                     subtitle: Text(AppLocalizations.of(context)!
                         .songsCount(playlist.songCount ?? 0)),
                     onTap: () async {
+                      final libProvider = Provider.of<
+                          musly_library_provider.LibraryProvider>(
+                        context,
+                        listen: false,
+                      );
+                      final messenger = ScaffoldMessenger.of(context);
+                      final l10n = AppLocalizations.of(context)!;
                       Navigator.of(context).pop();
-                      final subsonic =
-                          Provider.of<SubsonicService>(context, listen: false);
-
-                      bool isDuplicate = false;
-                      try {
-                        final fullPlaylist =
-                            await subsonic.getPlaylist(playlist.id);
-                        final existingSongs =
-                            fullPlaylist.songs ?? playlist.songs ?? [];
-                        isDuplicate = existingSongs.any(
-                          (s) =>
-                              s.id == widget.song.id ||
-                              (s.title.trim().toLowerCase() ==
-                                      widget.song.title.trim().toLowerCase() &&
-                                  (s.artist ?? '').trim().toLowerCase() ==
-                                      (widget.song.artist ?? '')
-                                          .trim()
-                                          .toLowerCase()),
-                        );
-                      } catch (_) {
-                        if (playlist.songs != null) {
-                          isDuplicate = playlist.songs!
-                              .any((s) => s.id == widget.song.id);
-                        }
-                      }
-
-                      if (isDuplicate) {
-                        if (!context.mounted) return;
-                        final l10n = AppLocalizations.of(context)!;
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: Text(l10n.alreadyInPlaylist),
-                            content: Text(
-                              l10n.alreadyInPlaylistConfirm(
-                                  widget.song.title, playlist.name),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx, false),
-                                child: Text(l10n.cancel),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                child: Text(l10n.addAnyway),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirmed != true) return;
-                      }
 
                       try {
-                        final libProvider = Provider.of<
-                            musly_library_provider.LibraryProvider>(
-                          context,
-                          listen: false,
-                        );
                         await libProvider.addSongToPlaylist(
                             playlist.id, widget.song);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .addedToPlaylist(
-                                        widget.song.title, playlist.name))),
-                          );
-                        }
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              l10n.addedToPlaylist(
+                                widget.song.title,
+                                playlist.name,
+                              ),
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
                       } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .errorAddingToPlaylist(e.toString()))),
-                          );
-                        }
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              l10n.errorAddingToPlaylist(e.toString()),
+                            ),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
                       }
                     },
                   );

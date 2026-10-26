@@ -1668,58 +1668,69 @@ class LibraryProvider extends ChangeNotifier
 
 
   Future<void> addSongToPlaylist(String playlistId, Song song) async {
-    final idx = _playlists.indexWhere((p) => p.id == playlistId);
-    Playlist? targetPlaylist = idx != -1 ? _playlists[idx] : null;
-
-    if (targetPlaylist == null) {
-      targetPlaylist = await _db.getPlaylist(playlistId);
-    }
-
-    if (targetPlaylist != null) {
-      final currentSongs = List<Song>.from(targetPlaylist.songs ?? []);
-      final alreadyPresent = currentSongs.any((s) => s.id == song.id);
-      if (!alreadyPresent) {
-        currentSongs.add(song);
-        final updated = targetPlaylist.copyWith(
-          songs: currentSongs,
-          songCount: currentSongs.length,
-          changed: DateTime.now(),
-        );
-
-        if (idx != -1) {
-          _playlists[idx] = updated;
-        } else {
-          _playlists.add(updated);
-        }
-
-        final cIdx = _cachedPlaylists.indexWhere((p) => p.id == playlistId);
-        if (cIdx != -1) {
-          _cachedPlaylists[cIdx] = updated;
-        } else {
-          _cachedPlaylists.add(updated);
-        }
-
-        await _db.insertOrUpdateSong(song);
-        await _db.insertOrUpdatePlaylist(updated);
-        _saveCachedData();
-
-        PlaylistCoverService().checkAndGenerateCover(
-          playlistId: playlistId,
-          songs: currentSongs,
-          subsonicService: _subsonicService,
-        );
-
-        notifyListeners();
-      }
-    }
-
+    // 1. Toujours charger la playlist complète (fusion serveur + local)
+    Playlist fullPlaylist;
     try {
-      await _subsonicService.updatePlaylist(
-        playlistId: playlistId,
-        songIdsToAdd: [song.id],
-      );
-    } catch (e) {
-      debugPrint('[LibraryProvider] Server updatePlaylist (ignoring for local/virtual tracks): $e');
+      fullPlaylist = await getPlaylist(playlistId);
+    } catch (_) {
+      final local = await _db.getPlaylist(playlistId);
+      final idx = _playlists.indexWhere((p) => p.id == playlistId);
+      final inMem = idx != -1 ? _playlists[idx] : Playlist(id: playlistId, name: 'Playlist');
+      fullPlaylist = local ?? inMem;
+    }
+
+    // 2. Ajouter la chanson si elle n'est pas déjà présente
+    final currentSongs = List<Song>.from(fullPlaylist.songs ?? []);
+    final alreadyPresent = currentSongs.any((s) => s.id == song.id);
+    if (!alreadyPresent) {
+      currentSongs.add(song);
+    }
+
+    final updated = fullPlaylist.copyWith(
+      songs: currentSongs,
+      songCount: currentSongs.length,
+      changed: DateTime.now(),
+    );
+
+    // 3. Mettre à jour la mémoire
+    final idx = _playlists.indexWhere((p) => p.id == playlistId);
+    if (idx != -1) {
+      _playlists[idx] = updated;
+    } else {
+      _playlists.add(updated);
+    }
+
+    final cIdx = _cachedPlaylists.indexWhere((p) => p.id == playlistId);
+    if (cIdx != -1) {
+      _cachedPlaylists[cIdx] = updated;
+    } else {
+      _cachedPlaylists.add(updated);
+    }
+
+    // 4. Sauvegarde persistante SQLite immédiate
+    await _db.insertOrUpdateSong(song);
+    await _db.insertOrUpdatePlaylist(updated);
+    _saveCachedData();
+
+    // 5. Mise à jour de la cover mosaïque 2x2
+    PlaylistCoverService().checkAndGenerateCover(
+      playlistId: playlistId,
+      songs: currentSongs,
+      subsonicService: _subsonicService,
+    );
+
+    notifyListeners();
+
+    // 6. Synchronisation serveur Navidrome/Subsonic
+    if (!song.isLocal) {
+      try {
+        await _subsonicService.updatePlaylist(
+          playlistId: playlistId,
+          songIdsToAdd: [song.id],
+        );
+      } catch (e) {
+        debugPrint('[LibraryProvider] Server updatePlaylist (ignoring for local/virtual tracks): $e');
+      }
     }
   }
 

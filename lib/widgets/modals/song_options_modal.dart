@@ -98,80 +98,15 @@ class SongOptionsModal extends StatefulWidget {
                           subtitle: Text(AppLocalizations.of(context)!
                               .songsCount(playlist.songCount ?? 0)),
                           onTap: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final l10n = AppLocalizations.of(context)!;
                             Navigator.pop(context);
 
-                            final subsonicService =
-                                Provider.of<SubsonicService>(
-                              context,
-                              listen: false,
-                            );
-                            final l10n = AppLocalizations.of(context)!;
-                            final messenger = ScaffoldMessenger.of(context);
-
-                            bool isDuplicate = false;
                             try {
-                              final fullPlaylist = await subsonicService
-                                  .getPlaylist(playlist.id);
-                              final existingSongs =
-                                  fullPlaylist.songs ?? playlist.songs ?? [];
-                              isDuplicate = existingSongs.any(
-                                (s) =>
-                                    s.id == song.id ||
-                                    (s.title.trim().toLowerCase() ==
-                                            song.title.trim().toLowerCase() &&
-                                        (s.artist ?? '').trim().toLowerCase() ==
-                                            (song.artist ?? '')
-                                                .trim()
-                                                .toLowerCase()),
-                              );
-                            } catch (_) {
-                              if (playlist.songs != null) {
-                                isDuplicate =
-                                    playlist.songs!.any((s) => s.id == song.id);
-                              }
-                            }
-
-                            if (isDuplicate) {
-                              if (!context.mounted) return;
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(l10n.alreadyInPlaylist),
-                                  content: Text(
-                                    l10n.alreadyInPlaylistConfirm(
-                                        song.title, playlist.name),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(ctx, false),
-                                      child: Text(l10n.cancel),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx, true),
-                                      child: Text(l10n.addAnyway),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirmed != true) return;
-                            }
-
-                            try {
-                              debugPrint(
-                                'Attempting to add song ${song.id} (${song.title}) to playlist ${playlist.id} (${playlist.name})',
-                              );
-
                               await libProvider.addSongToPlaylist(
                                 playlist.id,
                                 song,
                               );
-
-                              debugPrint(
-                                  'Successfully added song to playlist');
-
-                              debugPrint('Playlists refreshed');
-
                               messenger.showSnackBar(
                                 SnackBar(
                                   content: Row(
@@ -183,7 +118,7 @@ class SongOptionsModal extends StatefulWidget {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          'Added "${song.title}" to ${playlist.name}',
+                                          'Added "' + song.title + '" to ' + playlist.name,
                                         ),
                                       ),
                                     ],
@@ -193,17 +128,14 @@ class SongOptionsModal extends StatefulWidget {
                                 ),
                               );
                             } catch (e) {
-                              debugPrint('Error adding song to playlist: $e');
                               messenger.showSnackBar(
                                 SnackBar(
                                   content: Row(
                                     children: [
-                                      const Icon(Icons.error,
-                                          color: Colors.white),
+                                      const Icon(Icons.error, color: Colors.white),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child:
-                                            Text(l10n.errorAddingToPlaylist(e)),
+                                        child: Text(l10n.errorAddingToPlaylist(e)),
                                       ),
                                     ],
                                   ),
