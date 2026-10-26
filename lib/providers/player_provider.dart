@@ -37,6 +37,8 @@ import '../services/transcoding_service.dart';
 import '../providers/library_provider.dart';
 
 import '../services/android_auto_service.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import '../services/audio_precache_service.dart';
 
 enum RepeatMode { off, all, one }
 
@@ -49,6 +51,10 @@ class PlayerProvider extends ChangeNotifier
 
   AudioPlayer get _audioPlayer => _audioHandler.player;
   final OfflineService _offlineService = OfflineService();
+  final AudioPrecacheService _audioPrecacheService = AudioPrecacheService();
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  bool _isNetworkAvailable = true;
+  bool get isNetworkAvailable => _isNetworkAvailable;
   final WindowsSystemService _windowsService = WindowsSystemService();
   final ReplayGainService _replayGainService = ReplayGainService();
   final AutoDjService _autoDjService = AutoDjService();
@@ -981,7 +987,63 @@ class PlayerProvider extends ChangeNotifier
       notifyListeners();
     });
 
+    _audioPrecacheService.initialize();
+    _initConnectivityWatcher();
+
     _initAudioPlayerListeners();
+  }
+
+  void _initConnectivityWatcher() {
+    Connectivity().checkConnectivity().then(_onConnectivityChanged).catchError((_) {});
+    _connectivitySub?.cancel();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
+  }
+
+  void _onConnectivityChanged(List<ConnectivityResult> results) {
+    final hasNet = results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
+    if (hasNet != _isNetworkAvailable) {
+      _isNetworkAvailable = hasNet;
+      if (hasNet) {
+        debugPrint('[Player Network] 🌐 Connexion rétablie : reprise des flux distants et du pré-cache');
+        _triggerRollingPrecache();
+        _offlineService.flushPendingScrobbles(_subsonicService).catchError((_) {});
+      } else {
+        debugPrint('[Player Network] 📴 Coupure réseau détectée : bascule transparente sur le cache local/pré-cache');
+        _audioPrecacheService.cancelPending();
+      }
+      notifyListeners();
+    }
+  }
+
+  void _triggerRollingPrecache() {
+    if (_queue.isEmpty || _currentIndex < 0) return;
+    _audioPrecacheService.syncQueueWindow(
+      queue: _queue,
+      currentIndex: _currentIndex,
+      subsonicService: _subsonicService,
+    ).catchError((e) {
+      debugPrint('[Player Precache] Erreur sync: ');
+    });
+  }
+
+  int? _findNextAvailableCachedIndex(int startIndex) {
+    for (int i = startIndex + 1; i < _queue.length; i++) {
+      final s = _queue[i];
+      if (s.isLocal == true ||
+          _offlineService.isSongDownloaded(s.id) ||
+          _audioPrecacheService.hasPrecached(s.id)) {
+        return i;
+      }
+    }
+    for (int i = 0; i < startIndex; i++) {
+      final s = _queue[i];
+      if (s.isLocal == true ||
+          _offlineService.isSongDownloaded(s.id) ||
+          _audioPrecacheService.hasPrecached(s.id)) {
+        return i;
+      }
+    }
+    return null;
   }
 
   bool _wasPlayingBeforeInterruption = false;
@@ -1392,6 +1454,7 @@ class PlayerProvider extends ChangeNotifier
       _resolveCurrentSongLyricsOutro();
       notifyListeners();
       _saveQueueState();
+      _triggerRollingPrecache();
 
       _updateAndroidAuto();
 
@@ -1615,7 +1678,14 @@ class PlayerProvider extends ChangeNotifier
 
       _updateAndroidAuto();
     } catch (e) {
-      debugPrint('[Player] âœ— Error playing song "${song.title}": $e');
+      debugPrint('[Player] Error playing song "${song.title}": $e');
+      final nextOfflineIndex = _findNextAvailableCachedIndex(_currentIndex);
+      if (nextOfflineIndex != null && nextOfflineIndex != _currentIndex) {
+        debugPrint(
+            '[Player] Seamless offline fallback: skipping to track #$nextOfflineIndex ("${_queue[nextOfflineIndex].title}")');
+        await skipToIndex(nextOfflineIndex);
+        return;
+      }
       _isPlaying = false;
       _position = Duration.zero;
       _updateAndroidAuto();
@@ -2439,6 +2509,11 @@ class PlayerProvider extends ChangeNotifier
     if (offlinePath != null) {
       return AudioSource.uri(Uri.file(offlinePath));
     }
+    final precachedPath = _audioPrecacheService.getPrecachedAudioPath(song.id);
+    if (precachedPath != null) {
+      debugPrint('[Player] ⚡ Lecture directe depuis le pré-cache glissant: "${song.title}"');
+      return AudioSource.uri(Uri.file(precachedPath));
+    }
     if (_subsonicService.isYoutube) {
       final ytSource = await _subsonicService.getYoutubeAudioSource(song);
       if (ytSource != null) return ytSource;
@@ -2602,6 +2677,7 @@ class PlayerProvider extends ChangeNotifier
     _resolveCurrentSongLyricsOutro();
     notifyListeners();
     _saveQueueState();
+    _triggerRollingPrecache();
 
     if (_currentSong!.isLocal != true) {
       if (_offlineService.isOfflineMode) {
@@ -3137,6 +3213,8 @@ class PlayerProvider extends ChangeNotifier
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _connectivitySub?.cancel();
+    _audioPrecacheService.cancelPending();
     _sleepTimer?.cancel();
     _sleepTimerFadeTimer?.cancel();
     _sleepTimerFadePeriodicTimer?.cancel();
