@@ -1,3 +1,4 @@
+import '../../screens/player/now_playing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -272,6 +273,7 @@ class SongTile extends StatelessWidget {
     HapticFeedback.selectionClick();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     playerProvider.playSong(song, playlist: playlist, startIndex: index);
+    NowPlayingScreen.open(context, song: song);
   }
 
   void _showOptions(BuildContext context) {

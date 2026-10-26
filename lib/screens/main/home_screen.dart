@@ -1,3 +1,4 @@
+import '../player/now_playing_screen.dart';
 import '../../services/favorite_songs_service.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -951,6 +952,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final idx = queue.indexOf(song);
     await playerProvider.playSong(song,
         playlist: queue, startIndex: idx >= 0 ? idx : 0);
+    if (context.mounted) {
+      NowPlayingScreen.open(context, song: song);
+    }
   }
 
   Future<void> _playAlbum(BuildContext context, String albumId) async {

@@ -1,3 +1,4 @@
+import '../player/now_playing_screen.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -374,6 +375,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               final player =
                   Provider.of<PlayerProvider>(context, listen: false);
               player.playSong(song, playlist: directSongs);
+              NowPlayingScreen.open(context, song: song);
             },
           ),
         );
@@ -440,6 +442,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               final player =
                   Provider.of<PlayerProvider>(context, listen: false);
               player.playSong(song, playlist: downloadedSongs);
+              NowPlayingScreen.open(context, song: song);
             },
           ),
         );
@@ -460,6 +463,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               final player =
                   Provider.of<PlayerProvider>(context, listen: false);
               player.playSong(song, playlist: allSongs);
+              NowPlayingScreen.open(context, song: song);
             },
           ),
         );

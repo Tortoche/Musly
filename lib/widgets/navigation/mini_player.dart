@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart' hide RepeatMode;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:musly/models/song.dart';
 import 'package:musly/models/artist_ref.dart';
@@ -13,7 +12,6 @@ import 'package:musly/services/player_ui_settings_service.dart';
 import 'package:musly/services/theme_service.dart';
 import 'package:musly/theme/app_theme.dart';
 import 'package:musly/utils/screen_helper.dart';
-import 'package:musly/services/subsonic_service.dart';
 import 'package:musly/widgets/common/album_artwork.dart';
 import 'package:musly/screens/player/now_playing_screen.dart';
 import 'package:musly/widgets/modals/song_options_modal.dart';
@@ -43,36 +41,7 @@ class MiniPlayer extends StatelessWidget {
             return;
           }
           if (currentSong != null) {
-            final subsonic =
-                Provider.of<SubsonicService>(context, listen: false);
-            final coverUrl = currentSong.coverArt != null
-                ? subsonic.getCoverArtUrl(currentSong.coverArt, size: 800)
-                : null;
-            final imageProvider = (coverUrl != null && coverUrl.isNotEmpty)
-                ? CachedNetworkImageProvider(coverUrl) as ImageProvider
-                : const AssetImage('assets/logo.png') as ImageProvider;
-            final topPadding = MediaQuery.of(context).padding.top;
-
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              useRootNavigator: true,
-              backgroundColor: Colors.transparent,
-              constraints: const BoxConstraints(maxWidth: double.infinity),
-              builder: (ctx) => NowPlayingScreen(
-                topPadding: topPadding,
-                image: imageProvider,
-                title: currentSong.title,
-                artist: (currentSong.artistParticipants?.isNotEmpty == true
-                        ? currentSong.artistParticipants!
-                            .map((a) => a.name)
-                            .join(', ')
-                        : currentSong.artist) ??
-                    '',
-                heroTag: 'cover_${currentSong.id}',
-                song: currentSong,
-              ),
-            );
+            NowPlayingScreen.open(context, song: currentSong);
           }
         }
 

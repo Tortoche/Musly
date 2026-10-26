@@ -31,6 +31,47 @@ import 'package:musly/theme/app_theme.dart';
 import 'package:musly/services/theme_service.dart';
 
 class NowPlayingScreen extends StatefulWidget {
+  static void open(BuildContext context, {Song? song}) {
+    try {
+      final player = Provider.of<PlayerProvider>(context, listen: false);
+      final targetSong = song ?? player.currentSong;
+      if (targetSong == null) return;
+
+      final isTv = TvDetectionService().isTvMode;
+      if (isTv) return;
+
+      final subsonic = Provider.of<SubsonicService>(context, listen: false);
+      final coverUrl = targetSong.coverArt != null
+          ? subsonic.getCoverArtUrl(targetSong.coverArt, size: 800)
+          : null;
+      final imageProvider = (coverUrl != null && coverUrl.isNotEmpty)
+          ? CachedNetworkImageProvider(coverUrl) as ImageProvider
+          : const AssetImage('assets/logo.png') as ImageProvider;
+      final topPadding = MediaQuery.of(context).padding.top;
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useRootNavigator: true,
+        backgroundColor: Colors.transparent,
+        constraints: const BoxConstraints(maxWidth: double.infinity),
+        builder: (ctx) => NowPlayingScreen(
+          topPadding: topPadding,
+          image: imageProvider,
+          title: targetSong.title,
+          artist: (targetSong.artistParticipants?.isNotEmpty == true
+                  ? targetSong.artistParticipants!.map((a) => a.name).join(', ')
+                  : targetSong.artist) ??
+              '',
+          heroTag: 'cover_${targetSong.id}',
+          song: targetSong,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[NowPlayingScreen] open error: $e');
+    }
+  }
+
   final ImageProvider image;
   final String title;
   final String artist;

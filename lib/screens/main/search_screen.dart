@@ -1,3 +1,4 @@
+import '../player/now_playing_screen.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -121,6 +122,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void _playSong(Song song) {
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     playerProvider.playSongWithRadio(song);
+    NowPlayingScreen.open(context, song: song);
   }
 
   @override
