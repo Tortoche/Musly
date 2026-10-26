@@ -8,6 +8,7 @@ import 'package:musly/services/offline_service.dart';
 import 'package:musly/services/tv_detection_service.dart';
 import 'package:musly/services/favorite_playlists_service.dart';
 import 'package:musly/services/playlist_cover_service.dart';
+import 'package:musly/services/discovery_service.dart';
 import 'package:musly/theme/app_theme.dart';
 import 'package:musly/widgets/widgets.dart';
 import 'package:musly/l10n/app_localizations.dart';
@@ -43,14 +44,21 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   @override
   void initState() {
     super.initState();
-    final lib = Provider.of<LibraryProvider>(context, listen: false);
-    final existingIndex =
-        lib.playlists.indexWhere((p) => p.id == widget.playlistId);
-    if (existingIndex != -1) {
-      final existing = lib.playlists[existingIndex];
-      _playlist = existing;
-      if (existing.songs != null && existing.songs!.isNotEmpty) {
+    if (widget.playlistId == DiscoveryService.kDiscoveryPlaylistId) {
+      _playlist = DiscoveryService().currentDiscoveryPlaylist;
+      if (_playlist != null && _playlist!.songs != null && _playlist!.songs!.isNotEmpty) {
         _isLoading = false;
+      }
+    } else {
+      final lib = Provider.of<LibraryProvider>(context, listen: false);
+      final existingIndex =
+          lib.playlists.indexWhere((p) => p.id == widget.playlistId);
+      if (existingIndex != -1) {
+        final existing = lib.playlists[existingIndex];
+        _playlist = existing;
+        if (existing.songs != null && existing.songs!.isNotEmpty) {
+          _isLoading = false;
+        }
       }
     }
     _loadPlaylist();
@@ -90,6 +98,17 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     );
 
     try {
+      if (widget.playlistId == DiscoveryService.kDiscoveryPlaylistId) {
+        final disc = DiscoveryService().currentDiscoveryPlaylist;
+        if (disc != null && mounted) {
+          setState(() {
+            _playlist = disc;
+            _isLoading = false;
+          });
+          _updateDownloadState();
+          return;
+        }
+      }
       final playlist = await libraryProvider.getPlaylist(widget.playlistId);
       if (mounted) {
         setState(() {
