@@ -32,8 +32,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final offlineService =
-          Provider.of<OfflineService>(context, listen: false);
+      final offlineService = OfflineService();
       final libraryProvider =
           Provider.of<LibraryProvider>(context, listen: false);
       final subsonic =

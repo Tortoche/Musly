@@ -2621,10 +2621,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get downloads => 'Téléchargements';
 
   @override
-  String get noDownloadedSongsYet => 'Aucun morceau téléchargé pour le moment';
+  String get noDownloadedSongsYet => 'No téléchargered songs yet';
 
   @override
-  String get noDownloadedAlbumsYet => 'Aucun album téléchargé pour le moment';
+  String get noDownloadedAlbumsYet => 'No téléchargered albums yet';
 
   @override
   String get connectedToWebStream => 'Connected to Web Stream';

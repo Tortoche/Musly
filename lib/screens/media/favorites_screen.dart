@@ -70,7 +70,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Future<void> _downloadAllFavorites() async {
     if (_favoriteSongs.isEmpty) return;
 
-    final offlineService = Provider.of<OfflineService>(context, listen: false);
+    final offlineService = OfflineService();
     final subsonic = Provider.of<SubsonicService>(context, listen: false);
     final l10n = AppLocalizations.of(context)!;
 

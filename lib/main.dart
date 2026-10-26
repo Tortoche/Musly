@@ -225,6 +225,7 @@ void main() async {
     providers: [
       Provider<StorageService>.value(value: storageService),
       Provider<SubsonicService>.value(value: subsonicService),
+      Provider<OfflineService>.value(value: offlineService),
       ChangeNotifierProvider<RecommendationService>.value(
         value: recommendationService,
       ),
