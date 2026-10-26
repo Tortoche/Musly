@@ -11,6 +11,7 @@ class LyricsLineWidget extends StatelessWidget {
   final Duration currentTime;
   final VoidCallback onTap;
   final int distance;
+  final bool isUnsynced;
 
   const LyricsLineWidget({
     super.key,
@@ -19,6 +20,7 @@ class LyricsLineWidget extends StatelessWidget {
     required this.currentTime,
     required this.onTap,
     this.distance = 0,
+    this.isUnsynced = false,
   });
 
   @override
@@ -44,6 +46,23 @@ class LyricsLineWidget extends StatelessWidget {
     final glowEffect = uiSettings.getLyricsGlowEffect();
     final textAlign = isCentered ? TextAlign.center : TextAlign.left;
     final alignment = isCentered ? Alignment.center : Alignment.centerLeft;
+
+    if (isUnsynced) {
+      return SizedBox(
+        key: const ValueKey('unsynced'),
+        width: double.infinity,
+        child: Text(
+          line.text,
+          textAlign: textAlign,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.90),
+            height: 1.4,
+          ),
+        ),
+      );
+    }
 
     switch (state) {
       case LyricLineState.past:

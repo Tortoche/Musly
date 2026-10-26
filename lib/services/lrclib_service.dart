@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'storage_service.dart';
+import 'genius_lyrics_service.dart';
 
 class LrcLibService {
   static final LrcLibService _instance = LrcLibService._internal();
@@ -11,10 +12,10 @@ class LrcLibService {
   final Dio _dio = Dio(
     BaseOptions(
       baseUrl: 'https://lrclib.net/api',
-      connectTimeout: const Duration(seconds: 6),
-      receiveTimeout: const Duration(seconds: 6),
+      connectTimeout: const Duration(seconds: 7),
+      receiveTimeout: const Duration(seconds: 7),
       headers: {
-        'User-Agent': 'Musly/1.0 (https://github.com/musly)',
+        'User-Agent': 'Musly/1.2.0 (https://github.com/musly)',
       },
     ),
   );
@@ -23,16 +24,19 @@ class LrcLibService {
 
   static final List<RegExp> _noiseRegexes = [
     RegExp(
-        r'\((?:official|music|video|audio|lyrics?|lyric video|visualizer|hd|4k|remastered|live|explicit|clip|video oficial|clip officiel).*?\)',
-        caseSensitive: false),
+      r'\((?:official|music|video|audio|lyrics?|lyric video|visualizer|hd|4k|remastered|live|explicit|clip|video oficial|clip officiel|deluxe|version originale).*?\)',
+      caseSensitive: false,
+    ),
     RegExp(
-        r'\[(?:official|music|video|audio|lyrics?|lyric video|visualizer|hd|4k|remastered|live|explicit|clip|video oficial|clip officiel).*?\]',
-        caseSensitive: false),
+      r'\[(?:official|music|video|audio|lyrics?|lyric video|visualizer|hd|4k|remastered|live|explicit|clip|video oficial|clip officiel|deluxe|version originale).*?\]',
+      caseSensitive: false,
+    ),
     RegExp(r'\((?:feat\.|ft\.|featuring).*?\)', caseSensitive: false),
     RegExp(r'\[(?:feat\.|ft\.|featuring).*?\]', caseSensitive: false),
-    RegExp(r'(?:feat\.|ft\.|featuring).*$', caseSensitive: false),
-    RegExp(r'\(prod\..*?\)', caseSensitive: false),
-    RegExp(r'\[prod\..*?\]', caseSensitive: false),
+    RegExp(r'(?:feat\.|ft\.|featuring)\s+.*$', caseSensitive: false),
+    RegExp(r'\((?:prod\.|produced by).*?\)', caseSensitive: false),
+    RegExp(r'\[(?:prod\.|produced by).*?\]', caseSensitive: false),
+    RegExp(r'\s+with\s+.*$', caseSensitive: false),
   ];
 
   static final RegExp _multiSpaceRegex = RegExp(r'\s+');
@@ -41,16 +45,49 @@ class LrcLibService {
   static final RegExp _vevoRegex = RegExp(r'\s*VEVO$', caseSensitive: false);
   static final RegExp _officialRegex =
       RegExp(r'\s*Official$', caseSensitive: false);
-  static final RegExp _featRegex =
-      RegExp(r'(?:feat\.|ft\.|featuring).*$', caseSensitive: false);
 
-  static String cleanTitle(String rawTitle) {
+  /// Strips accents/diacritics from strings to maximize search hits
+  static String stripAccents(String input) {
+    const accents = 'ÀÁÂÃÄÅàáâãäåÒÓÔÕÖØòóôõöøÈÉÊËèéêëÌÍÎÏìíîïÙÚÛÜùúûüÿÑñÇç';
+    const clean   = 'AAAAAAaaaaaaOOOOOOooooooEEEEeeeeIIIIiiiiUUUUuuuuyNnCc';
+    var result = input;
+    for (var i = 0; i < accents.length; i++) {
+      result = result.replaceAll(accents[i], clean[i]);
+    }
+    return result;
+  }
+
+  static String cleanTitle(String rawTitle, [String? knownArtist]) {
     var title = rawTitle;
 
+    // Handle "Artist - Title" or "Title - Remix"
     if (title.contains(' - ')) {
       final parts = title.split(' - ');
-      if (parts.length >= 2) {
-        title = parts.sublist(1).join(' - ');
+      if (knownArtist != null && knownArtist.isNotEmpty) {
+        final artistLower = knownArtist.trim().toLowerCase();
+        final firstPartLower = parts[0].trim().toLowerCase();
+        if (firstPartLower == artistLower || artistLower.contains(firstPartLower)) {
+          title = parts.sublist(1).join(' - ');
+        } else {
+          final lastPartLower = parts.last.trim().toLowerCase();
+          const noiseWords = [
+            'remix', 'radio edit', 'live', 'remaster', 'bonus', 'deluxe',
+            'version', 'acoustic', 'edit', 'clip', 'orchestral'
+          ];
+          if (noiseWords.any((w) => lastPartLower.contains(w))) {
+            title = parts.sublist(0, parts.length - 1).join(' - ');
+          }
+        }
+      } else {
+        // Without known artist, check if last part is noise
+        final lastPartLower = parts.last.trim().toLowerCase();
+        const noiseWords = [
+          'remix', 'radio edit', 'live', 'remaster', 'bonus', 'deluxe',
+          'version', 'acoustic', 'edit', 'clip', 'orchestral'
+        ];
+        if (noiseWords.any((w) => lastPartLower.contains(w))) {
+          title = parts.sublist(0, parts.length - 1).join(' - ');
+        }
       }
     }
 
@@ -61,6 +98,8 @@ class LrcLibService {
     title = title
         .replaceAll('"', '')
         .replaceAll("'", '')
+        .replaceAll('`', '')
+        .replaceAll('’', '')
         .replaceAll(_multiSpaceRegex, ' ')
         .trim();
 
@@ -72,8 +111,44 @@ class LrcLibService {
     artist = artist.replaceAll(_topicRegex, '');
     artist = artist.replaceAll(_vevoRegex, '');
     artist = artist.replaceAll(_officialRegex, '');
-    artist = artist.replaceAll(_featRegex, '');
     return artist.trim().isNotEmpty ? artist.trim() : rawArtist;
+  }
+
+  /// Extracts primary artist from "Artist A, Artist B", "Artist A & Artist B", etc.
+  static String extractPrimaryArtist(String rawArtist) {
+    final cleaned = cleanArtist(rawArtist);
+    final separators = RegExp(
+      r'\s*(?:feat\.|ft\.|featuring|&|,|/|\bx\b|\bvs\.?\b|\bwith\b)\s*',
+      caseSensitive: false,
+    );
+    final parts = cleaned.split(separators);
+    if (parts.isNotEmpty && parts.first.trim().isNotEmpty) {
+      return parts.first.trim();
+    }
+    return cleaned;
+  }
+
+  /// Helper with automatic retry on 503 / 429
+  Future<Response<T>?> _getWithRetry<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final resp = await _dio.get<T>(path, queryParameters: queryParameters);
+        return resp;
+      } on DioException catch (e) {
+        final status = e.response?.statusCode;
+        if (attempt == 0 && (status == 503 || status == 502 || status == 504 || status == 429)) {
+          await Future.delayed(const Duration(milliseconds: 350));
+          continue;
+        }
+        return null;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   Future<Map<String, dynamic>?> searchLyrics({
@@ -86,9 +161,12 @@ class LrcLibService {
 
     if (title.trim().isEmpty) return null;
 
-    final cleanedTitle = cleanTitle(title);
+    final cleanedTitle = cleanTitle(title, artist);
     final cleanedArtist =
         (artist != null && artist.isNotEmpty) ? cleanArtist(artist) : null;
+    final primaryArtist =
+        cleanedArtist != null ? extractPrimaryArtist(cleanedArtist) : null;
+
     final cacheKey =
         '${cleanedArtist?.toLowerCase() ?? ''}|${cleanedTitle.toLowerCase()}';
 
@@ -96,121 +174,164 @@ class LrcLibService {
       return _cache[cacheKey];
     }
 
-    String? extractedArtist;
-    String? extractedTrack;
-    if (title.contains(' - ')) {
-      final parts = title.split(' - ');
-      if (parts.length >= 2) {
-        extractedArtist = cleanArtist(parts[0]);
-        extractedTrack = cleanTitle(parts.sublist(1).join(' - '));
-      }
-    }
-
-    final getPairs = <MapEntry<String, String>>[];
-    if (extractedArtist != null &&
-        extractedTrack != null &&
-        extractedArtist.isNotEmpty &&
-        extractedTrack.isNotEmpty) {
-      getPairs.add(MapEntry(extractedArtist, extractedTrack));
+    // 1. TIER 1: Exact matches via LRCLIB /api/get
+    final exactCandidates = <MapEntry<String, String>>[];
+    if (primaryArtist != null && primaryArtist.isNotEmpty) {
+      exactCandidates.add(MapEntry(primaryArtist, cleanedTitle));
     }
     if (cleanedArtist != null &&
         cleanedArtist.isNotEmpty &&
-        cleanedTitle.isNotEmpty) {
-      getPairs.add(MapEntry(cleanedArtist, cleanedTitle));
+        cleanedArtist != primaryArtist) {
+      exactCandidates.add(MapEntry(cleanedArtist, cleanedTitle));
     }
 
-    for (final pair in getPairs) {
-      try {
-        final response = await _dio.get(
+    for (final pair in exactCandidates) {
+      // Try with duration first if available
+      if (durationSeconds != null && durationSeconds > 0) {
+        final resp = await _getWithRetry(
           '/get',
           queryParameters: {
             'artist_name': pair.key,
             'track_name': pair.value,
+            'duration': durationSeconds,
           },
         );
-
-        if (response.statusCode == 200 &&
-            response.data != null &&
-            response.data is Map) {
-          final result =
-              _parseLrcLibResponse(response.data as Map<String, dynamic>);
-          if (result != null) {
-            _cache[cacheKey] = result;
-            debugPrint(
-                '[LRCLIB] Exact match found for "${pair.key} - ${pair.value}"');
-            return result;
+        if (resp != null && resp.statusCode == 200 && resp.data is Map) {
+          final res = _parseLrcLibResponse(resp.data as Map<String, dynamic>);
+          if (res != null) {
+            _cache[cacheKey] = res;
+            debugPrint('[LRCLIB] Exact match with duration for "${pair.key} - ${pair.value}"');
+            return res;
           }
         }
-      } catch (_) {}
-    }
+      }
 
-    final searchQueries = <String>[];
-    if (extractedArtist != null &&
-        extractedTrack != null &&
-        extractedArtist.isNotEmpty &&
-        extractedTrack.isNotEmpty) {
-      searchQueries.add('$extractedArtist $extractedTrack'.trim());
-    }
-    if (cleanedArtist != null &&
-        cleanedArtist.isNotEmpty &&
-        cleanedTitle.isNotEmpty) {
-      searchQueries.add('$cleanedArtist $cleanedTitle'.trim());
-    }
-    if (cleanedTitle.isNotEmpty && !searchQueries.contains(cleanedTitle)) {
-      searchQueries.add(cleanedTitle);
-    }
-
-    final simpleRaw = title
-        .replaceAll(RegExp(r'[\(\[\{].*?[\)\]\}]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (simpleRaw.isNotEmpty && !searchQueries.contains(simpleRaw)) {
-      searchQueries.add(simpleRaw);
-    }
-
-    for (final query in searchQueries) {
-      if (query.isEmpty) continue;
-      try {
-        final searchResp = await _dio.get(
-          '/search',
-          queryParameters: {
-            'q': query,
-          },
-        );
-
-        if (searchResp.statusCode == 200 && searchResp.data is List) {
-          final list = searchResp.data as List;
-          if (list.isNotEmpty) {
-            Map<String, dynamic>? bestMatch;
-            for (final item in list) {
-              if (item is Map<String, dynamic>) {
-                final synced = item['syncedLyrics'] as String?;
-                final plain = item['plainLyrics'] as String?;
-                if (synced != null && synced.trim().isNotEmpty) {
-                  bestMatch = item;
-                  break;
-                } else if (plain != null &&
-                    plain.trim().isNotEmpty &&
-                    bestMatch == null) {
-                  bestMatch = item;
-                }
-              }
-            }
-            bestMatch ??= list.first as Map<String, dynamic>;
-
-            final result = _parseLrcLibResponse(bestMatch);
-            if (result != null) {
-              _cache[cacheKey] = result;
-              debugPrint('[LRCLIB] Search match found for query "$query"');
-              return result;
-            }
-          }
+      // Try /get without duration
+      final respNoDur = await _getWithRetry(
+        '/get',
+        queryParameters: {
+          'artist_name': pair.key,
+          'track_name': pair.value,
+        },
+      );
+      if (respNoDur != null && respNoDur.statusCode == 200 && respNoDur.data is Map) {
+        final res = _parseLrcLibResponse(respNoDur.data as Map<String, dynamic>);
+        if (res != null) {
+          _cache[cacheKey] = res;
+          debugPrint('[LRCLIB] Exact match for "${pair.key} - ${pair.value}"');
+          return res;
         }
-      } catch (e) {
-        debugPrint('[LRCLIB] Search query "$query" error: $e');
       }
     }
 
+    // 2. TIER 2: LRCLIB /api/search with structured fields (artist_name & track_name)
+    if (primaryArtist != null && primaryArtist.isNotEmpty) {
+      final searchParams = <Map<String, dynamic>>[
+        {'artist_name': primaryArtist, 'track_name': cleanedTitle},
+      ];
+      if (cleanedArtist != null && cleanedArtist != primaryArtist) {
+        searchParams.add({'artist_name': cleanedArtist, 'track_name': cleanedTitle});
+      }
+
+      for (final params in searchParams) {
+        final resp = await _getWithRetry('/search', queryParameters: params);
+        if (resp != null && resp.statusCode == 200 && resp.data is List) {
+          final list = resp.data as List;
+          if (list.isNotEmpty) {
+            final parsed = _findBestInList(list);
+            if (parsed != null) {
+              _cache[cacheKey] = parsed;
+              debugPrint('[LRCLIB] Structured search match for $params');
+              return parsed;
+            }
+          }
+        }
+      }
+    }
+
+    // 3. TIER 3: LRCLIB /api/search with query string
+    final searchQueries = <String>[];
+    if (primaryArtist != null && primaryArtist.isNotEmpty) {
+      searchQueries.add('$primaryArtist $cleanedTitle'.trim());
+    }
+    if (cleanedArtist != null &&
+        cleanedArtist.isNotEmpty &&
+        cleanedArtist != primaryArtist) {
+      searchQueries.add('$cleanedArtist $cleanedTitle'.trim());
+    }
+    if (!searchQueries.contains(cleanedTitle)) {
+      searchQueries.add(cleanedTitle);
+    }
+
+    // Add unaccented query if diacritics are present
+    final unaccentedTitle = stripAccents(cleanedTitle);
+    final unaccentedArtist = primaryArtist != null ? stripAccents(primaryArtist) : null;
+    if (unaccentedArtist != null &&
+        (unaccentedTitle != cleanedTitle || unaccentedArtist != primaryArtist)) {
+      searchQueries.add('$unaccentedArtist $unaccentedTitle'.trim());
+    }
+
+    for (final q in searchQueries) {
+      if (q.isEmpty) continue;
+      final resp = await _getWithRetry('/search', queryParameters: {'q': q});
+      if (resp != null && resp.statusCode == 200 && resp.data is List) {
+        final list = resp.data as List;
+        if (list.isNotEmpty) {
+          final parsed = _findBestInList(list);
+          if (parsed != null) {
+            _cache[cacheKey] = parsed;
+            debugPrint('[LRCLIB] Query match found for "$q"');
+            return parsed;
+          }
+        }
+      }
+    }
+
+    // 4. TIER 4: Ultimate Multi-Source Fallback via Genius Lyrics
+    final geniusArtist = primaryArtist ?? cleanedArtist ?? '';
+    if (geniusArtist.isNotEmpty || cleanedTitle.isNotEmpty) {
+      try {
+        final geniusLyrics = await GeniusLyricsService().searchAndGetLyrics(
+          artist: geniusArtist,
+          title: cleanedTitle,
+        );
+        if (geniusLyrics != null && geniusLyrics.trim().isNotEmpty) {
+          final res = {'value': geniusLyrics};
+          _cache[cacheKey] = res;
+          debugPrint('[Genius] Fallback lyrics captured for "$geniusArtist - $cleanedTitle"');
+          return res;
+        }
+      } catch (e) {
+        debugPrint('[Genius] Fallback failed: $e');
+      }
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic>? _findBestInList(List list) {
+    Map<String, dynamic>? bestMatch;
+    for (final item in list) {
+      if (item is Map<String, dynamic>) {
+        final synced = item['syncedLyrics'] as String?;
+        final plain = item['plainLyrics'] as String?;
+        if (synced != null && synced.trim().isNotEmpty) {
+          bestMatch = item;
+          break;
+        } else if (plain != null &&
+            plain.trim().isNotEmpty &&
+            bestMatch == null) {
+          bestMatch = item;
+        }
+      }
+    }
+    bestMatch ??= (list.first is Map<String, dynamic>)
+        ? list.first as Map<String, dynamic>
+        : null;
+
+    if (bestMatch != null) {
+      return _parseLrcLibResponse(bestMatch);
+    }
     return null;
   }
 

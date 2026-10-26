@@ -113,11 +113,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
 
       Map<String, dynamic>? rawLyrics;
 
-      if (offlineService.isOfflineMode ||
-          _lastSong!.isLocal ||
-          offlineService.isSongDownloaded(_lastSong!.id)) {
-        rawLyrics = await offlineService.getLocalLyrics(_lastSong!.id);
-      }
+      // Check local cache first (instant 0ms retrieval)
+      rawLyrics = await offlineService.getLocalLyrics(_lastSong!.id);
 
       if (rawLyrics == null && !offlineService.isOfflineMode) {
         rawLyrics = await subsonic.getLyricsBySongId(_lastSong!.id) ??
@@ -127,6 +124,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               title: _lastSong!.title,
               duration: _lastSong!.duration,
             );
+        if (rawLyrics != null) {
+          offlineService.saveLyrics(_lastSong!.id, rawLyrics).catchError((_) {});
+        }
       }
 
       if (rawLyrics != null) {
@@ -446,7 +446,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
       valueListenable:
           PlayerUiSettingsService().showLiveLyricUnderArtworkNotifier,
       builder: (context, showLyric, _) {
-        if (!showLyric || _fetchedLyrics.isEmpty) {
+        if (!showLyric || _fetchedLyrics.isEmpty || !LrcParser.hasTimestamps(_fetchedLyrics)) {
           return const SizedBox.shrink();
         }
         return StreamBuilder<Duration>(

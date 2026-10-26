@@ -214,6 +214,9 @@ class _LyricsListViewState extends State<LyricsListView> {
       );
     }
 
+    final isUnsynced = _items.length > 1 &&
+        _items.every((item) => item.startTime == Duration.zero);
+
     return NotificationListener<ScrollNotification>(
       onNotification: (scrollNotification) {
         if (scrollNotification is UserScrollNotification) {
@@ -224,7 +227,7 @@ class _LyricsListViewState extends State<LyricsListView> {
       child: SingleChildScrollView(
         controller: _scrollController,
         padding: EdgeInsets.symmetric(
-          vertical: MediaQuery.of(context).size.height / 2,
+          vertical: isUnsynced ? 32.0 : MediaQuery.of(context).size.height / 2,
         ),
         child: Column(
           children: List.generate(_items.length, (index) {
@@ -252,6 +255,8 @@ class _LyricsListViewState extends State<LyricsListView> {
               } else if (lyricIndex == _currentLyricIndex) {
                 state = LyricLineState.current;
               }
+            } else if (isUnsynced) {
+              state = LyricLineState.current;
             } else {
               if (item.endTime <= widget.currentTime) {
                 state = LyricLineState.past;
@@ -260,7 +265,7 @@ class _LyricsListViewState extends State<LyricsListView> {
 
             final distance = _currentLyricIndex != -1
                 ? (lyricIndex - _currentLyricIndex).abs()
-                : 3;
+                : 0;
 
             return Container(
               key: _keys[index],
@@ -270,7 +275,9 @@ class _LyricsListViewState extends State<LyricsListView> {
                   state: state,
                   currentTime: widget.currentTime,
                   distance: distance,
+                  isUnsynced: isUnsynced,
                   onTap: () {
+                    if (isUnsynced) return;
                     HapticFeedback.selectionClick();
                     widget.onSeek(line.startTime);
 

@@ -79,11 +79,8 @@ class _DesktopLyricsPanelState extends State<DesktopLyricsPanel> {
 
       Map<String, dynamic>? rawLyrics;
 
-      if (offlineService.isOfflineMode ||
-          song.isLocal ||
-          offlineService.isSongDownloaded(song.id)) {
-        rawLyrics = await offlineService.getLocalLyrics(song.id);
-      }
+      // Check local cache first (instant 0ms retrieval)
+      rawLyrics = await offlineService.getLocalLyrics(song.id);
 
       if (rawLyrics == null && !offlineService.isOfflineMode) {
         rawLyrics = await subsonic.getLyricsBySongId(song.id) ??
@@ -93,6 +90,9 @@ class _DesktopLyricsPanelState extends State<DesktopLyricsPanel> {
               title: song.title,
               duration: song.duration,
             );
+        if (rawLyrics != null) {
+          offlineService.saveLyrics(song.id, rawLyrics).catchError((_) {});
+        }
       }
 
       if (!mounted || _currentSongId != song.id) return;
