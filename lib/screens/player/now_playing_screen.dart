@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide RepeatMode;
+import 'package:flutter/services.dart';
 import 'package:musly/widgets/common/blurred_gradient_background.dart';
 import 'package:musly/widgets/now_playing/album_art_view.dart';
 import 'package:musly/widgets/now_playing/marquee_text.dart';
@@ -642,6 +643,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               provider.toggleFavorite();
             },
           ),
+          _buildDownloadButton(context, currentSong, isLandscape),
           IconButton(
             tooltip: 'Add to playlist',
             icon: Icon(
@@ -665,6 +667,99 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDownloadButton(
+    BuildContext context,
+    Song? currentSong,
+    bool isLandscape,
+  ) {
+    if (currentSong == null) return const SizedBox.shrink();
+    final offlineService = OfflineService();
+    final subsonicService =
+        Provider.of<SubsonicService>(context, listen: false);
+
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        offlineService.downloadedSongIds,
+        offlineService.downloadingSongIds,
+      ]),
+      builder: (context, _) {
+        final isDownloaded = offlineService.isSongDownloaded(currentSong.id);
+        final isDownloading = offlineService.isSongDownloading(currentSong.id);
+
+        if (isDownloading) {
+          return Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: SizedBox(
+              width: isLandscape ? 18 : 20,
+              height: isLandscape ? 18 : 20,
+              child: const CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+          );
+        }
+
+        return IconButton(
+          tooltip: isDownloaded
+              ? 'Téléchargé (Appuyer pour supprimer)'
+              : 'Télécharger',
+          icon: Icon(
+            isDownloaded
+                ? Icons.arrow_circle_down_rounded
+                : Icons.arrow_circle_down_outlined,
+            color: isDownloaded
+                ? Theme.of(context).colorScheme.primary
+                : Colors.white.withValues(alpha: 0.70),
+            size: isLandscape ? 22 : 24,
+          ),
+          onPressed: () async {
+            HapticFeedback.lightImpact();
+            if (isDownloaded) {
+              await offlineService.deleteSong(currentSong.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Morceau supprimé des téléchargements'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            } else {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Téléchargement en cours...'),
+                    duration: Duration(seconds: 1),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+              final success = await offlineService.downloadSong(
+                currentSong,
+                subsonicService,
+              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? 'Morceau téléchargé avec succès pour écoute hors-ligne'
+                          : 'Échec du téléchargement du morceau',
+                    ),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            }
+          },
+        );
+      },
     );
   }
 

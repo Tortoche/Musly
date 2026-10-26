@@ -9,6 +9,7 @@ import 'wakelock_service.dart';
 import '../models/song.dart';
 import '../models/playlist.dart';
 import 'subsonic_service.dart';
+import 'audio_precache_service.dart';
 
 enum DownloadStatus { queued, downloading, done, failed }
 
@@ -74,6 +75,11 @@ class OfflineService {
   );
 
   final ValueNotifier<Set<String>> downloadedSongIds = ValueNotifier({});
+  final ValueNotifier<Set<String>> downloadingSongIds = ValueNotifier({});
+
+  bool isSongDownloading(String songId) {
+    return downloadingSongIds.value.contains(songId);
+  }
 
   final ValueNotifier<List<DownloadLogEntry>> downloadLog = ValueNotifier([]);
 
@@ -298,20 +304,14 @@ class OfflineService {
   bool _isFileValid(String songId, File file) {
     try {
       final len = file.lengthSync();
-      final expected = _expectedSizes[songId];
-      if (expected != null && expected > 0) {
-        return len >= expected;
-      }
-      return len >= 65536;
+      // Un fichier audio complet fait au moins 30 Ko
+      return len >= 30000;
     } catch (_) {
       return false;
     }
   }
 
-  Future<void> _persistExpectedSize(String songId, int bytes) async {
-    _expectedSizes[songId] = bytes;
-    await _prefs?.setString(_keyExpectedSizes, json.encode(_expectedSizes));
-  }
+
 
   static String _sanitizeId(String id) {
     return id.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
@@ -420,24 +420,35 @@ class OfflineService {
   }) async {
     if (_offlineDir == null) await initialize();
 
-    if (song.size != null && song.size! > 0) {
-      await _persistExpectedSize(song.id, song.size!);
-    }
+    downloadingSongIds.value = {...downloadingSongIds.value, song.id};
 
     final filePath = _getSongPath(song.id);
     try {
-      final url = subsonicService.getDownloadUrl(song.id);
-
-      final dio = Dio();
-      await dio.download(
-        url,
-        filePath,
-        onReceiveProgress: (received, total) {
-          if (total > 0 && onProgress != null) {
-            onProgress(received / total);
-          }
-        },
-      );
+      // 1. Copie éclair depuis le pré-cache glissant si le morceau y est déjà disponible
+      final precachedPath = AudioPrecacheService().getPrecachedAudioPath(song.id);
+      if (precachedPath != null && File(precachedPath).existsSync()) {
+        await File(precachedPath).copy(filePath);
+        debugPrint('[OfflineService] ⚡ Copie instantanée depuis le pré-cache pour "${song.title}"');
+      } else {
+        // 2. Téléchargement via flux audio (compatible OpenSubsonic, Navidrome & flux virtuels Deezer)
+        final url = subsonicService.getStreamUrl(song.id);
+        final dio = Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 60),
+          ),
+        );
+        await dio.download(
+          url,
+          filePath,
+          options: Options(headers: {'Accept': '*/*'}),
+          onReceiveProgress: (received, total) {
+            if (total > 0 && onProgress != null) {
+              onProgress(received / total);
+            }
+          },
+        );
+      }
 
       if (!_isFileValid(song.id, File(filePath))) {
         throw Exception('Downloaded file for ${song.id} failed size check');
@@ -484,8 +495,16 @@ class OfflineService {
 
       return true;
     } catch (e) {
-      debugPrint('Error downloading song: $e');
+      debugPrint('Error downloading song "${song.title}": $e');
+      final f = File(filePath);
+      if (f.existsSync()) {
+        try { f.deleteSync(); } catch (_) {}
+      }
       return false;
+    } finally {
+      final current = Set<String>.from(downloadingSongIds.value);
+      current.remove(song.id);
+      downloadingSongIds.value = current;
     }
   }
 
