@@ -1128,20 +1128,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // 3. Pochette de l'album en filigrane dynamique à droite (effet glassmorphism)
+                // 3. Pochette de l'album fondue en douceur (dégradé progressif sans coupure nette)
                 if (coverArt != null && coverArt.isNotEmpty)
                   Positioned(
-                    right: -25,
-                    top: -25,
-                    bottom: -25,
-                    width: bannerHeight + 50,
-                    child: Opacity(
-                      opacity: isDark ? 0.20 : 0.14,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(30),
+                    right: 0,
+                    top: -20,
+                    bottom: -20,
+                    width: bannerHeight + 60,
+                    child: ShaderMask(
+                      shaderCallback: (rect) {
+                        return const LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            Colors.transparent,
+                            Color(0x22FFFFFF),
+                            Color(0x99FFFFFF),
+                            Colors.white,
+                          ],
+                          stops: [0.0, 0.35, 0.7, 1.0],
+                        ).createShader(rect);
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: Opacity(
+                        opacity: isDark ? 0.25 : 0.18,
                         child: AlbumArtwork(
                           coverArt: coverArt,
-                          size: bannerHeight + 50,
+                          size: bannerHeight + 60,
                         ),
                       ),
                     ),
