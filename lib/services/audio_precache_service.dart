@@ -1,26 +1,35 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song.dart';
 import 'subsonic_service.dart';
 import 'offline_service.dart';
 import 'lrclib_service.dart';
 
-/// Service de pré-cache audio glissant (Rolling Audio Pre-cache).
-/// Télécharge en tâche de fond les 5 prochains morceaux de la file d'attente
-/// et supprime automatiquement du cache les morceaux sortis de la fenêtre d'écoute.
+/// Service de pré-cache audio glissant (Rolling Audio Pre-cache) intelligent.
+/// Télécharge en tâche de fond les prochains morceaux de la file d'attente,
+/// conserve en mémoire et sur disque les métadonnées de chaque morceau entier
+/// pour permettre une écoute hors-ligne fluide et complète lors d'une coupure réseau.
 class AudioPrecacheService {
   static final AudioPrecacheService _instance = AudioPrecacheService._internal();
   factory AudioPrecacheService() => _instance;
   AudioPrecacheService._internal();
+
+  static const String _keyPrecachedMetadata = 'musly_precached_songs_meta_v1';
 
   Directory? _cacheDir;
   bool _isInitialized = false;
   CancelToken? _currentCancelToken;
   int _syncVersion = 0;
   bool _isSyncing = false;
+
+  final Map<String, Song> _cachedSongsMap = {};
+  final Map<String, Song> _knownSongs = {};
+  SharedPreferences? _prefs;
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -35,14 +44,77 @@ class AudioPrecacheService {
   Future<void> initialize() async {
     if (_isInitialized && _cacheDir != null) return;
     try {
+      _prefs ??= await SharedPreferences.getInstance();
       final tempDir = await getTemporaryDirectory();
       _cacheDir = Directory('${tempDir.path}/musly_rolling_cache');
       if (!await _cacheDir!.exists()) {
         await _cacheDir!.create(recursive: true);
       }
+      _loadSavedMetadata();
       _isInitialized = true;
     } catch (e) {
       debugPrint('[AudioPrecache] Erreur initialisation dossier: $e');
+    }
+  }
+
+  void _loadSavedMetadata() {
+    try {
+      // 1. Charger les métadonnées de pré-cache persistées
+      final raw = _prefs?.getString(_keyPrecachedMetadata);
+      if (raw != null && raw.isNotEmpty) {
+        final Map<String, dynamic> decoded = jsonDecode(raw);
+        decoded.forEach((key, val) {
+          try {
+            final song = Song.fromJson(Map<String, dynamic>.from(val));
+            _cachedSongsMap[key] = song;
+            _knownSongs[key] = song;
+            _knownSongs[_sanitizeId(song.id)] = song;
+          } catch (_) {}
+        });
+      }
+
+      // 2. Extraire de persistent_queue pour peupler _knownSongs avec les morceaux récents
+      final queueRaw = _prefs?.getString('persistent_queue');
+      if (queueRaw != null && queueRaw.isNotEmpty) {
+        final List<dynamic> list = jsonDecode(queueRaw);
+        for (final item in list) {
+          try {
+            final song = Song.fromJson(Map<String, dynamic>.from(item));
+            _knownSongs[song.id] = song;
+            _knownSongs[_sanitizeId(song.id)] = song;
+          } catch (_) {}
+        }
+      }
+
+      // 3. Réconcilier les fichiers .mp3 existants dans _cacheDir avec _knownSongs
+      if (_cacheDir != null && _cacheDir!.existsSync()) {
+        final entities = _cacheDir!.listSync();
+        for (final entity in entities) {
+          if (entity is File && entity.path.endsWith('.mp3')) {
+            final fileName = entity.uri.pathSegments.last;
+            final fileId = fileName.substring(0, fileName.length - 4);
+            if (entity.lengthSync() > 30000) {
+              final song = _knownSongs[fileId];
+              if (song != null) {
+                _cachedSongsMap[fileId] = song;
+                _cachedSongsMap[song.id] = song;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[AudioPrecache] Erreur chargement métadonnées: $e');
+    }
+  }
+
+  Future<void> _saveCachedMetadata() async {
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      final map = _cachedSongsMap.map((k, v) => MapEntry(k, v.toJson()));
+      await _prefs?.setString(_keyPrecachedMetadata, jsonEncode(map));
+    } catch (e) {
+      debugPrint('[AudioPrecache] Erreur sauvegarde métadonnées: $e');
     }
   }
 
@@ -76,9 +148,70 @@ class AudioPrecacheService {
     return getPrecachedAudioPath(songId) != null;
   }
 
+  /// Enregistre les métadonnées d'un morceau pour reconnaissance ultérieure
+  void recordSongMetadata(Song song) {
+    _knownSongs[song.id] = song;
+    _knownSongs[_sanitizeId(song.id)] = song;
+    if (hasPrecached(song.id)) {
+      _cachedSongsMap[song.id] = song;
+      _cachedSongsMap[_sanitizeId(song.id)] = song;
+      unawaited(_saveCachedMetadata());
+    }
+  }
+
+  /// Retourne la liste de tous les morceaux ENTIÈREMENT présents en cache audio (> 30 Ko)
+  List<Song> getFullyPrecachedSongs() {
+    if (_cacheDir == null) return [];
+    final List<Song> list = [];
+    final Set<String> seenIds = {};
+    final List<String> toRemove = [];
+
+    // Vérifier les morceaux enregistrés dans _cachedSongsMap
+    for (final entry in _cachedSongsMap.entries) {
+      if (seenIds.contains(entry.value.id)) continue;
+      final path = _getSongPath(entry.key);
+      final file = File(path);
+      if (file.existsSync() && file.lengthSync() > 30000) {
+        list.add(entry.value);
+        seenIds.add(entry.value.id);
+      } else if (!file.existsSync()) {
+        toRemove.add(entry.key);
+      }
+    }
+
+    // Réconcilier les éventuels fichiers .mp3 du dossier avec _knownSongs
+    try {
+      if (_cacheDir!.existsSync()) {
+        final entities = _cacheDir!.listSync();
+        for (final entity in entities) {
+          if (entity is File && entity.path.endsWith('.mp3')) {
+            final fileName = entity.uri.pathSegments.last;
+            final fileId = fileName.substring(0, fileName.length - 4);
+            if (entity.lengthSync() > 30000) {
+              final song = _knownSongs[fileId];
+              if (song != null && !seenIds.contains(song.id)) {
+                list.add(song);
+                seenIds.add(song.id);
+                _cachedSongsMap[song.id] = song;
+                _cachedSongsMap[fileId] = song;
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (toRemove.isNotEmpty) {
+      for (final id in toRemove) {
+        _cachedSongsMap.remove(id);
+      }
+      unawaited(_saveCachedMetadata());
+    }
+
+    return list;
+  }
+
   /// Synchronise la fenêtre glissante des 5 prochains morceaux de la file.
-  /// 1. Supprime du cache les morceaux qui ne sont plus dans la fenêtre.
-  /// 2. Télécharge successivement les 5 prochains morceaux en tâche de fond.
   Future<void> syncQueueWindow({
     required List<Song> queue,
     required int currentIndex,
@@ -88,17 +221,19 @@ class AudioPrecacheService {
     await initialize();
     if (_cacheDir == null) return;
 
+    // Enregistrer les métadonnées de tous les morceaux de la file
+    for (final s in queue) {
+      _knownSongs[s.id] = s;
+      _knownSongs[_sanitizeId(s.id)] = s;
+    }
+
     _syncVersion++;
     final currentVersion = _syncVersion;
 
-    // Définir la fenêtre glissante :
-    // - Les 5 prochains morceaux en PRIORITÉ ABSOLUE (pour enchaînement immédiat et écoute hors-ligne)
-    // - Le morceau actuel
-    // - 1 morceau précédent (pour retour arrière fluide hors ligne)
     final Set<String> targetSongIds = {};
     final List<Song> downloadQueue = [];
 
-    // 1. Les 5 prochains morceaux (priorité #1)
+    // 1. Les 5 prochains morceaux (priorité #1 pour écoute hors-ligne immédiate)
     final maxIndex = (currentIndex + 6).clamp(0, queue.length);
     for (int i = currentIndex + 1; i < maxIndex; i++) {
       final nextSong = queue[i];
@@ -122,13 +257,11 @@ class AudioPrecacheService {
       targetSongIds.add(queue[currentIndex - 1].id);
     }
 
-    // 1. Éviction automatique du cache : suppression des morceaux sortis de la fenêtre
+    // Nettoyage intelligent : suppression des .part obsolètes et gestion quota sans perte agressive
     await _evictExpiredFiles(targetSongIds);
 
-    // 2. Si aucune nouvelle piste à pré-charger, on s'arrête
     if (downloadQueue.isEmpty) return;
 
-    // 3. Télécharger les pistes prioritaires l'une après l'autre
     if (_isSyncing) {
       _currentCancelToken?.cancel('Nouvelle file reçue');
     }
@@ -171,7 +304,6 @@ class AudioPrecacheService {
     final partPath = _getSongPartPath(song.id);
 
     try {
-      // Résolution du flux audio compatible Subsonic, Deezer CJ Resolver & YouTube
       final streamUrl = song.isLocal == true && song.path != null
           ? Uri.file(song.path!).toString()
           : await subsonicService.resolveStreamUrlAsync(song);
@@ -182,6 +314,9 @@ class AudioPrecacheService {
         final localFile = File(Uri.parse(streamUrl).toFilePath());
         if (await localFile.exists()) {
           await localFile.copy(finalPath);
+          _cachedSongsMap[song.id] = song;
+          _cachedSongsMap[_sanitizeId(song.id)] = song;
+          unawaited(_saveCachedMetadata());
           debugPrint('[AudioPrecache] ⚡ Morceau local copié en cache: "${song.title}"');
           return;
         }
@@ -205,8 +340,12 @@ class AudioPrecacheService {
       if (await partFile.exists()) {
         final length = await partFile.length();
         if (length > 30000) {
-          // Succès complet : renommage atomique
+          // Succès complet : renommage atomique vers .mp3
           await partFile.rename(finalPath);
+          _cachedSongsMap[song.id] = song;
+          _cachedSongsMap[_sanitizeId(song.id)] = song;
+          unawaited(_saveCachedMetadata());
+
           debugPrint(
             '[AudioPrecache] ⚡ Prêt pour lecture hors-ligne: "${song.title}" (${(length / 1024 / 1024).toStringAsFixed(1)} Mo)',
           );
@@ -254,40 +393,66 @@ class AudioPrecacheService {
     }
   }
 
-  /// Éviction : supprime du dossier de pré-cache tous les fichiers non ciblés
+  /// Éviction propre : supprime les .part orphelins et applique un quota souple (40 morceaux / 200 Mo).
+  /// Les morceaux complets écoutés ou pré-chargés ne sont JAMAIS supprimés prématurément.
   Future<void> _evictExpiredFiles(Set<String> activeIds) async {
     if (_cacheDir == null) return;
     try {
       final sanitizedActive = activeIds.map(_sanitizeId).toSet();
       final entities = _cacheDir!.listSync();
 
+      // 1. Supprimer les fichiers .part inachevés / orphelins
       for (final entity in entities) {
-        if (entity is File) {
+        if (entity is File && entity.path.endsWith('.part')) {
           final fileName = entity.uri.pathSegments.last;
-          if (fileName.endsWith('.part')) {
-            final partId = fileName.substring(0, fileName.length - 5);
-            if (!sanitizedActive.contains(partId)) {
-              try {
-                await entity.delete();
-              } catch (_) {}
-            }
-            continue;
-          }
-
-          if (fileName.endsWith('.mp3')) {
-            final fileId = fileName.substring(0, fileName.length - 4);
-            if (!sanitizedActive.contains(fileId)) {
-              // Ce morceau est sorti de la fenêtre des 5 morceaux : suppression automatique
-              try {
-                await entity.delete();
-              } catch (_) {}
-              debugPrint('[AudioPrecache] 🗑️ Sorti du cache glissant: $fileName');
-            }
+          final partId = fileName.substring(0, fileName.length - 5);
+          if (!sanitizedActive.contains(partId)) {
+            try {
+              entity.deleteSync();
+            } catch (_) {}
           }
         }
       }
+
+      // 2. Gestion quota souple pour les .mp3 complets (conserver jusqu'à 40 titres / 200 Mo)
+      final mp3Files = entities.whereType<File>().where((f) => f.path.endsWith('.mp3')).toList();
+      const int maxCacheFiles = 40;
+      const int maxCacheBytes = 200 * 1024 * 1024; // 200 Mo
+
+      int totalBytes = 0;
+      for (final f in mp3Files) {
+        try {
+          totalBytes += f.lengthSync();
+        } catch (_) {}
+      }
+
+      if (mp3Files.length > maxCacheFiles || totalBytes > maxCacheBytes) {
+        mp3Files.sort((a, b) {
+          try {
+            return a.lastModifiedSync().compareTo(b.lastModifiedSync());
+          } catch (_) {
+            return 0;
+          }
+        });
+
+        for (final file in mp3Files) {
+          if (mp3Files.length <= maxCacheFiles && totalBytes <= maxCacheBytes) break;
+          final fileName = file.uri.pathSegments.last;
+          final fileId = fileName.substring(0, fileName.length - 4);
+          if (!sanitizedActive.contains(fileId)) {
+            try {
+              final len = file.lengthSync();
+              file.deleteSync();
+              totalBytes -= len;
+              _cachedSongsMap.remove(fileId);
+              debugPrint('[AudioPrecache] 🗑️ Purge quota cache: $fileName');
+            } catch (_) {}
+          }
+        }
+        unawaited(_saveCachedMetadata());
+      }
     } catch (e) {
-      debugPrint('[AudioPrecache] Erreur éviction cache: $e');
+      debugPrint('[AudioPrecache] Erreur gestion cache: $e');
     }
   }
 
@@ -300,6 +465,8 @@ class AudioPrecacheService {
     if (_cacheDir == null) return;
     try {
       cancelPending();
+      _cachedSongsMap.clear();
+      unawaited(_saveCachedMetadata());
       if (await _cacheDir!.exists()) {
         await _cacheDir!.delete(recursive: true);
         await _cacheDir!.create(recursive: true);

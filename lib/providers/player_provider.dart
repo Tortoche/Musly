@@ -1029,39 +1029,62 @@ class PlayerProvider extends ChangeNotifier
     // Sauvegarde de la file en ligne complète pour la restaurer dès que le réseau revient
     _savedOnlineQueue ??= List<Song>.from(_queue);
 
-    // Filtrer la file d'attente pour ne conserver UNIQUEMENT que les morceaux chargés / disponibles hors ligne
-    final offlineReady = _queue.where((s) =>
-        s.isLocal == true ||
-        _offlineService.isSongDownloaded(s.id) ||
-        _audioPrecacheService.hasPrecached(s.id) ||
-        s.id == _currentSong?.id).toList();
+    // Récupérer toutes les musiques téléchargées et toutes celles entièrement en cache (> 30 Ko)
+    final downloadedSongs = _offlineService.getDownloadedSongsSync();
+    final fullyCachedSongs = _audioPrecacheService.getFullyPrecachedSongs();
 
-    if (_currentSong != null && !offlineReady.any((s) => s.id == _currentSong!.id)) {
-      offlineReady.insert(0, _currentSong!);
+    bool isReadyOffline(Song s) {
+      if (s.isLocal == true && s.path != null && File(s.path!).existsSync()) return true;
+      if (_offlineService.isSongDownloaded(s.id)) return true;
+      if (_audioPrecacheService.hasPrecached(s.id)) return true;
+      return false;
     }
 
-    // TOUJOURS inclure toutes les musiques téléchargées de l'utilisateur à la suite dans la file
-    final downloadedSongs = _offlineService.getDownloadedSongsSync();
-    final existingIds = offlineReady.map((s) => s.id).toSet();
-    for (final s in downloadedSongs) {
-      if (!existingIds.contains(s.id)) {
+    final offlineReady = <Song>[];
+    final seenIds = <String>{};
+
+    // A. Le morceau en cours d'écoute s'il est entièrement prêt hors-ligne
+    if (_currentSong != null && isReadyOffline(_currentSong!)) {
+      offlineReady.add(_currentSong!);
+      seenIds.add(_currentSong!.id);
+    }
+
+    // B. Les morceaux de la file courante qui sont prêts (téléchargés ou entièrement en cache)
+    for (final s in _queue) {
+      if (!seenIds.contains(s.id) && isReadyOffline(s)) {
         offlineReady.add(s);
-        existingIds.add(s.id);
+        seenIds.add(s.id);
+      }
+    }
+
+    // C. Tous les autres morceaux entièrement en cache (historique / session récente)
+    for (final s in fullyCachedSongs) {
+      if (!seenIds.contains(s.id) && isReadyOffline(s)) {
+        offlineReady.add(s);
+        seenIds.add(s.id);
+      }
+    }
+
+    // D. Toutes les musiques téléchargées de l'utilisateur
+    for (final s in downloadedSongs) {
+      if (!seenIds.contains(s.id) && isReadyOffline(s)) {
+        offlineReady.add(s);
+        seenIds.add(s.id);
       }
     }
 
     if (offlineReady.isNotEmpty) {
       _queue = offlineReady;
-      if (_currentSong != null) {
+      if (_currentSong != null && seenIds.contains(_currentSong!.id)) {
         final newIndex = _queue.indexWhere((s) => s.id == _currentSong!.id);
-        if (newIndex != -1) {
-          _currentIndex = newIndex;
-        } else {
-          _queue.insert(0, _currentSong!);
-          _currentIndex = 0;
-        }
+        _currentIndex = newIndex != -1 ? newIndex : 0;
+      } else {
+        // Le morceau en cours n'était pas hors-ligne : bascule fluide sur le 1er morceau disponible
+        _currentIndex = 0;
+        _currentSong = _queue[0];
+        playSong(_queue[0], playlist: _queue, startIndex: 0);
       }
-      debugPrint('[Player Network] 📴 File adaptée au mode hors-ligne : ${_queue.length} morceaux disponibles');
+      debugPrint('[Player Network] File adaptee au mode hors-ligne : ${_queue.length} morceaux disponibles (telecharges + cache complet)');
       notifyListeners();
       _saveQueueState();
     }
@@ -1288,6 +1311,7 @@ class PlayerProvider extends ChangeNotifier
 
   Future<void> _checkAndRefillAutoQueue() async {
     if (_isRefillingQueue) return;
+    if (!_isNetworkAvailable || _offlineService.isOfflineMode) return;
     final bool shouldRefillAutoDj = _autoDjService.isEnabled &&
         _autoDjService.shouldAddSongs(_currentIndex, _queue.length);
     final bool shouldRefillRadio =
@@ -1518,8 +1542,15 @@ class PlayerProvider extends ChangeNotifier
               _offlineService.isSongDownloaded(s.id) ||
               _audioPrecacheService.hasPrecached(s.id) ||
               s.id == song.id).toList();
-          final downloaded = _offlineService.getDownloadedSongsSync();
           final existingIds = offlineTracks.map((s) => s.id).toSet();
+          final precached = _audioPrecacheService.getFullyPrecachedSongs();
+          for (final p in precached) {
+            if (!existingIds.contains(p.id)) {
+              offlineTracks.add(p);
+              existingIds.add(p.id);
+            }
+          }
+          final downloaded = _offlineService.getDownloadedSongsSync();
           for (final d in downloaded) {
             if (!existingIds.contains(d.id)) {
               offlineTracks.add(d);
@@ -1537,9 +1568,16 @@ class PlayerProvider extends ChangeNotifier
         _nextShuffledIndex = null;
       } else if (_queue.isEmpty || !_queue.any((s) => s.id == song.id)) {
         if (!_isNetworkAvailable || _offlineService.isOfflineMode) {
-          final downloaded = _offlineService.getDownloadedSongsSync();
           final list = [song];
           final existingIds = {song.id};
+          final precached = _audioPrecacheService.getFullyPrecachedSongs();
+          for (final p in precached) {
+            if (!existingIds.contains(p.id)) {
+              list.add(p);
+              existingIds.add(p.id);
+            }
+          }
+          final downloaded = _offlineService.getDownloadedSongsSync();
           for (final d in downloaded) {
             if (!existingIds.contains(d.id)) {
               list.add(d);
@@ -1554,7 +1592,6 @@ class PlayerProvider extends ChangeNotifier
         _shuffleHistory.clear();
         _nextShuffledIndex = null;
       } else {
-        _currentIndex = startIndex ?? _queue.indexWhere((s) => s.id == song.id);
       }
       _currentSong = song;
       _lastPreloadedSongId = null;
