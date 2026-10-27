@@ -479,32 +479,40 @@ class _MainScreenState extends State<MainScreen> {
       ),
     ];
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12, 4, 12, safeBottom > 0 ? safeBottom : 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            height: 62,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xB31C1C1E) : const Color(0xB3FFFFFF),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(
+    final themeService = Provider.of<ThemeService>(context, listen: false);
+    final isPureOled = isDark && themeService.pureOled;
+
+    return RepaintBoundary(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(12, 4, 12, safeBottom > 0 ? safeBottom : 12),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              height: 62,
+              decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0x14FFFFFF)
-                    : Colors.black.withValues(alpha: 0.08),
-                width: 0.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
+                    ? (isPureOled
+                        ? const Color(0xB3000000)
+                        : const Color(0xB30A0A0C))
+                    : const Color(0xB3FFFFFF),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0x14FFFFFF)
+                      : Colors.black.withValues(alpha: 0.08),
+                  width: 0.5,
                 ),
-              ],
-            ),
-            child: Row(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
               children: List.generate(items.length, (idx) {
                 final item = items[idx];
                 final isSelected = _currentIndex == idx;
@@ -573,7 +581,8 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildBottomNav(BuildContext context) {

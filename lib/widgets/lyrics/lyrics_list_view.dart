@@ -296,13 +296,14 @@ class _LyricsListViewState extends State<LyricsListView> {
                 ? (lyricIndex - _currentLyricIndex).abs()
                 : 0;
 
+            final needsTime = line.words != null && line.words!.isNotEmpty;
             return Container(
               key: _keys[index],
               child: RepaintBoundary(
                 child: LyricsLineWidget(
                   line: line,
                   state: state,
-                  currentTime: widget.currentTime,
+                  currentTime: needsTime ? widget.currentTime : Duration.zero,
                   distance: distance,
                   isUnsynced: isUnsynced,
                   onTap: () {
