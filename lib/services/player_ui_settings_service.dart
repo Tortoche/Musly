@@ -39,7 +39,7 @@ class PlayerUiSettingsService {
   final ValueNotifier<bool> liveSearchNotifier = ValueNotifier(true);
   final ValueNotifier<double> albumArtCornerRadiusNotifier = ValueNotifier(8.0);
 
-  final ValueNotifier<String> artworkShapeNotifier = ValueNotifier('circle');
+  final ValueNotifier<String> artworkShapeNotifier = ValueNotifier('rounded');
   final ValueNotifier<String> artworkShadowNotifier = ValueNotifier('soft');
   final ValueNotifier<String> artworkShadowColorNotifier =
       ValueNotifier('black');
@@ -164,7 +164,7 @@ class PlayerUiSettingsService {
   }
 
   String getArtworkShape() {
-    return _prefs?.getString(_keyArtworkShape) ?? 'circle';
+    return _prefs?.getString(_keyArtworkShape) ?? 'rounded';
   }
 
   Future<void> setArtworkShadow(String shadow) async {

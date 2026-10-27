@@ -87,8 +87,8 @@ class ThemeService extends ChangeNotifier {
 
   ThemeMode _themeMode = ThemeMode.system;
   AccentColor _accentColor = AccentColor.red;
-  bool _liquidGlass = false;
-  bool _pureOled = false;
+  bool _liquidGlass = true;
+  bool _pureOled = true;
 
   ThemeMode get themeMode => _themeMode;
   AccentColor get accentColor => _accentColor;
@@ -104,9 +104,9 @@ class ThemeService extends ChangeNotifier {
     final colorKey = prefs.getString(_keyAccentColor) ?? 'red';
     _accentColor = AccentColorExt.fromKey(colorKey);
 
-    _liquidGlass = prefs.getBool(_keyLiquidGlass) ?? false;
-    _pureOled = prefs.getBool(_keyPureOled) ?? false;
-    await prefs.setBool(_keyPureOled, false);
+    _liquidGlass = prefs.getBool(_keyLiquidGlass) ?? true;
+    _pureOled = prefs.getBool(_keyPureOled) ?? true;
+    // keep user preference for pure oled
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

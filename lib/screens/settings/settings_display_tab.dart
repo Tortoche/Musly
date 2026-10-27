@@ -120,10 +120,6 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
           title: AppLocalizations.of(context)!.language.toUpperCase(),
           children: [
             _buildLanguageSelector(),
-            const SettingsDivider(),
-            _buildOtaSyncTile(),
-            const SettingsDivider(),
-            _buildTranslationCredit(),
           ],
         ),
         const SizedBox(height: 24),
@@ -733,93 +729,7 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
     );
   }
 
-  Widget _buildOtaSyncTile() {
-    final localeService = Provider.of<LocaleService>(context, listen: false);
-    final l10n = AppLocalizations.of(context)!;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: const Color(0xFF34C759).withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(
-          CupertinoIcons.cloud_download,
-          color: Color(0xFF34C759),
-          size: 18,
-        ),
-      ),
-      title: Text(
-        l10n.checkTranslationUpdates,
-        style: const TextStyle(fontSize: 16),
-      ),
-      subtitle: Text(
-        l10n.checkTranslationUpdatesSubtitle,
-        style: TextStyle(
-          fontSize: 13,
-          color: context.isDark
-              ? AppTheme.darkSecondaryText
-              : AppTheme.lightSecondaryText,
-        ),
-      ),
-      trailing: const Icon(Icons.refresh_rounded, size: 20),
-      onTap: () async {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.checkingTranslationUpdates),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-        final updated = await localeService.syncOtaTranslations(force: true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                updated ? l10n.translationsUpdated : l10n.translationsUpToDate,
-              ),
-              backgroundColor: updated ? const Color(0xFF34C759) : null,
-            ),
-          );
-        }
-      },
-    );
-  }
 
-  Widget _buildTranslationCredit() {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: const Color(0xFF5AC8FA).withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(
-          CupertinoIcons.heart_fill,
-          color: Color(0xFFFF3B30),
-          size: 18,
-        ),
-      ),
-      title: Text(
-        AppLocalizations.of(context)!.communityTranslations,
-        style: const TextStyle(fontSize: 16),
-      ),
-      subtitle: Text(
-        AppLocalizations.of(context)!.communityTranslationsSubtitle,
-        style: TextStyle(
-          fontSize: 13,
-          color: context.isDark
-              ? AppTheme.darkSecondaryText
-              : AppTheme.lightSecondaryText,
-        ),
-      ),
-      trailing: const Icon(Icons.open_in_new_rounded, size: 18),
-      onTap: () => _launchUrl('https://crowdin.com/project/musly'),
-    );
-  }
 
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);

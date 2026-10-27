@@ -11,7 +11,7 @@ class FadeSettingsService {
 
   SharedPreferences? _prefs;
 
-  final ValueNotifier<bool> fadeEnabledNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> fadeEnabledNotifier = ValueNotifier(true);
   final ValueNotifier<int> fadeDurationMsNotifier = ValueNotifier(300);
 
   Future<void> initialize() async {
@@ -27,7 +27,7 @@ class FadeSettingsService {
   }
 
   bool getFadeEnabled() {
-    return _prefs?.getBool(_keyFadeEnabled) ?? false;
+    return _prefs?.getBool(_keyFadeEnabled) ?? true;
   }
 
   Future<void> setFadeDurationMs(int durationMs) async {
