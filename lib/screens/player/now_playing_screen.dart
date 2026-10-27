@@ -212,13 +212,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
       rawLyrics = await offlineService.getLocalLyrics(_lastSong!.id);
 
       if (rawLyrics == null && !offlineService.isOfflineMode) {
-        rawLyrics = await subsonic.getLyricsBySongId(_lastSong!.id) ??
-            await subsonic.getLyrics(
-              id: _lastSong!.id,
-              artist: _lastSong!.artist,
-              title: _lastSong!.title,
-              duration: _lastSong!.duration,
-            );
+        rawLyrics = await subsonic.getLyrics(
+          id: _lastSong!.id,
+          artist: _lastSong!.artist,
+          title: _lastSong!.title,
+          duration: _lastSong!.duration,
+        );
         if (rawLyrics != null) {
           offlineService.saveLyrics(_lastSong!.id, rawLyrics).catchError((_) {});
         }

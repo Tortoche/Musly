@@ -83,13 +83,12 @@ class _DesktopLyricsPanelState extends State<DesktopLyricsPanel> {
       rawLyrics = await offlineService.getLocalLyrics(song.id);
 
       if (rawLyrics == null && !offlineService.isOfflineMode) {
-        rawLyrics = await subsonic.getLyricsBySongId(song.id) ??
-            await subsonic.getLyrics(
-              id: song.id,
-              artist: song.artist,
-              title: song.title,
-              duration: song.duration,
-            );
+        rawLyrics = await subsonic.getLyrics(
+          id: song.id,
+          artist: song.artist,
+          title: song.title,
+          duration: song.duration,
+        );
         if (rawLyrics != null) {
           offlineService.saveLyrics(song.id, rawLyrics).catchError((_) {});
         }

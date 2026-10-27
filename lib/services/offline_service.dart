@@ -501,15 +501,13 @@ class OfflineService {
         debugPrint('Error downloading cover art for ${song.title}: $e');
       }
       try {
-        final lyricsMap = <String, dynamic>{};
-        final syncedLyrics = await subsonicService.getLyricsBySongId(song.id);
-        if (syncedLyrics != null) lyricsMap['lyricsList'] = syncedLyrics;
-        final plainLyrics = await subsonicService.getLyrics(
+        final lyrics = await subsonicService.getLyrics(
+          id: song.id,
           artist: song.artist,
           title: song.title,
+          duration: song.duration,
         );
-        if (plainLyrics != null) lyricsMap['lyrics'] = plainLyrics;
-        if (lyricsMap.isNotEmpty) await saveLyrics(song.id, lyricsMap);
+        if (lyrics != null) await saveLyrics(song.id, lyrics);
       } catch (e) {
         debugPrint('Error downloading lyrics for ${song.title}: $e');
       }

@@ -151,7 +151,8 @@ class LrcLibService {
     return null;
   }
 
-  Future<Map<String, dynamic>?> searchLyrics({
+  /// ÉTAPE 2 : LRCLIB Recherche exacte avec durée (Tier 1)
+  Future<Map<String, dynamic>?> getExactLyrics({
     String? artist,
     required String title,
     int? durationSeconds,
@@ -168,13 +169,13 @@ class LrcLibService {
         cleanedArtist != null ? extractPrimaryArtist(cleanedArtist) : null;
 
     final cacheKey =
-        '${cleanedArtist?.toLowerCase() ?? ''}|${cleanedTitle.toLowerCase()}';
+        'exact|${cleanedArtist?.toLowerCase() ?? ''}|${cleanedTitle.toLowerCase()}|$durationSeconds';
 
     if (_cache.containsKey(cacheKey)) {
       return _cache[cacheKey];
     }
 
-    // 1. TIER 1: Exact matches via LRCLIB /api/get
+    // TIER 1: Exact matches via LRCLIB /api/get
     final exactCandidates = <MapEntry<String, String>>[];
     if (primaryArtist != null && primaryArtist.isNotEmpty) {
       exactCandidates.add(MapEntry(primaryArtist, cleanedTitle));
@@ -222,6 +223,33 @@ class LrcLibService {
           return res;
         }
       }
+    }
+    return null;
+  }
+
+  /// ÉTAPE 3 & 4 : LRCLIB Recherche floue / nettoyage + Secours Genius (Tier 2, 3, 4)
+  Future<Map<String, dynamic>?> searchLyricsFuzzy({
+    String? artist,
+    required String title,
+    int? durationSeconds,
+    bool fallbackToGenius = true,
+  }) async {
+    final isEnabled = await StorageService().getLrcLibFallback();
+    if (!isEnabled) return null;
+
+    if (title.trim().isEmpty) return null;
+
+    final cleanedTitle = cleanTitle(title, artist);
+    final cleanedArtist =
+        (artist != null && artist.isNotEmpty) ? cleanArtist(artist) : null;
+    final primaryArtist =
+        cleanedArtist != null ? extractPrimaryArtist(cleanedArtist) : null;
+
+    final cacheKey =
+        'fuzzy|${cleanedArtist?.toLowerCase() ?? ''}|${cleanedTitle.toLowerCase()}';
+
+    if (_cache.containsKey(cacheKey)) {
+      return _cache[cacheKey];
     }
 
     // 2. TIER 2: LRCLIB /api/search with structured fields (artist_name & track_name)
@@ -288,25 +316,47 @@ class LrcLibService {
     }
 
     // 4. TIER 4: Ultimate Multi-Source Fallback via Genius Lyrics
-    final geniusArtist = primaryArtist ?? cleanedArtist ?? '';
-    if (geniusArtist.isNotEmpty || cleanedTitle.isNotEmpty) {
-      try {
-        final geniusLyrics = await GeniusLyricsService().searchAndGetLyrics(
-          artist: geniusArtist,
-          title: cleanedTitle,
-        );
-        if (geniusLyrics != null && geniusLyrics.trim().isNotEmpty) {
-          final res = {'value': geniusLyrics};
-          _cache[cacheKey] = res;
-          debugPrint('[Genius] Fallback lyrics captured for "$geniusArtist - $cleanedTitle"');
-          return res;
+    if (fallbackToGenius) {
+      final geniusArtist = primaryArtist ?? cleanedArtist ?? '';
+      if (geniusArtist.isNotEmpty || cleanedTitle.isNotEmpty) {
+        try {
+          final geniusLyrics = await GeniusLyricsService().searchAndGetLyrics(
+            artist: geniusArtist,
+            title: cleanedTitle,
+          );
+          if (geniusLyrics != null && geniusLyrics.trim().isNotEmpty) {
+            final res = {'value': geniusLyrics};
+            _cache[cacheKey] = res;
+            debugPrint('[Genius] Fallback lyrics captured for "$geniusArtist - $cleanedTitle"');
+            return res;
+          }
+        } catch (e) {
+          debugPrint('[Genius] Fallback failed: $e');
         }
-      } catch (e) {
-        debugPrint('[Genius] Fallback failed: $e');
       }
     }
 
     return null;
+  }
+
+  /// Recherche complète (exacte puis élargie)
+  Future<Map<String, dynamic>?> searchLyrics({
+    String? artist,
+    required String title,
+    int? durationSeconds,
+  }) async {
+    final exact = await getExactLyrics(
+      artist: artist,
+      title: title,
+      durationSeconds: durationSeconds,
+    );
+    if (exact != null) return exact;
+
+    return searchLyricsFuzzy(
+      artist: artist,
+      title: title,
+      durationSeconds: durationSeconds,
+    );
   }
 
   Map<String, dynamic>? _findBestInList(List list, [int? targetDuration]) {

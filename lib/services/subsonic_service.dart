@@ -1086,29 +1086,46 @@ class SubsonicService {
     String? id,
     int? duration,
   }) async {
+    // -------------------------------------------------------------
+    // ÉTAPE 2 : LRCLIB Recherche exacte avec durée (paroles synchronisées temps réel)
+    // -------------------------------------------------------------
+    if (title != null && title.isNotEmpty) {
+      final exactLrc = await LrcLibService().getExactLyrics(
+        artist: artist,
+        title: title,
+        durationSeconds: duration,
+      );
+      if (exactLrc != null) {
+        debugPrint('[Lyrics Pipeline] Match Étape 2 (LRCLIB Exact Synced)');
+        return exactLrc;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // ÉTAPE 1 : Serveur Subsonic / Navidrome / Jellyfin
+    // -------------------------------------------------------------
     if (_jellyfin != null && id != null) {
       final result = await _jellyfin!.getLyrics(id);
-      if (result != null && result.containsKey('value')) return result;
+      if (result != null && result.containsKey('value')) {
+        debugPrint('[Lyrics Pipeline] Match Étape 1 (Jellyfin)');
+        return result;
+      }
     }
     if (_youtube != null) {
-      if (title != null && title.isNotEmpty) {
-        final lrc = await LrcLibService().searchLyrics(
-          artist: artist,
-          title: title,
-          durationSeconds: duration,
-        );
-        if (lrc != null) return lrc;
-      }
       if (id != null && id.isNotEmpty) {
-        return await getLyricsBySongId(id);
+        final ytLyrics = await getLyricsBySongId(id);
+        if (ytLyrics != null) return ytLyrics;
       }
-      return null;
     }
     if (id != null && id.isNotEmpty) {
       final songLyrics = await getLyricsBySongId(id);
       if (songLyrics != null &&
-          songLyrics['structuredLyrics'] is List &&
-          (songLyrics['structuredLyrics'] as List).isNotEmpty) {
+          ((songLyrics['structuredLyrics'] is List &&
+                  (songLyrics['structuredLyrics'] as List).isNotEmpty) ||
+              (songLyrics['lyricsList'] != null &&
+                  songLyrics['lyricsList'] is Map &&
+                  (songLyrics['lyricsList']['structuredLyrics'] is List)))) {
+        debugPrint('[Lyrics Pipeline] Match Étape 1 (Subsonic getLyricsBySongId)');
         return songLyrics;
       }
     }
@@ -1119,15 +1136,27 @@ class SubsonicService {
 
       final response = await _request('getLyrics', params);
       final lyrics = response['lyrics'] as Map<String, dynamic>?;
-      if (lyrics != null && lyrics.isNotEmpty) return lyrics;
+      if (lyrics != null && lyrics.isNotEmpty) {
+        debugPrint('[Lyrics Pipeline] Match Étape 1 (Subsonic getLyrics)');
+        return lyrics;
+      }
     } catch (_) {}
 
+    // -------------------------------------------------------------
+    // ÉTAPE 3 : LRCLIB Recherche élargie / nettoyage de titre
+    // ÉTAPE 4 : Secours Genius (texte brut)
+    // -------------------------------------------------------------
     if (title != null && title.isNotEmpty) {
-      return await LrcLibService().searchLyrics(
+      final fuzzyOrGenius = await LrcLibService().searchLyricsFuzzy(
         artist: artist,
         title: title,
         durationSeconds: duration,
+        fallbackToGenius: true,
       );
+      if (fuzzyOrGenius != null) {
+        debugPrint('[Lyrics Pipeline] Match Étape 3/4 (LRCLIB Fuzzy ou Genius)');
+        return fuzzyOrGenius;
+      }
     }
     return null;
   }
