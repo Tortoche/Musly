@@ -92,18 +92,23 @@ class AudioPrecacheService {
     final currentVersion = _syncVersion;
 
     // Définir la fenêtre glissante :
-    // - 1 morceau précédent (pour retour arrière fluide hors ligne)
+    // - Les 5 prochains morceaux en PRIORITÉ ABSOLUE (pour enchaînement immédiat et écoute hors-ligne)
     // - Le morceau actuel
-    // - Les 5 prochains morceaux
+    // - 1 morceau précédent (pour retour arrière fluide hors ligne)
     final Set<String> targetSongIds = {};
     final List<Song> downloadQueue = [];
 
-    // Précédent
-    if (currentIndex > 0 && currentIndex - 1 < queue.length) {
-      targetSongIds.add(queue[currentIndex - 1].id);
+    // 1. Les 5 prochains morceaux (priorité #1)
+    final maxIndex = (currentIndex + 6).clamp(0, queue.length);
+    for (int i = currentIndex + 1; i < maxIndex; i++) {
+      final nextSong = queue[i];
+      targetSongIds.add(nextSong.id);
+      if (!_isSongLocallyReady(nextSong)) {
+        downloadQueue.add(nextSong);
+      }
     }
 
-    // Actuel
+    // 2. Le morceau actuel
     if (currentIndex >= 0 && currentIndex < queue.length) {
       final currentSong = queue[currentIndex];
       targetSongIds.add(currentSong.id);
@@ -112,14 +117,9 @@ class AudioPrecacheService {
       }
     }
 
-    // 5 prochains morceaux
-    final maxIndex = (currentIndex + 6).clamp(0, queue.length);
-    for (int i = currentIndex + 1; i < maxIndex; i++) {
-      final nextSong = queue[i];
-      targetSongIds.add(nextSong.id);
-      if (!_isSongLocallyReady(nextSong)) {
-        downloadQueue.add(nextSong);
-      }
+    // 3. Le morceau précédent (gardé en cache)
+    if (currentIndex > 0 && currentIndex - 1 < queue.length) {
+      targetSongIds.add(queue[currentIndex - 1].id);
     }
 
     // 1. Éviction automatique du cache : suppression des morceaux sortis de la fenêtre
@@ -171,11 +171,21 @@ class AudioPrecacheService {
     final partPath = _getSongPartPath(song.id);
 
     try {
-      final streamUrl = subsonicService.getDownloadUrl(song.id).isNotEmpty
-          ? subsonicService.getDownloadUrl(song.id)
-          : subsonicService.getStreamUrl(song.id);
+      // Résolution du flux audio compatible Subsonic, Deezer CJ Resolver & YouTube
+      final streamUrl = song.isLocal == true && song.path != null
+          ? Uri.file(song.path!).toString()
+          : await subsonicService.resolveStreamUrlAsync(song);
 
       if (streamUrl.isEmpty) return;
+
+      if (streamUrl.startsWith('file://')) {
+        final localFile = File(Uri.parse(streamUrl).toFilePath());
+        if (await localFile.exists()) {
+          await localFile.copy(finalPath);
+          debugPrint('[AudioPrecache] ⚡ Morceau local copié en cache: "${song.title}"');
+          return;
+        }
+      }
 
       _currentCancelToken = CancelToken();
 
@@ -255,10 +265,12 @@ class AudioPrecacheService {
         if (entity is File) {
           final fileName = entity.uri.pathSegments.last;
           if (fileName.endsWith('.part')) {
-            // Supprimer les fichiers partiels abandonnés
-            try {
-              await entity.delete();
-            } catch (_) {}
+            final partId = fileName.substring(0, fileName.length - 5);
+            if (!sanitizedActive.contains(partId)) {
+              try {
+                await entity.delete();
+              } catch (_) {}
+            }
             continue;
           }
 

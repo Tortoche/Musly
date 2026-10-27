@@ -1612,7 +1612,12 @@ class PlayerProvider extends ChangeNotifier
             if (offlinePath != null) {
               playUrl = 'file://$offlinePath';
             } else {
-              playUrl = await _subsonicService.resolveStreamUrlAsync(song);
+              final precached = _audioPrecacheService.getPrecachedAudioPath(song.id);
+              if (precached != null) {
+                playUrl = 'file://$precached';
+              } else {
+                playUrl = await _subsonicService.resolveStreamUrlAsync(song);
+              }
             }
           }
           await _audioPlayer.setUrl(playUrl);
@@ -2890,6 +2895,7 @@ class PlayerProvider extends ChangeNotifier
     _updateAllServices();
     _updateAndroidAuto();
     _saveQueueState();
+    _triggerRollingPrecache();
 
     debugPrint('[Player] DJ Crossfade completed smoothly to "${nextSong.title}" at position ${_position.inSeconds}s');
 
