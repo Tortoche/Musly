@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -167,8 +168,13 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   bool _isLargeScreen(BuildContext context) {
+    // Only desktop platforms or genuine tablets (shortestSide >= 600)
+    // Mobile phones in landscape (shortestSide ~390-430dp) stay on responsive mobile layout
+    final isDesktopPlatform =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    if (isDesktopPlatform) return true;
     final size = MediaQuery.of(context).size;
-    return size.width >= 650 || size.shortestSide >= 600;
+    return size.shortestSide >= 600;
   }
 
   @override
