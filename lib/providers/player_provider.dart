@@ -1000,20 +1000,95 @@ class PlayerProvider extends ChangeNotifier
     _connectivitySub = Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
   }
 
+  List<Song>? _savedOnlineQueue;
+
   void _onConnectivityChanged(List<ConnectivityResult> results) {
     final hasNet = results.isNotEmpty && results.any((r) => r != ConnectivityResult.none);
     if (hasNet != _isNetworkAvailable) {
       _isNetworkAvailable = hasNet;
+      _offlineService.setOfflineMode(!hasNet);
+      _libraryProvider?.setServerOfflineMode(!hasNet);
+
       if (hasNet) {
-        debugPrint('[Player Network] 🌐 Connexion rétablie : reprise des flux distants et du pré-cache');
+        debugPrint('[Player Network] 🌐 Connexion rétablie : reprise des flux distants et restauration de la file');
+        _restoreOnlineQueue();
         _triggerRollingPrecache();
         _offlineService.flushPendingScrobbles(_subsonicService).catchError((_) {});
       } else {
         debugPrint('[Player Network] 📴 Coupure réseau détectée : bascule transparente sur le cache local/pré-cache');
         _audioPrecacheService.cancelPending();
+        _adaptQueueForOffline();
       }
       notifyListeners();
     }
+  }
+
+  void _adaptQueueForOffline() {
+    if (_queue.isEmpty) return;
+
+    // Sauvegarde de la file en ligne complète pour la restaurer dès que le réseau revient
+    _savedOnlineQueue ??= List<Song>.from(_queue);
+
+    // Filtrer la file d'attente pour ne conserver UNIQUEMENT que les morceaux chargés / disponibles hors ligne
+    final offlineReady = _queue.where((s) =>
+        s.isLocal == true ||
+        _offlineService.isSongDownloaded(s.id) ||
+        _audioPrecacheService.hasPrecached(s.id) ||
+        s.id == _currentSong?.id).toList();
+
+    // Si aucun autre morceau en cache dans la file actuelle, enrichir avec les morceaux téléchargés
+    if (offlineReady.length <= 1) {
+      final downloadedSongs = _offlineService.getDownloadedSongsSync();
+      final existingIds = offlineReady.map((s) => s.id).toSet();
+      for (final s in downloadedSongs) {
+        if (!existingIds.contains(s.id)) {
+          offlineReady.add(s);
+          existingIds.add(s.id);
+        }
+      }
+    }
+
+    if (offlineReady.isNotEmpty) {
+      _queue = offlineReady;
+      if (_currentSong != null) {
+        final newIndex = _queue.indexWhere((s) => s.id == _currentSong!.id);
+        if (newIndex != -1) {
+          _currentIndex = newIndex;
+        } else {
+          _queue.insert(0, _currentSong!);
+          _currentIndex = 0;
+        }
+      }
+      debugPrint('[Player Network] 📴 File adaptée au mode hors-ligne : ${_queue.length} morceaux disponibles');
+      notifyListeners();
+      _saveQueueState();
+    }
+  }
+
+  void _restoreOnlineQueue() {
+    if (_savedOnlineQueue == null || _savedOnlineQueue!.isEmpty) return;
+
+    final original = List<Song>.from(_savedOnlineQueue!);
+    _savedOnlineQueue = null;
+
+    if (_currentSong != null) {
+      final origIdx = original.indexWhere((s) => s.id == _currentSong!.id);
+      if (origIdx != -1) {
+        _queue = original;
+        _currentIndex = origIdx;
+      } else {
+        final upcoming = original.where((s) => s.id != _currentSong!.id).toList();
+        _queue = [_currentSong!, ...upcoming];
+        _currentIndex = 0;
+      }
+    } else {
+      _queue = original;
+    }
+
+    debugPrint('[Player Network] 🌐 File en ligne restaurée : ${_queue.length} morceaux');
+    notifyListeners();
+    _saveQueueState();
+    _checkAndRefillAutoQueue().catchError((_) {});
   }
 
   void _triggerRollingPrecache() {
@@ -1152,6 +1227,15 @@ class PlayerProvider extends ChangeNotifier
 
     if (_sleepTimerEndCurrentSong) {
       _doSleepTimerStop();
+      return;
+    }
+
+    if (!_isNetworkAvailable || _offlineService.isOfflineMode) {
+      if (_currentIndex < _queue.length - 1) {
+        await skipToIndex(_currentIndex + 1);
+      } else if (_repeatMode == RepeatMode.all && _queue.isNotEmpty) {
+        await skipToIndex(0);
+      }
       return;
     }
 
@@ -1425,9 +1509,29 @@ class PlayerProvider extends ChangeNotifier
           }
         }
 
-        _queue = List.from(playlist);
+        if (!_isNetworkAvailable || _offlineService.isOfflineMode) {
+          _savedOnlineQueue = List.from(playlist);
+          final offlineTracks = playlist.where((s) =>
+              s.isLocal == true ||
+              _offlineService.isSongDownloaded(s.id) ||
+              _audioPrecacheService.hasPrecached(s.id) ||
+              s.id == song.id).toList();
+          if (offlineTracks.length <= 1) {
+            final downloaded = _offlineService.getDownloadedSongsSync();
+            final existingIds = offlineTracks.map((s) => s.id).toSet();
+            for (final d in downloaded) {
+              if (!existingIds.contains(d.id)) {
+                offlineTracks.add(d);
+                existingIds.add(d.id);
+              }
+            }
+          }
+          _queue = offlineTracks.isNotEmpty ? offlineTracks : [song];
+        } else {
+          _queue = List.from(playlist);
+        }
         _currentIndex =
-            startIndex ?? playlist.indexWhere((s) => s.id == song.id);
+            startIndex ?? _queue.indexWhere((s) => s.id == song.id);
         if (_currentIndex == -1) _currentIndex = 0;
         _shuffleHistory.clear();
         _nextShuffledIndex = null;
@@ -2181,6 +2285,17 @@ class PlayerProvider extends ChangeNotifier
     }
     if (_position.inSeconds > 3) {
       await seek(Duration.zero);
+      return;
+    }
+
+    if (!_isNetworkAvailable || _offlineService.isOfflineMode) {
+      if (_currentIndex > 0) {
+        await skipToIndex(_currentIndex - 1);
+      } else if (_repeatMode == RepeatMode.all && _queue.isNotEmpty) {
+        await skipToIndex(_queue.length - 1);
+      } else {
+        await seek(Duration.zero);
+      }
       return;
     }
 
