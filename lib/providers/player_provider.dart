@@ -1680,13 +1680,27 @@ class PlayerProvider extends ChangeNotifier
 
       _updateAndroidAuto();
     } catch (e) {
-      debugPrint('[Player] Error playing song "${song.title}": $e');
-      final nextOfflineIndex = _findNextAvailableCachedIndex(_currentIndex);
-      if (nextOfflineIndex != null && nextOfflineIndex != _currentIndex) {
-        debugPrint(
-            '[Player] Seamless offline fallback: skipping to track #$nextOfflineIndex ("${_queue[nextOfflineIndex].title}")');
-        await skipToIndex(nextOfflineIndex);
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('abort')) {
+        debugPrint('[Player] Playback aborted intentionally for "${song.title}"');
         return;
+      }
+      debugPrint('[Player] Error playing song "${song.title}": $e');
+      if (!_isNetworkAvailable || _offlineService.isOfflineMode) {
+        final nextOfflineIndex = _findNextAvailableCachedIndex(_currentIndex);
+        if (nextOfflineIndex != null &&
+            nextOfflineIndex != _currentIndex &&
+            !_isRecoveringError) {
+          _isRecoveringError = true;
+          try {
+            debugPrint(
+                '[Player] Seamless offline fallback: skipping to track #$nextOfflineIndex ("${_queue[nextOfflineIndex].title}")');
+            await skipToIndex(nextOfflineIndex);
+            return;
+          } finally {
+            _isRecoveringError = false;
+          }
+        }
       }
       _isPlaying = false;
       _position = Duration.zero;
@@ -2772,6 +2786,7 @@ class PlayerProvider extends ChangeNotifier
   }
 
   bool _isStandbyPrebuffering = false;
+  bool _isRecoveringError = false;
 
   Future<void> _prebufferStandbyDeck(Song nextSong) async {
     if ((_standbyPreloadedSongId == nextSong.id && _isStandbyPreloaded) ||
@@ -3058,12 +3073,25 @@ class PlayerProvider extends ChangeNotifier
         }
       },
       onError: (error) {
+        final errStr = error.toString().toLowerCase();
+        if (errStr.contains('abort')) {
+          return;
+        }
         debugPrint('[Player] State stream error: $error');
-        // Si une erreur de lecture survient en cours de route (coupure réseau), basculer automatiquement sur la piste hors-ligne
-        final nextCached = _findNextAvailableCachedIndex(_currentIndex);
-        if (nextCached != null && nextCached != _currentIndex) {
-          debugPrint('[Player] Seamless stream error recovery: skipping to #$nextCached ("${_queue[nextCached].title}")');
-          skipToIndex(nextCached);
+        if (!_isNetworkAvailable || _offlineService.isOfflineMode) {
+          final nextCached = _findNextAvailableCachedIndex(_currentIndex);
+          if (nextCached != null &&
+              nextCached != _currentIndex &&
+              !_isRecoveringError) {
+            _isRecoveringError = true;
+            try {
+              debugPrint(
+                  '[Player] Seamless stream error recovery: skipping to #$nextCached ("${_queue[nextCached].title}")');
+              skipToIndex(nextCached);
+            } finally {
+              _isRecoveringError = false;
+            }
+          }
         }
       },
     );
