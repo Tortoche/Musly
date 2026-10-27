@@ -558,8 +558,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               final next = (i + 1 < _fetchedLyrics.length)
                   ? _fetchedLyrics[i + 1]
                   : null;
-              if (currentTime >= line.startTime &&
-                  (next == null || currentTime < next.startTime)) {
+              const maxVocalDuration = Duration(seconds: 7);
+              final lineEnd = (line.endTime != null &&
+                      next != null &&
+                      line.endTime! <
+                          next.startTime - const Duration(milliseconds: 50))
+                  ? line.endTime!
+                  : (next != null &&
+                          next.startTime - line.startTime < maxVocalDuration
+                      ? next.startTime
+                      : line.startTime + maxVocalDuration);
+
+              if (currentTime >= line.startTime && currentTime < lineEnd) {
                 activeLine = line;
                 break;
               }

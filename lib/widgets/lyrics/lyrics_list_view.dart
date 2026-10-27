@@ -77,7 +77,9 @@ class _LyricsListViewState extends State<LyricsListView> {
       return;
     }
 
-    if (widget.lyrics[0].startTime > const Duration(seconds: 10)) {
+    // 1. Musical Intro / Prelude (Apple Music style countdown dots)
+    // If first lyric starts at >= 2.0s, insert an interlude item for the prelude countdown!
+    if (widget.lyrics[0].startTime >= const Duration(milliseconds: 2000)) {
       _items.add(LyricsItem(
         type: ItemType.interlude,
         startTime: Duration.zero,
@@ -91,10 +93,16 @@ class _LyricsListViewState extends State<LyricsListView> {
           ? widget.lyrics[i + 1].startTime
           : const Duration(hours: 24);
 
-      final lyricEndTime = line.endTime ??
-          (nextTime - line.startTime > const Duration(seconds: 5)
-              ? line.startTime + const Duration(seconds: 5)
-              : nextTime);
+      Duration lyricEndTime;
+      final timeToNext = nextTime - line.startTime;
+      if (line.endTime != null &&
+          line.endTime! < nextTime - const Duration(milliseconds: 50)) {
+        lyricEndTime = line.endTime!;
+      } else {
+        lyricEndTime = timeToNext > const Duration(seconds: 6)
+            ? line.startTime + const Duration(seconds: 6)
+            : nextTime;
+      }
 
       _items.add(LyricsItem(
         type: ItemType.lyric,
@@ -106,7 +114,7 @@ class _LyricsListViewState extends State<LyricsListView> {
 
       if (i < widget.lyrics.length - 1) {
         final gap = nextTime - lyricEndTime;
-        if (gap > const Duration(seconds: 10)) {
+        if (gap >= const Duration(milliseconds: 3500)) {
           _items.add(LyricsItem(
             type: ItemType.interlude,
             startTime: lyricEndTime,
@@ -136,12 +144,20 @@ class _LyricsListViewState extends State<LyricsListView> {
 
     if (isUnsynced) {
       newIndex = -1;
-    } else if (newIndex == -1 && widget.currentTime >= _items.last.startTime) {
-      newIndex = _items.length - 1;
-    }
-
-    if (newIndex == -1 && !isUnsynced) {
-      newIndex = 0;
+    } else if (newIndex == -1) {
+      if (widget.currentTime >= _items.last.startTime) {
+        newIndex = _items.length - 1;
+      } else if (widget.currentTime >= _items.first.startTime) {
+        // Find the last item that has already started
+        for (int i = _items.length - 1; i >= 0; i--) {
+          if (widget.currentTime >= _items[i].startTime) {
+            newIndex = i;
+            break;
+          }
+        }
+      }
+      // If widget.currentTime < _items.first.startTime, KEEP newIndex = -1!
+      // This prevents prematurely highlighting the first lyric before singing begins.
     }
 
     if (newIndex != _currentIndex) {
@@ -158,10 +174,23 @@ class _LyricsListViewState extends State<LyricsListView> {
   }
 
   void _scrollToCurrentLine() {
-    if (_isManualScrolling ||
-        !_scrollController.hasClients ||
-        _currentIndex < 0 ||
-        _currentIndex >= _keys.length) {
+    if (_isManualScrolling || !_scrollController.hasClients) {
+      return;
+    }
+
+    if (_currentIndex < 0) {
+      // Intro state: smoothly keep at the top
+      if (_scrollController.hasClients && _scrollController.offset > 10) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
+
+    if (_currentIndex >= _keys.length) {
       return;
     }
 

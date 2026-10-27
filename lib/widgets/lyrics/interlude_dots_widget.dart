@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/player_ui_settings_service.dart';
 
 class InterludeDotsWidget extends StatefulWidget {
   final Duration currentTime;
@@ -38,23 +39,28 @@ class _InterludeDotsWidgetState extends State<InterludeDotsWidget>
     final timeLeft = widget.targetTime - widget.currentTime;
     final msLeft = timeLeft.inMilliseconds;
 
+    // Countdown dots: 3 dots at > 2.5s, 2 dots at <= 2.5s, 1 dot at <= 1.5s, 0 at <= 0.6s
     int visibleDots = 3;
-    if (msLeft <= 1000) {
+    if (msLeft <= 600) {
       visibleDots = 0;
-    } else if (msLeft <= 2000) {
+    } else if (msLeft <= 1500) {
       visibleDots = 1;
-    } else if (msLeft <= 3000) {
+    } else if (msLeft <= 2500) {
       visibleDots = 2;
     }
 
+    final uiSettings = PlayerUiSettingsService();
+    final isCentered = uiSettings.getLyricsAlignment() == 'center';
+    final alignment = isCentered ? Alignment.center : Alignment.centerLeft;
+
     return AnimatedSize(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       child: visibleDots == 0
           ? const SizedBox(width: double.infinity, height: 0)
           : Container(
               height: 40,
-              alignment: Alignment.centerLeft,
+              alignment: alignment,
               child: AnimatedBuilder(
                 animation: _pulseController,
                 builder: (context, child) {
@@ -69,16 +75,16 @@ class _InterludeDotsWidgetState extends State<InterludeDotsWidget>
 
                       final isVisible = index < visibleDots;
 
-                      final scale = isVisible ? 0.7 + (0.8 * sineValue) : 0.0;
+                      final scale = isVisible ? 0.75 + (0.45 * sineValue) : 0.0;
                       final color = Color.lerp(
-                        Colors.white.withValues(alpha: 0.3),
-                        Colors.white,
+                        Colors.white.withValues(alpha: 0.35),
+                        Colors.white.withValues(alpha: 0.95),
                         sineValue,
                       );
 
                       return AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.only(right: 14.0),
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 6.0),
                         width: isVisible ? 10 : 0,
                         height: isVisible ? 10 : 0,
                         child: Transform.scale(

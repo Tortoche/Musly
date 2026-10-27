@@ -15,7 +15,7 @@ class LrcLibService {
       connectTimeout: const Duration(seconds: 7),
       receiveTimeout: const Duration(seconds: 7),
       headers: {
-        'User-Agent': 'Musly/1.2.0 (https://github.com/musly)',
+        'User-Agent': 'Musly/2.0.4 (https://github.com/dddevid/Musly)',
       },
     ),
   );
@@ -238,7 +238,7 @@ class LrcLibService {
         if (resp != null && resp.statusCode == 200 && resp.data is List) {
           final list = resp.data as List;
           if (list.isNotEmpty) {
-            final parsed = _findBestInList(list);
+            final parsed = _findBestInList(list, durationSeconds);
             if (parsed != null) {
               _cache[cacheKey] = parsed;
               debugPrint('[LRCLIB] Structured search match for $params');
@@ -277,7 +277,7 @@ class LrcLibService {
       if (resp != null && resp.statusCode == 200 && resp.data is List) {
         final list = resp.data as List;
         if (list.isNotEmpty) {
-          final parsed = _findBestInList(list);
+          final parsed = _findBestInList(list, durationSeconds);
           if (parsed != null) {
             _cache[cacheKey] = parsed;
             debugPrint('[LRCLIB] Query match found for "$q"');
@@ -309,22 +309,52 @@ class LrcLibService {
     return null;
   }
 
-  Map<String, dynamic>? _findBestInList(List list) {
+  Map<String, dynamic>? _findBestInList(List list, [int? targetDuration]) {
+    if (list.isEmpty) return null;
+
     Map<String, dynamic>? bestMatch;
+    int bestScore = -999999;
+
     for (final item in list) {
-      if (item is Map<String, dynamic>) {
-        final synced = item['syncedLyrics'] as String?;
-        final plain = item['plainLyrics'] as String?;
-        if (synced != null && synced.trim().isNotEmpty) {
-          bestMatch = item;
-          break;
-        } else if (plain != null &&
-            plain.trim().isNotEmpty &&
-            bestMatch == null) {
-          bestMatch = item;
+      if (item is! Map<String, dynamic>) continue;
+
+      final synced = item['syncedLyrics'] as String?;
+      final plain = item['plainLyrics'] as String?;
+      final isInstrumental = item['instrumental'] == true;
+
+      if (isInstrumental) continue;
+
+      final hasSynced = synced != null && synced.trim().isNotEmpty;
+      final hasPlain = plain != null && plain.trim().isNotEmpty;
+
+      if (!hasSynced && !hasPlain) continue;
+
+      int score = 0;
+      if (hasSynced) {
+        score += 10000;
+      }
+
+      // Proximity to target audio duration prevents mismatched cuts (e.g. radio edit vs album)
+      final itemDuration = (item['duration'] as num?)?.round();
+      if (targetDuration != null && targetDuration > 0 && itemDuration != null) {
+        final diff = (itemDuration - targetDuration).abs();
+        if (diff <= 2) {
+          score += 5000;
+        } else if (diff <= 5) {
+          score += 2000;
+        } else if (diff <= 15) {
+          score += 500;
+        } else {
+          score -= diff * 10;
         }
       }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = item;
+      }
     }
+
     bestMatch ??= (list.first is Map<String, dynamic>)
         ? list.first as Map<String, dynamic>
         : null;
