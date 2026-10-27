@@ -321,6 +321,13 @@ class LibraryDatabaseService {
       _playlistToMap(playlist),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    if (playlist.songs != null && playlist.songs!.isNotEmpty) {
+      for (final s in playlist.songs!) {
+        try {
+          await insertOrUpdateSong(s);
+        } catch (_) {}
+      }
+    }
   }
 
   Future<Playlist?> getPlaylist(String id) async {
@@ -329,16 +336,21 @@ class LibraryDatabaseService {
         await db.query('playlists', where: 'id = ?', whereArgs: [id], limit: 1);
     if (maps.isEmpty) return null;
     final playlist = _playlistFromMap(maps.first);
-    final songIds = playlist.songs?.map((s) => s.id).toList() ?? [];
-    if (songIds.isNotEmpty) {
-      final fullSongs = await getSongs(songIds);
-      if (fullSongs.isNotEmpty && fullSongs.length == songIds.length) {
-        return playlist.copyWith(songs: fullSongs);
-      } else if (playlist.songs != null && playlist.songs!.isNotEmpty) {
-        final fullMap = {for (final s in fullSongs) s.id: s};
+    if (playlist.songs != null && playlist.songs!.isNotEmpty) {
+      // Si certains morceaux n'avaient que l'ID brut (ancien format séparé par virgule),
+      // les enrichir depuis la table songs sans jamais écraser les titres riches par des stubs.
+      final needsLookup = playlist.songs!.any((s) => s.title == 'Track' || s.title.isEmpty);
+      if (needsLookup) {
+        final songIds = playlist.songs!.map((s) => s.id).toList();
+        final fullSongs = await getSongs(songIds);
+        final fullMap = {
+          for (final s in fullSongs)
+            if (s.title.isNotEmpty && s.title != 'Unknown Track') s.id: s
+        };
         final merged = playlist.songs!.map((s) => fullMap[s.id] ?? s).toList();
         return playlist.copyWith(songs: merged);
       }
+      return playlist;
     }
     return playlist;
   }

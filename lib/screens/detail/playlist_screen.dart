@@ -168,16 +168,26 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     );
     try {
       final updatedSongs = List<Song>.from(_playlist!.songs!)..removeAt(index);
-      await subsonicService.updatePlaylist(
-        playlistId: widget.playlistId,
-        songIndexesToRemove: [index],
+      final updatedPl = _playlist!.copyWith(
+        songCount: updatedSongs.length,
+        songs: updatedSongs,
       );
       setState(() {
-        _playlist = _playlist!.copyWith(
-          songCount: updatedSongs.length,
-          songs: updatedSongs,
-        );
+        _playlist = updatedPl;
       });
+
+      final libProvider = Provider.of<LibraryProvider>(context, listen: false);
+      await libProvider.updatePlaylistInMemoryAndDb(updatedPl);
+
+      try {
+        await subsonicService.updatePlaylist(
+          playlistId: widget.playlistId,
+          songIndexesToRemove: [index],
+        );
+      } catch (e) {
+        debugPrint('[PlaylistScreen] Subsonic server remove failed (virtual/local): ');
+      }
+
       if ((_playlist?.coverArt == null || _playlist!.coverArt!.isEmpty) &&
           updatedSongs.isNotEmpty) {
         PlaylistCoverService().checkAndGenerateCover(
@@ -239,9 +249,13 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     final song = updatedSongs.removeAt(oldIndex);
     updatedSongs.insert(newIndex, song);
 
+    final updatedPl = _playlist!.copyWith(songs: updatedSongs);
     setState(() {
-      _playlist = _playlist!.copyWith(songs: updatedSongs);
+      _playlist = updatedPl;
     });
+
+    final libProvider = Provider.of<LibraryProvider>(context, listen: false);
+    await libProvider.updatePlaylistInMemoryAndDb(updatedPl);
 
     if ((_playlist?.coverArt == null || _playlist!.coverArt!.isEmpty) &&
         updatedSongs.isNotEmpty) {
@@ -261,16 +275,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
         ],
       );
     } catch (e) {
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.errorReorderingSong(e.toString())),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-      _loadPlaylist();
+      debugPrint('[PlaylistScreen] Subsonic server reorder failed (virtual/local): ');
     }
   }
 

@@ -1263,61 +1263,48 @@ class LibraryProvider extends ChangeNotifier
 
 
       for (final newPlaylist in newPlaylists) {
-
+        final localDbPl = await _db.getPlaylist(newPlaylist.id);
         final cachedIndex = _cachedPlaylists.indexWhere(
-
           (playlist) => playlist.id == newPlaylist.id,
-
         );
+        final cached = cachedIndex != -1 ? _cachedPlaylists[cachedIndex] : null;
 
-        if (cachedIndex != -1) {
+        final effectiveCoverArt =
+            (newPlaylist.coverArt != null && newPlaylist.coverArt!.isNotEmpty)
+                ? newPlaylist.coverArt
+                : (localDbPl?.coverArt ?? cached?.coverArt);
 
-          final cached = _cachedPlaylists[cachedIndex];
+        final localSongs = (localDbPl?.songs != null && localDbPl!.songs!.isNotEmpty)
+            ? localDbPl.songs
+            : cached?.songs;
 
-          final effectiveCoverArt =
+        if (localSongs != null && localSongs.isNotEmpty) {
+          mergedPlaylists.add(newPlaylist.copyWith(
+            songs: localSongs,
+            songCount: localSongs.length,
+            coverArt: effectiveCoverArt,
+          ));
+          continue;
+        }
 
-              (newPlaylist.coverArt != null && newPlaylist.coverArt!.isNotEmpty)
-
-                  ? newPlaylist.coverArt
-
-                  : cached.coverArt;
-
-          if (cached.songs != null && cached.songs!.isNotEmpty) {
-
-            mergedPlaylists.add(newPlaylist.copyWith(
-
-              songs: cached.songs,
-
-              coverArt: effectiveCoverArt,
-
-            ));
-
-            continue;
-
-          }
-
-          if (effectiveCoverArt != newPlaylist.coverArt) {
-
-            mergedPlaylists
-
-                .add(newPlaylist.copyWith(coverArt: effectiveCoverArt));
-
-            continue;
-
-          }
-
+        if (effectiveCoverArt != newPlaylist.coverArt) {
+          mergedPlaylists
+              .add(newPlaylist.copyWith(coverArt: effectiveCoverArt));
+          continue;
         }
 
         mergedPlaylists.add(newPlaylist);
-
       }
 
-
-
       _playlists = mergedPlaylists;
-
       _cachedPlaylists = _playlists;
-
+      for (final pl in mergedPlaylists) {
+        if (pl.songs != null && pl.songs!.isNotEmpty) {
+          try {
+            await _db.insertOrUpdatePlaylist(pl);
+          } catch (_) {}
+        }
+      }
       _saveCachedData();
 
       notifyListeners();
@@ -1667,8 +1654,28 @@ class LibraryProvider extends ChangeNotifier
 
 
 
+  Future<void> updatePlaylistInMemoryAndDb(Playlist updated) async {
+    final idx = _playlists.indexWhere((p) => p.id == updated.id);
+    if (idx != -1) {
+      _playlists[idx] = updated;
+    } else {
+      _playlists.add(updated);
+    }
+    final cIdx = _cachedPlaylists.indexWhere((p) => p.id == updated.id);
+    if (cIdx != -1) {
+      _cachedPlaylists[cIdx] = updated;
+    } else {
+      _cachedPlaylists.add(updated);
+    }
+    try {
+      await _db.insertOrUpdatePlaylist(updated);
+    } catch (_) {}
+    _saveCachedData();
+    notifyListeners();
+  }
+
   Future<void> addSongToPlaylist(String playlistId, Song song) async {
-    // 1. Toujours charger la playlist complète (fusion serveur + local)
+    // 1. Toujours charger la playlist complète (fusion serveur + local + mémoire)
     Playlist fullPlaylist;
     try {
       fullPlaylist = await getPlaylist(playlistId);
@@ -1676,7 +1683,11 @@ class LibraryProvider extends ChangeNotifier
       final local = await _db.getPlaylist(playlistId);
       final idx = _playlists.indexWhere((p) => p.id == playlistId);
       final inMem = idx != -1 ? _playlists[idx] : Playlist(id: playlistId, name: 'Playlist');
-      fullPlaylist = local ?? inMem;
+      if (local != null && local.songs != null && local.songs!.isNotEmpty) {
+        fullPlaylist = local;
+      } else {
+        fullPlaylist = inMem;
+      }
     }
 
     // 2. Ajouter la chanson si elle n'est pas déjà présente
@@ -1692,44 +1703,30 @@ class LibraryProvider extends ChangeNotifier
       changed: DateTime.now(),
     );
 
-    // 3. Mettre à jour la mémoire
-    final idx = _playlists.indexWhere((p) => p.id == playlistId);
-    if (idx != -1) {
-      _playlists[idx] = updated;
-    } else {
-      _playlists.add(updated);
-    }
+    // 3. Mettre à jour la mémoire et SQLite immédiatement
+    await updatePlaylistInMemoryAndDb(updated);
 
-    final cIdx = _cachedPlaylists.indexWhere((p) => p.id == playlistId);
-    if (cIdx != -1) {
-      _cachedPlaylists[cIdx] = updated;
-    } else {
-      _cachedPlaylists.add(updated);
-    }
-
-    // 4. Sauvegarde persistante SQLite immédiate
-    await _db.insertOrUpdateSong(song);
-    await _db.insertOrUpdatePlaylist(updated);
-    _saveCachedData();
-
-    // 5. Mise à jour de la cover mosaïque 2x2
+    // 4. Mise à jour de la cover mosaïque 2x2
     PlaylistCoverService().checkAndGenerateCover(
       playlistId: playlistId,
       songs: currentSongs,
       subsonicService: _subsonicService,
     );
 
-    notifyListeners();
+    // 5. Synchronisation serveur Navidrome/Subsonic (uniquement pour les morceaux locaux au serveur)
+    final isVirtual = song.id.startsWith('cj_dz_') ||
+        song.id.startsWith('dz_') ||
+        song.id.startsWith('yt_') ||
+        (song.path == null && !song.isLocal && song.id.length < 20);
 
-    // 6. Synchronisation serveur Navidrome/Subsonic
-    if (!song.isLocal) {
+    if (!song.isLocal && !isVirtual) {
       try {
         await _subsonicService.updatePlaylist(
           playlistId: playlistId,
           songIdsToAdd: [song.id],
         );
       } catch (e) {
-        debugPrint('[LibraryProvider] Server updatePlaylist (ignoring for local/virtual tracks): $e');
+        debugPrint('[LibraryProvider] Server updatePlaylist (ignoring for local/virtual tracks): ');
       }
     }
   }
