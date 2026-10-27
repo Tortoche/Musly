@@ -370,9 +370,11 @@ class OfflineService {
   Future<void> saveLyrics(String songId, Map<String, dynamic> data) async {
     if (_offlineDir == null) await initialize();
     try {
-      await File(_getLyricsPath(songId)).writeAsString(jsonEncode(data));
+      final copy = Map<String, dynamic>.from(data);
+      copy['_cacheVersion'] = 2;
+      await File(_getLyricsPath(songId)).writeAsString(jsonEncode(copy));
     } catch (e) {
-      debugPrint('Error saving lyrics: $e');
+      debugPrint('Error saving lyrics: ');
     }
   }
 
@@ -381,7 +383,15 @@ class OfflineService {
     try {
       final file = File(_getLyricsPath(songId));
       if (!file.existsSync()) return null;
-      return jsonDecode(await file.readAsString()) as Map<String, dynamic>?;
+      final data = jsonDecode(await file.readAsString()) as Map<String, dynamic>?;
+      if (data != null && data['_cacheVersion'] != 2) {
+        // Discard legacy unvalidated lyrics cache
+        try {
+          file.deleteSync();
+        } catch (_) {}
+        return null;
+      }
+      return data;
     } catch (e) {
       return null;
     }

@@ -128,6 +128,45 @@ class LrcLibService {
     return cleaned;
   }
 
+  /// Checks alphanumeric normalized similarity (case, accents and punctuation insensitive)
+  static String normalizeAlphaNumeric(String s) {
+    return stripAccents(s)
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
+  static bool isTitleMatch(String? candidate, String expected) {
+    if (candidate == null || candidate.isEmpty) return false;
+    final c = normalizeAlphaNumeric(cleanTitle(candidate));
+    final e = normalizeAlphaNumeric(cleanTitle(expected));
+    if (c.isEmpty || e.isEmpty) return false;
+    if (c == e) return true;
+    if (c.contains(e) || e.contains(c)) {
+      final minLen = e.length < c.length ? e.length : c.length;
+      return minLen >= 3;
+    }
+    return false;
+  }
+
+  static bool isArtistMatch(String? candidate, String? expected) {
+    if (expected == null || expected.trim().isEmpty) return true;
+    if (candidate == null || candidate.trim().isEmpty) return false;
+
+    final c = normalizeAlphaNumeric(cleanArtist(candidate));
+    final e = normalizeAlphaNumeric(cleanArtist(expected));
+    if (c.isEmpty || e.isEmpty) return false;
+    if (c == e) return true;
+    if (c.contains(e) || e.contains(c)) return true;
+
+    final ep = normalizeAlphaNumeric(extractPrimaryArtist(expected));
+    final cp = normalizeAlphaNumeric(extractPrimaryArtist(candidate));
+    if (ep.isNotEmpty && cp.isNotEmpty && (ep == cp || cp.contains(ep) || ep.contains(cp))) {
+      return true;
+    }
+
+    return false;
+  }
+
   /// Helper with automatic retry on 503 / 429
   Future<Response<T>?> _getWithRetry<T>(
     String path, {
@@ -175,7 +214,6 @@ class LrcLibService {
       return _cache[cacheKey];
     }
 
-    // TIER 1: Exact matches via LRCLIB /api/get
     final exactCandidates = <MapEntry<String, String>>[];
     if (primaryArtist != null && primaryArtist.isNotEmpty) {
       exactCandidates.add(MapEntry(primaryArtist, cleanedTitle));
@@ -187,7 +225,7 @@ class LrcLibService {
     }
 
     for (final pair in exactCandidates) {
-      // Try with duration first if available
+      // 1. Try with duration first if available
       if (durationSeconds != null && durationSeconds > 0) {
         final resp = await _getWithRetry(
           '/get',
@@ -198,16 +236,21 @@ class LrcLibService {
           },
         );
         if (resp != null && resp.statusCode == 200 && resp.data is Map) {
-          final res = _parseLrcLibResponse(resp.data as Map<String, dynamic>);
-          if (res != null) {
-            _cache[cacheKey] = res;
-            debugPrint('[LRCLIB] Exact match with duration for "${pair.key} - ${pair.value}"');
-            return res;
+          final data = resp.data as Map<String, dynamic>;
+          final trackName = data['trackName'] as String? ?? data['name'] as String?;
+          final artistName = data['artistName'] as String?;
+          if (isTitleMatch(trackName, cleanedTitle) && isArtistMatch(artistName, pair.key)) {
+            final res = _parseLrcLibResponse(data);
+            if (res != null) {
+              _cache[cacheKey] = res;
+              debugPrint('[LRCLIB] Exact match with duration for "${pair.key} - ${pair.value}"');
+              return res;
+            }
           }
         }
       }
 
-      // Try /get without duration
+      // 2. Try /get without duration
       final respNoDur = await _getWithRetry(
         '/get',
         queryParameters: {
@@ -216,11 +259,16 @@ class LrcLibService {
         },
       );
       if (respNoDur != null && respNoDur.statusCode == 200 && respNoDur.data is Map) {
-        final res = _parseLrcLibResponse(respNoDur.data as Map<String, dynamic>);
-        if (res != null) {
-          _cache[cacheKey] = res;
-          debugPrint('[LRCLIB] Exact match for "${pair.key} - ${pair.value}"');
-          return res;
+        final data = respNoDur.data as Map<String, dynamic>;
+        final trackName = data['trackName'] as String? ?? data['name'] as String?;
+        final artistName = data['artistName'] as String?;
+        if (isTitleMatch(trackName, cleanedTitle) && isArtistMatch(artistName, pair.key)) {
+          final res = _parseLrcLibResponse(data);
+          if (res != null) {
+            _cache[cacheKey] = res;
+            debugPrint('[LRCLIB] Exact match for "${pair.key} - ${pair.value}"');
+            return res;
+          }
         }
       }
     }
@@ -252,7 +300,7 @@ class LrcLibService {
       return _cache[cacheKey];
     }
 
-    // 2. TIER 2: LRCLIB /api/search with structured fields (artist_name & track_name)
+    // TIER 2: LRCLIB /api/search with structured fields (artist_name & track_name)
     if (primaryArtist != null && primaryArtist.isNotEmpty) {
       final searchParams = <Map<String, dynamic>>[
         {'artist_name': primaryArtist, 'track_name': cleanedTitle},
@@ -266,7 +314,12 @@ class LrcLibService {
         if (resp != null && resp.statusCode == 200 && resp.data is List) {
           final list = resp.data as List;
           if (list.isNotEmpty) {
-            final parsed = _findBestInList(list, durationSeconds);
+            final parsed = _findBestInList(
+              list,
+              expectedTitle: cleanedTitle,
+              expectedArtist: cleanedArtist ?? primaryArtist,
+              targetDuration: durationSeconds,
+            );
             if (parsed != null) {
               _cache[cacheKey] = parsed;
               debugPrint('[LRCLIB] Structured search match for $params');
@@ -277,7 +330,7 @@ class LrcLibService {
       }
     }
 
-    // 3. TIER 3: LRCLIB /api/search with query string
+    // TIER 3: LRCLIB /api/search with query string (Always pair with artist to avoid mismatch)
     final searchQueries = <String>[];
     if (primaryArtist != null && primaryArtist.isNotEmpty) {
       searchQueries.add('$primaryArtist $cleanedTitle'.trim());
@@ -286,9 +339,6 @@ class LrcLibService {
         cleanedArtist.isNotEmpty &&
         cleanedArtist != primaryArtist) {
       searchQueries.add('$cleanedArtist $cleanedTitle'.trim());
-    }
-    if (!searchQueries.contains(cleanedTitle)) {
-      searchQueries.add(cleanedTitle);
     }
 
     // Add unaccented query if diacritics are present
@@ -299,13 +349,24 @@ class LrcLibService {
       searchQueries.add('$unaccentedArtist $unaccentedTitle'.trim());
     }
 
+    // ONLY search title alone IF the artist is completely unknown!
+    if ((primaryArtist == null || primaryArtist.isEmpty) &&
+        (cleanedArtist == null || cleanedArtist.isEmpty)) {
+      searchQueries.add(cleanedTitle);
+    }
+
     for (final q in searchQueries) {
       if (q.isEmpty) continue;
       final resp = await _getWithRetry('/search', queryParameters: {'q': q});
       if (resp != null && resp.statusCode == 200 && resp.data is List) {
         final list = resp.data as List;
         if (list.isNotEmpty) {
-          final parsed = _findBestInList(list, durationSeconds);
+          final parsed = _findBestInList(
+            list,
+            expectedTitle: cleanedTitle,
+            expectedArtist: cleanedArtist ?? primaryArtist,
+            targetDuration: durationSeconds,
+          );
           if (parsed != null) {
             _cache[cacheKey] = parsed;
             debugPrint('[LRCLIB] Query match found for "$q"');
@@ -315,7 +376,7 @@ class LrcLibService {
       }
     }
 
-    // 4. TIER 4: Ultimate Multi-Source Fallback via Genius Lyrics
+    // TIER 4: Ultimate Multi-Source Fallback via Genius Lyrics
     if (fallbackToGenius) {
       final geniusArtist = primaryArtist ?? cleanedArtist ?? '';
       if (geniusArtist.isNotEmpty || cleanedTitle.isNotEmpty) {
@@ -359,7 +420,12 @@ class LrcLibService {
     );
   }
 
-  Map<String, dynamic>? _findBestInList(List list, [int? targetDuration]) {
+  Map<String, dynamic>? _findBestInList(
+    List list, {
+    required String expectedTitle,
+    String? expectedArtist,
+    int? targetDuration,
+  }) {
     if (list.isEmpty) return null;
 
     Map<String, dynamic>? bestMatch;
@@ -367,6 +433,21 @@ class LrcLibService {
 
     for (final item in list) {
       if (item is! Map<String, dynamic>) continue;
+
+      final trackName = item['trackName'] as String? ?? item['name'] as String?;
+      final artistName = item['artistName'] as String?;
+
+      // 1. STRICT TITLE MATCH
+      if (!isTitleMatch(trackName, expectedTitle)) {
+        continue;
+      }
+
+      // 2. STRICT ARTIST MATCH (if expectedArtist is known)
+      if (expectedArtist != null && expectedArtist.trim().isNotEmpty) {
+        if (!isArtistMatch(artistName, expectedArtist)) {
+          continue;
+        }
+      }
 
       final synced = item['syncedLyrics'] as String?;
       final plain = item['plainLyrics'] as String?;
@@ -379,23 +460,37 @@ class LrcLibService {
 
       if (!hasSynced && !hasPlain) continue;
 
+      // 3. DURATION VALIDATION (if target duration is available)
+      final itemDuration = (item['duration'] as num?)?.round();
+      if (targetDuration != null && targetDuration > 0 && itemDuration != null) {
+        final diff = (itemDuration - targetDuration).abs();
+        if (diff > 18) {
+          // Reject cuts with incompatible duration
+          continue;
+        }
+      }
+
       int score = 0;
       if (hasSynced) {
         score += 10000;
       }
 
-      // Proximity to target audio duration prevents mismatched cuts (e.g. radio edit vs album)
-      final itemDuration = (item['duration'] as num?)?.round();
       if (targetDuration != null && targetDuration > 0 && itemDuration != null) {
         final diff = (itemDuration - targetDuration).abs();
         if (diff <= 2) {
           score += 5000;
         } else if (diff <= 5) {
           score += 2000;
-        } else if (diff <= 15) {
+        } else if (diff <= 10) {
           score += 500;
         } else {
-          score -= diff * 10;
+          score -= diff * 15;
+        }
+      }
+
+      if (expectedArtist != null && artistName != null) {
+        if (normalizeAlphaNumeric(artistName) == normalizeAlphaNumeric(expectedArtist)) {
+          score += 3000;
         }
       }
 
@@ -404,10 +499,6 @@ class LrcLibService {
         bestMatch = item;
       }
     }
-
-    bestMatch ??= (list.first is Map<String, dynamic>)
-        ? list.first as Map<String, dynamic>
-        : null;
 
     if (bestMatch != null) {
       return _parseLrcLibResponse(bestMatch);
