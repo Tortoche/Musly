@@ -519,7 +519,8 @@ Future<MuslyAudioHandler> initAudioService() async {
         androidNotificationOngoing: false,
         androidStopForegroundOnPause: false,
         androidNotificationIcon: 'mipmap/ic_launcher',
-        notificationColor: Color(0xFF000000),
+        // Dynamic album art color extraction by Android MediaStyle
+        // notificationColor removed so Android / HyperOS derives tint directly from cover art
         preloadArtwork: true,
         androidBrowsableRootExtras: {
           'android.media.browse.SEARCH_SUPPORTED': true,

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:musly/screens/player/now_playing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -228,13 +229,13 @@ class _SongCollectionScreenState extends State<SongCollectionScreen> {
     final l10n = AppLocalizations.of(context);
     switch (widget.type) {
       case SongCollectionType.allSongs:
-        return l10n?.songs ?? 'All Songs';
+        return l10n?.songs ?? 'Tous les titres';
       case SongCollectionType.madeForYou:
-        return 'Made For You';
+        return l10n?.madeForYou ?? 'Pour vous';
       case SongCollectionType.history:
-        return 'Listening History';
+        return l10n?.listeningHistory ?? 'Historique d\'écoute';
       case SongCollectionType.custom:
-        return 'Songs';
+        return l10n?.songs ?? 'Titres';
     }
   }
 
@@ -283,6 +284,44 @@ class _SongCollectionScreenState extends State<SongCollectionScreen> {
                 titlePadding: const EdgeInsets.only(left: 52, bottom: 16),
               ),
               actions: [
+                if (widget.type == SongCollectionType.history)
+                  IconButton(
+                    icon: const Icon(CupertinoIcons.trash, color: Color(0xFFFF3B30), size: 20),
+                    tooltip: AppLocalizations.of(context)?.clearListeningHistory ?? 'Effacer l\'historique',
+                    onPressed: () {
+                      final l10n = AppLocalizations.of(context)!;
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text(l10n.clearListeningHistory),
+                          content: Text(l10n.confirmClearHistory),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: Text(l10n.cancel),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                Provider.of<RecommendationService>(context, listen: false).clearData();
+                                setState(() {
+                                  _songs = [];
+                                  _filteredSongs = [];
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(l10n.historyCleared)),
+                                );
+                              },
+                              child: Text(
+                                l10n.delete,
+                                style: const TextStyle(color: Color(0xFFFF3B30)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 if (widget.type == SongCollectionType.madeForYou)
                   IconButton(
                     icon: const Icon(Icons.refresh_rounded),
@@ -335,36 +374,52 @@ class _SongCollectionScreenState extends State<SongCollectionScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: Row(
-                    children: [
-                      MediaPlayButton(
-                        icon: Icons.play_arrow_rounded,
-                        label: AppLocalizations.of(context)!.playAll,
-                        onTap: () => _playAll(shuffle: false),
-                      ),
-                      const SizedBox(width: 12),
-                      OutlinedButton.icon(
-                        onPressed: () => _playAll(shuffle: true),
-                        icon: const Icon(Icons.shuffle_rounded, size: 20),
-                        label: Text(AppLocalizations.of(context)!.shuffle),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24)),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${AppLocalizations.of(context)!.songsCount(_filteredSongs.length)} • ${FormatUtils.formatDurationSummary(totalDuration)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark
-                              ? AppTheme.darkSecondaryText
-                              : AppTheme.lightSecondaryText,
-                        ),
-                      ),
-                    ],
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 450;
+                      return Row(
+                        children: [
+                          Flexible(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                MediaPlayButton(
+                                  icon: Icons.play_arrow_rounded,
+                                  label: AppLocalizations.of(context)!.playAll,
+                                  onTap: () => _playAll(shuffle: false),
+                                ),
+                                const SizedBox(width: 12),
+                                OutlinedButton.icon(
+                                  onPressed: () => _playAll(shuffle: true),
+                                  icon: const Icon(Icons.shuffle_rounded, size: 20),
+                                  label: Text(AppLocalizations.of(context)!.shuffle),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: isNarrow ? 12 : 20, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(24)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          Flexible(
+                            child: Text(
+                              '${AppLocalizations.of(context)!.songsCount(_filteredSongs.length)} • ${FormatUtils.formatDurationSummary(totalDuration)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? AppTheme.darkSecondaryText
+                                    : AppTheme.lightSecondaryText,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),

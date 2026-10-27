@@ -360,7 +360,7 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
             ),
           ),
           Expanded(
-            flex: 5,
+            flex: 4,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
