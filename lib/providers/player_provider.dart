@@ -1840,6 +1840,19 @@ class PlayerProvider extends ChangeNotifier
         return;
       }
       debugPrint('[Player] Error playing song "${song.title}": $e');
+      final isNetworkError = errStr.contains('socketexception') ||
+          errStr.contains('failed host lookup') ||
+          errStr.contains('connection error') ||
+          errStr.contains('connection refused') ||
+          errStr.contains('network is unreachable') ||
+          errStr.contains('timed out') ||
+          errStr.contains('timeoutexception');
+      if (isNetworkError && _isNetworkAvailable) {
+        debugPrint('[Player] Erreur réseau détectée pendant la lecture : bascule immédiate en mode hors-ligne');
+        _isNetworkAvailable = false;
+        _offlineService.setOfflineMode(true);
+        _adaptQueueForOffline();
+      }
       if (!_isNetworkAvailable || _offlineService.isOfflineMode) {
         final nextOfflineIndex = _findNextAvailableCachedIndex(_currentIndex);
         if (nextOfflineIndex != null &&
@@ -3243,6 +3256,19 @@ class PlayerProvider extends ChangeNotifier
           return;
         }
         debugPrint('[Player] State stream error: $error');
+        final isNetworkError = errStr.contains('socketexception') ||
+            errStr.contains('failed host lookup') ||
+            errStr.contains('connection error') ||
+            errStr.contains('connection refused') ||
+            errStr.contains('network is unreachable') ||
+            errStr.contains('timed out') ||
+            errStr.contains('timeoutexception');
+        if (isNetworkError && _isNetworkAvailable) {
+          debugPrint('[Player] Erreur réseau détectée dans le flux audio : bascule immédiate en mode hors-ligne');
+          _isNetworkAvailable = false;
+          _offlineService.setOfflineMode(true);
+          _adaptQueueForOffline();
+        }
         if (!_isNetworkAvailable || _offlineService.isOfflineMode) {
           final nextCached = _findNextAvailableCachedIndex(_currentIndex);
           if (nextCached != null &&
