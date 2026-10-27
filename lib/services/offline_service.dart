@@ -758,6 +758,23 @@ class OfflineService {
         ? downloadedSongIds.value
         : getDownloadedSongIds().toSet();
 
+    if (_prefs != null) {
+      final songsDataJson = _prefs?.getString(_keyDownloadedSongsData);
+      if (songsDataJson != null) {
+        try {
+          final decoded = json.decode(songsDataJson) as Map<String, dynamic>;
+          decoded.forEach((k, v) {
+            try {
+              if (!_downloadedSongsMap.containsKey(k)) {
+                _downloadedSongsMap[k] =
+                    Song.fromJson(Map<String, dynamic>.from(v as Map));
+              }
+            } catch (_) {}
+          });
+        } catch (_) {}
+      }
+    }
+
     if (fallbackSongs != null && fallbackSongs.isNotEmpty) {
       for (final s in fallbackSongs) {
         if (ids.contains(s.id) && !_downloadedSongsMap.containsKey(s.id)) {
