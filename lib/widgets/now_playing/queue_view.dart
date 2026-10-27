@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/player_provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -105,14 +106,26 @@ class _QueueViewState extends State<QueueView> {
               right: 24,
             ),
             header: Padding(
-              padding: const EdgeInsets.only(bottom: 24.0, left: 8.0),
-              child: Text(
-                l10n.upNext,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+              padding: const EdgeInsets.only(bottom: 20.0, left: 8.0, right: 8.0),
+              child: Row(
+                children: [
+                  Text(
+                    l10n.upNext,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  _AutoplayInfinityButton(
+                    isEnabled: provider.isAutoplayEnabled,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      provider.toggleAutoplay();
+                    },
+                  ),
+                ],
               ),
             ),
             itemCount: queue.length,
@@ -211,6 +224,81 @@ class _QueueViewState extends State<QueueView> {
           ),
         );
       },
+    );
+  }
+}
+
+class _AutoplayInfinityButton extends StatelessWidget {
+  final bool isEnabled;
+  final VoidCallback onTap;
+
+  const _AutoplayInfinityButton({
+    required this.isEnabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+
+    return Semantics(
+      label: 'Lecture automatique infinie',
+      button: true,
+      toggled: isEnabled,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: isEnabled
+                  ? primary.withValues(alpha: 0.22)
+                  : Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isEnabled
+                    ? primary.withValues(alpha: 0.85)
+                    : Colors.white.withValues(alpha: 0.14),
+                width: isEnabled ? 1.4 : 0.8,
+              ),
+              boxShadow: isEnabled
+                  ? [
+                      BoxShadow(
+                        color: primary.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      )
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.all_inclusive_rounded,
+                  size: 20,
+                  color: isEnabled ? primary : Colors.white70,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Auto',
+                  style: TextStyle(
+                    color: isEnabled ? primary : Colors.white70,
+                    fontSize: 12,
+                    fontWeight: isEnabled ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

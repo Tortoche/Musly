@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart' hide RepeatMode;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import 'package:musly/models/song.dart';
 import 'package:musly/models/artist_ref.dart';
 import 'package:musly/models/radio_station.dart';
@@ -16,10 +17,79 @@ import 'package:musly/widgets/common/album_artwork.dart';
 import 'package:musly/screens/player/now_playing_screen.dart';
 import 'package:musly/widgets/modals/song_options_modal.dart';
 
-class MiniPlayer extends StatelessWidget {
+class MiniPlayer extends StatefulWidget {
   final VoidCallback? onTap;
 
   const MiniPlayer({super.key, this.onTap});
+
+  @override
+  State<MiniPlayer> createState() => _MiniPlayerState();
+}
+
+class _MiniPlayerState extends State<MiniPlayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _slideController;
+  Animation<double>? _slideAnimation;
+  double _dragOffset = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _slideController.addListener(() {
+      setState(() {
+        _dragOffset = _slideAnimation?.value ?? 0.0;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    setState(() {
+      _dragOffset = (_dragOffset + details.primaryDelta!).clamp(-85.0, 85.0);
+    });
+  }
+
+  void _onHorizontalDragEnd(
+    DragEndDetails details,
+    PlayerProvider player,
+    bool isPlayingRadio,
+  ) {
+    final velocity = details.primaryVelocity ?? 0.0;
+    const threshold = 35.0;
+
+    if (!isPlayingRadio) {
+      if (_dragOffset < -threshold || velocity < -300) {
+        // Balayage vers la gauche -> Titre suivant (Apple Music style)
+        HapticFeedback.lightImpact();
+        player.skipNext();
+      } else if (_dragOffset > threshold || velocity > 300) {
+        // Balayage vers la droite -> Titre précédent (Apple Music style)
+        HapticFeedback.lightImpact();
+        player.skipPrevious();
+      }
+    }
+
+    _slideAnimation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
+    _slideController.forward(from: 0.0);
+  }
+
+  void _onHorizontalDragCancel() {
+    _slideAnimation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
+    _slideController.forward(from: 0.0);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +106,8 @@ class MiniPlayer extends StatelessWidget {
         final (currentSong, currentRadioStation, isPlayingRadio) = data;
 
         void handleTap() {
-          if (onTap != null) {
-            onTap!();
+          if (widget.onTap != null) {
+            widget.onTap!();
             return;
           }
           if (currentSong != null) {
@@ -75,12 +145,20 @@ class MiniPlayer extends StatelessWidget {
 
         final bool isGlass = Provider.of<ThemeService>(context).liquidGlass;
 
-        final Widget row = _MiniPlayerRow(
-          title: title,
-          subtitle: subtitle,
-          coverArt: coverArt,
-          isPlayingRadio: isPlayingRadio,
+        final Widget row = Transform.translate(
+          offset: Offset(_dragOffset * 0.75, 0),
+          child: Opacity(
+            opacity: (1.0 - (_dragOffset.abs() / 250)).clamp(0.4, 1.0),
+            child: _MiniPlayerRow(
+              title: title,
+              subtitle: subtitle,
+              coverArt: coverArt,
+              isPlayingRadio: isPlayingRadio,
+            ),
+          ),
         );
+
+        final player = Provider.of<PlayerProvider>(context, listen: false);
 
         if (isGlass) {
           return RepaintBoundary(
@@ -101,6 +179,13 @@ class MiniPlayer extends StatelessWidget {
                 onLongPress: currentSong != null
                     ? () => SongOptionsModal.show(context, currentSong)
                     : null,
+                onHorizontalDragUpdate: _onHorizontalDragUpdate,
+                onHorizontalDragEnd: (details) => _onHorizontalDragEnd(
+                  details,
+                  player,
+                  isPlayingRadio,
+                ),
+                onHorizontalDragCancel: _onHorizontalDragCancel,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(22),
                   child: BackdropFilter(
@@ -146,6 +231,13 @@ class MiniPlayer extends StatelessWidget {
             onLongPress: currentSong != null
                 ? () => SongOptionsModal.show(context, currentSong)
                 : null,
+            onHorizontalDragUpdate: _onHorizontalDragUpdate,
+            onHorizontalDragEnd: (details) => _onHorizontalDragEnd(
+              details,
+              player,
+              isPlayingRadio,
+            ),
+            onHorizontalDragCancel: _onHorizontalDragCancel,
             child: Container(
               height: 64,
               decoration: BoxDecoration(

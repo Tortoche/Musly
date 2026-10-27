@@ -405,6 +405,16 @@ class PlayerProvider extends ChangeNotifier
   }
 
   AutoDjService get autoDjService => _autoDjService;
+  bool get isAutoplayEnabled => _autoDjService.isEnabled;
+
+  Future<void> toggleAutoplay() async {
+    final newEnabled = !_autoDjService.isEnabled;
+    await _autoDjService.setMode(newEnabled ? AutoDjMode.smartMix : AutoDjMode.off);
+    notifyListeners();
+    if (newEnabled) {
+      _checkAndRefillAutoQueue().catchError((_) {});
+    }
+  }
 
   Future<void> _initializeAutoDj() async {
     await _autoDjService.initialize();
