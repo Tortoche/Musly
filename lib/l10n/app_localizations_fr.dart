@@ -12,11 +12,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get appName => 'Musly';
 
   @override
-  String get emulatorDetected => 'Emulator Detected';
+  String get emulatorDetected => 'Émulateur détecté';
 
   @override
   String get emulatorNotAllowed =>
-      'This app cannot run on an emulator.\\nPlease use a physical device.';
+      'Cette application ne peut pas fonctionner sur un émulateur.\nVeuillez utiliser un appareil physique.';
 
   @override
   String get goodMorning => 'Bonjour';
@@ -134,7 +134,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get genres => 'Genres';
 
   @override
-  String get years => 'Years';
+  String get years => 'Années';
 
   @override
   String get favorites => 'Favoris';
@@ -380,20 +380,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get showStarRatingsSubtitle => 'Noter les pistes et voir les notes';
 
   @override
-  String get showMiniPlayerHeart => 'Show Heart Button';
+  String get showMiniPlayerHeart => 'Bouton Favori sur le mini-lecteur';
 
   @override
   String get showMiniPlayerHeartSubtitle => 'Add to favorites from mini lireer';
 
   @override
-  String get showMiniPlayerRepeat => 'Show Repeat Button';
+  String get showMiniPlayerRepeat => 'Bouton Répéter sur le mini-lecteur';
 
   @override
   String get showMiniPlayerRepeatSubtitle =>
       'Toggle repeat mode from mini lireer';
 
   @override
-  String get showMiniPlayerShuffle => 'Show Shuffle Button';
+  String get showMiniPlayerShuffle => 'Bouton Aléatoire sur le mini-lecteur';
 
   @override
   String get showMiniPlayerShuffleSubtitle => 'Toggle shuffle from mini lireer';
@@ -456,10 +456,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Recherche des mises à jour de traduction…';
 
   @override
-  String get translationsUpdated => 'Translations updated successfully!';
+  String get translationsUpdated => 'Traductions mises à jour avec succès !';
 
   @override
-  String get translationsUpToDate => 'Translations are already up to date';
+  String get translationsUpToDate => 'Les traductions sont déjà à jour';
 
   @override
   String get yourLibrary => 'Ma Bibliothèque';
@@ -468,7 +468,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get filterAll => 'Tout';
 
   @override
-  String get faves => 'Faves';
+  String get faves => 'Favoris';
 
   @override
   String get filterPlaylists => 'Playlists';
@@ -483,10 +483,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get likedSongs => 'Titres \"J\'aime\"';
 
   @override
-  String get likedAlbums => 'Liked Albums';
+  String get likedAlbums => 'Albums likés';
 
   @override
-  String get noLikedAlbums => 'No liked albums yet';
+  String get noLikedAlbums => 'Aucun album liké pour le moment';
 
   @override
   String get localMusicLibrary => 'Local Music Bibliothèque';
@@ -496,32 +496,33 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get mergeLocalLibrarySubtitle =>
-      'Show local music alongside your server library';
+      'Afficher les musiques locales aux côtés de la bibliothèque serveur';
 
   @override
-  String get localMusicStats => 'Local Music Files';
+  String get localMusicStats => 'Fichiers audio locaux';
 
   @override
   String get addMusicFolder => 'Ajouter un dossier de musique';
 
   @override
-  String get rescanLocalMusic => 'Rescan Local Music';
+  String get rescanLocalMusic => 'Rescanner les musiques locales';
 
   @override
-  String get localLibraryEmpty => 'Your library is empty';
+  String get localLibraryEmpty => 'Votre bibliothèque est vide';
 
   @override
   String get localLibraryEmptySubtitle =>
-      'No local music files were found. Tap the button below to scan again.';
+      'Aucun fichier musical trouvé sur l’appareil. Touchez le bouton pour rescanner.';
 
   @override
-  String get libraryEmpty => 'Your library is empty';
+  String get libraryEmpty => 'Votre bibliothèque est vide';
 
   @override
-  String get libraryEmptySubtitle => 'Add some songs to get started.';
+  String get libraryEmptySubtitle =>
+      'Ajoutez des morceaux pour commencer votre écoute.';
 
   @override
-  String get scanForMusic => 'Scan for Music';
+  String get scanForMusic => 'Rechercher des morceaux';
 
   @override
   String get radioStations => 'Stations radio';
@@ -639,7 +640,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tabDisplay => 'Affichage';
 
   @override
-  String get tabSupport => 'Support';
+  String get tabSupport => 'Soutien';
 
   @override
   String get tabAbout => 'À propos';
@@ -659,7 +660,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sectionReplayGain => 'NORMALISATION DE VOLUME (REPLAYGAIN)';
 
   @override
-  String get replayGainMode => 'Mode';
+  String get replayGainMode => 'Mode de gain';
 
   @override
   String preamp(String value) {
@@ -724,20 +725,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noMusicFolders => 'Aucun dossier de musique trouvé';
 
   @override
-  String get sectionSavedProfiles => 'SAVED PROFILES';
+  String get sectionSavedProfiles => 'PROFILS ENREGISTRÉS';
 
   @override
-  String get switchProfile => 'Switch Profile';
+  String get switchProfile => 'Changer de profil';
 
   @override
-  String get switchServer => 'Switch Server';
+  String get switchServer => 'Changer de serveur';
 
   @override
   String get addProfile => 'Ajouter un profil';
 
   @override
   String switchProfileConfirmation(String profile) {
-    return 'Connect to \"$profile\"?';
+    return 'Se connecter à « $profile » ?';
   }
 
   @override
@@ -798,7 +799,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get keepScreenOnDuringDownload => 'Keep Screen On';
+  String get keepScreenOnDuringDownload => 'Garder l’écran allumé';
 
   @override
   String get keepScreenOnDuringDownloadSubtitle =>
@@ -818,10 +819,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get downloadPlural => 'téléchargers';
 
   @override
-  String get slowerButStable => 'Slower but more stable';
+  String get slowerButStable => 'Plus lent mais plus stable';
 
   @override
-  String get fasterButMoreData => 'Faster but uses more data';
+  String get fasterButMoreData => 'Plus rapide mais consomme plus de données';
 
   @override
   String get libraryDownloadStarted =>
@@ -995,12 +996,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String durationHoursMinutes(int hours, int minutes) {
-    return '$hours HR $minutes MIN';
+    return '$hours h $minutes min';
   }
 
   @override
   String durationMinutes(int minutes) {
-    return '$minutes MIN';
+    return '$minutes min';
   }
 
   @override
@@ -1216,7 +1217,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get importPlaylistSubtitle =>
-      'Import from Spotify or YouTube Music (no login)';
+      'Importer depuis Spotify ou YouTube Music (sans connexion requise)';
 
   @override
   String get checkForUpdates => 'Rechercher des mises à jour';
@@ -1231,16 +1232,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get updateAvailable => 'Mise à jour disponible';
 
   @override
-  String get updateNow => 'Update now';
+  String get updateNow => 'Mettre à jour';
 
   @override
   String get downloadingUpdate => 'Téléchargering update...';
 
   @override
-  String get openOnGitHub => 'Open on GitHub';
+  String get openOnGitHub => 'Ouvrir sur GitHub';
 
   @override
-  String get skipThisVersion => 'Skip this version';
+  String get skipThisVersion => 'Ignorer cette version';
 
   @override
   String get updateDownloaded => 'Mise à jour téléchargée';
@@ -1563,7 +1564,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'NORMALISATION DU VOLUME (REPLAYGAIN)';
 
   @override
-  String get sectionFadeInOut => 'FADE IN/OUT';
+  String get sectionFadeInOut => 'FONDU ENCHAÎNÉ (CROSSFADE)';
 
   @override
   String get fadeInOutEnable => 'Activer le fondu (Fade in/out)';
@@ -1647,7 +1648,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get transcodingMobileQualitySubtitle => 'Débit sur données mobiles';
 
   @override
-  String get transcodingFormat => 'Format';
+  String get transcodingFormat => 'Format de transcodage';
 
   @override
   String get transcodingFormatSubtitle =>
@@ -1657,7 +1658,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get transcodingBitrateOriginal => 'Original (sans transcodage)';
 
   @override
-  String get transcodingFormatOriginal => 'Original';
+  String get transcodingFormatOriginal => 'Original (sans perte)';
 
   @override
   String get imageCacheTitle => 'Cache d\'images';
@@ -1713,7 +1714,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aboutLinkDiscord => 'Rejoignez la communauté Discord';
 
   @override
-  String get sectionAnalyticsPrivacy => 'Analytics & Privacy';
+  String get sectionAnalyticsPrivacy => 'Confidentialité & Données';
 
   @override
   String get anonymousAnalytics => 'Statistiques anonymes';
@@ -1723,16 +1724,16 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aidez à améliorer Musly grâce aux rapports de plantage anonymes';
 
   @override
-  String get deviceId => 'Device ID';
+  String get deviceId => 'Identifiant appareil';
 
   @override
   String deviceIdAnonymous(String id) {
-    return 'Anonymous ID: $id';
+    return 'Identifiant anonyme : $id';
   }
 
   @override
   String get deviceIdDisabled =>
-      'Enable analytics to see your anonymous device ID';
+      'Activez les statistiques pour voir votre identifiant anonyme';
 
   @override
   String get aboutDeviceId => 'À propos de l\'identifiant de l\'appareil';
@@ -1742,7 +1743,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Il s\'agit d\'un identifiant anonyme généré par l\'application. Il ne peut être lié à votre identité personnelle et est utilisé uniquement pour les statistiques.';
 
   @override
-  String get supportGreeting => 'Hey there!';
+  String get supportGreeting => 'Bonjour !';
 
   @override
   String get supportParagraph1 =>
@@ -1750,94 +1751,96 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get supportParagraph2 =>
-      'Musly is completely free and open-source. No ads and no subscription fees. I work on it in my free time because I genuinely enjoy making something useful for people like you.';
+      'Musly est un projet totalement gratuit et open-source. Sans publicité, sans traqueur et sans abonnement payant. J’y consacre mon temps libre avec passion pour créer une expérience musicale fluide et moderne.';
 
   @override
   String get supportParagraph3 =>
-      'But servers, development tools, and coffee aren\'t free If Musly has become a part of your daily life and you\'d like to say \"thanks,\" a small donation would mean the world to me. It helps cover costs and keeps me motivated to add new features.';
+      'Cependant, les serveurs de tests, les outils de développement et le café ont un coût. Si Musly fait partie de votre quotidien et que vous souhaitez dire « merci », une petite contribution est une immense aide pour poursuivre le projet.';
 
   @override
   String get supportParagraph4 =>
-      'No pressure at all though - your enjoyment of the app is already the best reward!';
+      'Aucune obligation bien sûr : votre plaisir d’écoute sur l’application est déjà la plus belle des récompenses !';
 
   @override
-  String get supportDonationTitle => 'Support with a Donation';
+  String get supportDonationTitle => 'Faire un don de soutien';
 
   @override
-  String get supportDonationSubtitle => 'via Revolut - any amount helps!';
+  String get supportDonationSubtitle => 'via Revolut – chaque geste compte !';
 
   @override
-  String get supportDiscordTitle => 'Join our Discord';
+  String get supportDiscordTitle => 'Rejoindre la communauté Discord';
 
   @override
   String get supportDiscordSubtitle =>
-      'Get help, suggest features, or just chat';
+      'Discuter, obtenir de l’aide ou proposer de nouvelles idées';
 
   @override
-  String get supportWaysTitle => 'Other ways to support';
+  String get supportWaysTitle => 'Autres façons d’aider';
 
   @override
-  String get supportWayRate => 'Leave a rating on the app store';
+  String get supportWayRate => 'Laisser une note sur l’app store';
 
   @override
-  String get supportWayShare => 'Tell your friends about Musly';
+  String get supportWayShare => 'Parler de Musly à vos amis';
 
   @override
-  String get supportWayBugs => 'Report bugs or suggest features';
+  String get supportWayBugs => 'Signaler un bug ou suggérer une fonctionnalité';
 
   @override
-  String get supportWayEnjoy => 'Just enjoy the music!';
+  String get supportWayEnjoy => 'Simplement profiter de vos musiques !';
 
   @override
-  String get supportMadeWithLove => 'Crafted with passion in Italy';
+  String get supportMadeWithLove => 'Créé avec passion en Italie';
 
   @override
   String get playbackSpeed => 'Vitesse de lecture';
 
   @override
-  String get normalSpeed => 'Normal (1×)';
+  String get normalSpeed => 'Normale (1x)';
 
   @override
-  String get preservePitch => 'Preserve pitch';
+  String get preservePitch => 'Préserver la tonalité';
 
   @override
-  String get preservePitchSubtitle => 'Keep original pitch when changing speed';
+  String get preservePitchSubtitle =>
+      'Conserve la hauteur originale des voix lors du changement de vitesse';
 
   @override
-  String get pitch => 'Pitch';
+  String get pitch => 'Tonalité';
 
   @override
-  String get pitchPreserved => 'pitch preserved';
+  String get pitchPreserved => 'tonalité préservée';
 
   @override
   String speedTooltipWithPitch(String speed, String pitch) {
-    return 'Speed $speed · pitch $pitch×';
+    return 'Vitesse $speed • tonalité ${pitch}x';
   }
 
   @override
   String speedTooltipPitchPreserved(String speed) {
-    return 'Speed $speed · pitch preserved';
+    return 'Vitesse $speed • tonalité préservée';
   }
 
   @override
   String get sleepTimer => 'Minuteur de sommeil';
 
   @override
-  String get sleepTimerActive => 'Sleep timer active';
+  String get sleepTimerActive => 'Minuteur de veille actif';
 
   @override
-  String get fadeOut => 'Fade out';
+  String get fadeOut => 'Fondu sonore';
 
   @override
   String fadeOutSubtitle(int seconds) {
-    return 'Gradually lower volume in the last $seconds s';
+    return 'Baisse progressivement le volume sonore sur les $seconds dernières secondes';
   }
 
   @override
-  String get finishCurrentSong => 'Finish current song';
+  String get finishCurrentSong => 'Terminer le morceau en cours';
 
   @override
-  String get finishCurrentSongSubtitle => 'Stop after the current track ends';
+  String get finishCurrentSongSubtitle =>
+      'Met en pause dès que le titre actuel se termine';
 
   @override
   String sleepTimerMinutes(int count) {
@@ -1846,25 +1849,25 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String sleepTimerHours(int count) {
-    return '$count hour';
+    return '$count heure';
   }
 
   @override
   String sleepTimerSetFor(String duration) {
-    return 'Sleep timer set for $duration';
+    return 'Minuteur réglé sur $duration';
   }
 
   @override
-  String get customDuration => 'Custom duration…';
+  String get customDuration => 'Durée personnalisée…';
 
   @override
   String get cancelTimer => 'Annuler le minuteur';
 
   @override
-  String get customSleepTimer => 'Custom Sleep Timer';
+  String get customSleepTimer => 'Minuteur personnalisé';
 
   @override
-  String get set => 'Set';
+  String get set => 'Définir';
 
   @override
   String get addToPlaylistTitle => 'Ajouter à la playlist';
@@ -1873,47 +1876,47 @@ class AppLocalizationsFr extends AppLocalizations {
   String get yourPlaylistsLabel => 'Your Lirelists';
 
   @override
-  String get enableLrcLibFallback => 'Fetch lyrics from LRCLIB';
+  String get enableLrcLibFallback => 'Paroles via LRCLIB';
 
   @override
   String get lrcLibFallbackSubtitle =>
-      'Automatically search LRCLIB for lyrics when your server does not provide them';
+      'Recherche automatique sur LRCLIB lorsque votre serveur ne propose pas les paroles';
 
   @override
-  String get themeSaved => 'Theme saved';
+  String get themeSaved => 'Thème enregistré';
 
   @override
-  String get themeUnsavedChanges => 'Unsaved changes';
+  String get themeUnsavedChanges => 'Modifications non enregistrées';
 
   @override
-  String get themeUnsavedChangesTitle => 'Unsaved Changes';
+  String get themeUnsavedChangesTitle => 'Modifications non enregistrées';
 
   @override
   String get themeUnsavedChangesBody =>
-      'You have unsaved changes. Do you want to save before leaving?';
+      'Des modifications n’ont pas été sauvegardées. Voulez-vous les enregistrer avant de quitter ?';
 
   @override
-  String get discard => 'Discard';
+  String get discard => 'Abandonner';
 
   @override
-  String get done => 'Done';
+  String get done => 'Terminé';
 
   @override
   String pickColor(String label) {
-    return 'Pick $label';
+    return 'Choisir $label';
   }
 
   @override
-  String get titleStyle => 'Title Style';
+  String get titleStyle => 'Style du titre';
 
   @override
   String get artistStyle => 'Style de l\'artiste';
 
   @override
-  String get themeActive => 'ACTIVE';
+  String get themeActive => 'ACTIF';
 
   @override
-  String get themeSafeMode => 'SAFE';
+  String get themeSafeMode => 'SÉCURISÉ';
 
   @override
   String get themeCodeMode => 'CODE';
@@ -1923,7 +1926,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String themeAuthor(String author) {
-    return 'by $author';
+    return 'par $author';
   }
 
   @override
@@ -1940,20 +1943,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get selectPlaylist => 'Select Lirelist';
 
   @override
-  String get endOfSong => 'End of Song';
+  String get endOfSong => 'Fin du morceau';
 
   @override
   String get muslyConnect => 'Musly Connect';
 
   @override
-  String get connectToDevice => 'Connect to a Device';
+  String get connectToDevice => 'Se connecter à un appareil';
 
   @override
   String get currentlyPlayingOn => 'Actuellement en lecture sur';
 
   @override
   String get noDevicesFound =>
-      'No other Musly devices found on your Wi-Fi network.';
+      'Aucun autre appareil Musly détecté sur votre réseau Wi-Fi.';
 
   @override
   String get transferPlaybackHere => 'Transfer lireback here';
@@ -1971,26 +1974,26 @@ class AppLocalizationsFr extends AppLocalizations {
       'Synchronisez plusieurs téléphones et ordinateurs en Wi-Fi comme haut-parleurs surround avec une précision à la milliseconde.';
 
   @override
-  String get hostParty => 'Host Party';
+  String get hostParty => 'Lancer une session';
 
   @override
-  String get joinParty => 'Join Party';
+  String get joinParty => 'Rejoindre une session';
 
   @override
-  String get leaveParty => 'Leave Party';
+  String get leaveParty => 'Quitter la session';
 
   @override
   String get audioPhaseCalibration => 'Calibrage de phase audio';
 
   @override
   String get phaseCalibrationSubtitle =>
-      'Adjust if using Bluetooth headphones or external speaker latency.';
+      'Ajustez en cas de décalage avec des écouteurs Bluetooth ou enceintes externes.';
 
   @override
-  String get partySpeakers => 'Party Speakers';
+  String get partySpeakers => 'Enceintes de la session';
 
   @override
-  String get muslyWrapped => 'Musly Wrapped';
+  String get muslyWrapped => 'Rétrospective Musly';
 
   @override
   String get wrappedSeasonal => 'Musly Lireback is Seasonal';
@@ -1999,43 +2002,43 @@ class AppLocalizationsFr extends AppLocalizations {
   String get playYourTopSongs => 'Lire Your Top Morceaux';
 
   @override
-  String get milestone50SongsTitle => 'Thank you from our hearts!';
+  String get milestone50SongsTitle => 'Merci de tout cœur !';
 
   @override
-  String get milestone50SongsBadge => '50 SONGS MILESTONE';
+  String get milestone50SongsBadge => 'CAP DES 50 MORCEAUX';
 
   @override
   String get milestone50SongsMessage =>
-      'You just reached the milestone of 50 songs listened to on Musly! Thank you for choosing this app for your daily music journey.';
+      'Vous venez d’écouter plus de 50 morceaux sur Musly ! Merci de nous faire confiance pour votre quotidien musical.';
 
   @override
-  String get continueListening => 'Continue Listening';
+  String get continueListening => 'Continuer l’écoute';
 
   @override
-  String get lyricsUnderArtwork => 'Live Lyrics Under Artwork';
+  String get lyricsUnderArtwork => 'Paroles sous la pochette';
 
   @override
   String get lyricsUnderArtworkSubtitle =>
       'Show currently synced lyric line under the album cover in the full-screen lireer';
 
   @override
-  String get lyricsDisplaySection => 'LYRICS DISPLAY';
+  String get lyricsDisplaySection => 'AFFICHAGE DES PAROLES';
 
   @override
-  String get lyricsBlurUnfocused => 'Blur Unfocused Lyrics';
+  String get lyricsBlurUnfocused => 'Flou des lignes secondaires';
 
   @override
   String get lyricsBlurUnfocusedSubtitle =>
-      'Add blur effect to past and upcoming lyric lines';
+      'Applique un flou cinématique élégant sur les lignes précédentes et suivantes';
 
   @override
-  String get lyricsAlignment => 'Lyrics Alignment';
+  String get lyricsAlignment => 'Alignement des paroles';
 
   @override
-  String get lyricsAlignmentCentered => 'Centered';
+  String get lyricsAlignmentCentered => 'Centré';
 
   @override
-  String get lyricsAlignmentLeft => 'Left aligned';
+  String get lyricsAlignmentLeft => 'Aligné à gauche';
 
   @override
   String get alignLeft => 'À gauche';
@@ -2044,25 +2047,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get alignCenter => 'Centré';
 
   @override
-  String get lyricsGlowEffect => 'Active Line Glow';
+  String get lyricsGlowEffect => 'Lueur sur la ligne active';
 
   @override
   String get lyricsGlowEffectSubtitle =>
       'Subtle glow effect on currently lireing lyric line';
 
   @override
-  String get lyricsKeepScreenOn => 'Keep Screen On';
+  String get lyricsKeepScreenOn => 'Garder l’écran allumé';
 
   @override
   String get lyricsKeepScreenOnSubtitle =>
-      'Prevent the screen from turning off while reading lyrics';
+      'Empêche l’écran de se verrouiller pendant la lecture des paroles';
 
   @override
-  String get hideWindowTitlebar => 'Hide Window Titlebar / Decorations';
+  String get hideWindowTitlebar => 'Masquer la barre de titre de la fenêtre';
 
   @override
   String get hideWindowTitlebarSubtitle =>
-      'Hides native titlebar (useful for Linux Wayland & tiling window managers)';
+      'Masque la barre de titre système (idéal pour Linux Wayland et gestionnaires en tuiles)';
 
   @override
   String get sectionSmartCrossfade => 'Transitions et Enchaînements';
@@ -2106,7 +2109,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get downloadFolder => 'Télécharger Folder';
 
   @override
-  String get downloadFolderDefault => 'Default (Internal storage)';
+  String get downloadFolderDefault => 'Par défaut (Stockage interne)';
 
   @override
   String get activeDownloads => 'Téléchargements actifs';
@@ -2132,7 +2135,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get songsStreamCache => 'Morceaux & Streaming Cache';
 
   @override
-  String get imageArtworkCache => 'Artwork & Images Cache';
+  String get imageArtworkCache => 'Cache des pochettes & images';
 
   @override
   String cacheDiskUsage(String size) {
@@ -2141,24 +2144,24 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String totalCacheDiskUsage(String size) {
-    return 'Total cache: $size';
+    return 'Espace cache total : $size';
   }
 
   @override
-  String get clearAudioCacheTooltip => 'Clear song cache';
+  String get clearAudioCacheTooltip => 'Vider le cache musical';
 
   @override
-  String get clearImageCacheTooltip => 'Clear image cache';
+  String get clearImageCacheTooltip => 'Vider le cache des images';
 
   @override
   String get audioCacheCleared => 'Cache audio effacé';
 
   @override
-  String get imageCacheCleared => 'Artwork cache cleared';
+  String get imageCacheCleared => 'Cache des pochettes vidé avec succès';
 
   @override
   String folderAdded(String path) {
-    return 'Added folder: $path';
+    return 'Dossier ajouté : $path';
   }
 
   @override
@@ -2170,44 +2173,44 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get folderRemoved => 'Folder removed';
+  String get folderRemoved => 'Dossier supprimé';
 
   @override
-  String get loadingLibrary => 'Loading library...';
+  String get loadingLibrary => 'Chargement de la bibliothèque…';
 
   @override
   String get libraryEmptyError =>
       'Bibliothèque appears to be empty or failed to load. Make sure your server supports full library scanning.';
 
   @override
-  String get serverStatusConnected => 'CONNECTED';
+  String get serverStatusConnected => 'CONNECTÉ';
 
   @override
-  String get serverStatusConnecting => 'CONNECTING';
+  String get serverStatusConnecting => 'CONNEXION EN COURS…';
 
   @override
-  String get serverStatusOffline => 'OFFLINE';
+  String get serverStatusOffline => 'HORS LIGNE';
 
   @override
-  String get serverStatusNotConnected => 'Not Connected';
+  String get serverStatusNotConnected => 'Non connecté';
 
   @override
-  String get switchServerButton => 'Switch';
+  String get switchServerButton => 'Changer';
 
   @override
-  String get savedServersSection => 'SAVED SERVERS & SERVICES';
+  String get savedServersSection => 'SERVEURS & SOURCES ENREGISTRÉS';
 
   @override
-  String get manage => 'Manage';
+  String get manage => 'Gérer';
 
   @override
-  String get serverActiveBadge => 'ACTIVE';
+  String get serverActiveBadge => 'ACTIF';
 
   @override
   String get addServerOrService => 'Ajouter un serveur / service';
 
   @override
-  String get welcomeTourTitle => 'Welcome Tour';
+  String get welcomeTourTitle => 'Guide de bienvenue';
 
   @override
   String get welcomeTourSubtitle =>
@@ -2218,50 +2221,51 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get muslyPlaybackDevSubtitle =>
-      'Explore your Year-in-Review preview directly without waiting for November';
+      'Découvrez votre rétrospective musicale sans attendre le mois de novembre';
 
   @override
   String get muslyPlaybackAnnual => 'Musly Lireback';
 
   @override
   String get muslyPlaybackAnnualSubtitle =>
-      'Your annual Year-in-Review unlocks automatically every year between late November and mid-January.\n\nKeep listening to music to expand your sonic universe!';
+      'Votre rétrospective annuelle se débloque automatiquement entre fin novembre et mi-janvier.\n\nContinuez d’écouter votre musique pour enrichir votre univers sonore !';
 
   @override
-  String get sectionAboutSupport => 'SUPPORT';
+  String get sectionAboutSupport => 'SOUTIEN & COMMUNAUTÉ';
 
   @override
-  String get thanksForRating => 'Thanks for Rating!';
+  String get thanksForRating => 'Merci pour votre note !';
 
   @override
-  String get rateMusly => 'Rate Musly';
+  String get rateMusly => 'Noter Musly';
 
   @override
   String get alreadyRatedSubtitle => 'Vous avez déjà noté l\'application';
 
   @override
-  String get shareFeedbackSubtitle => 'Share your feedback';
+  String get shareFeedbackSubtitle => 'Donnez votre avis sur l’application';
 
   @override
-  String get supportMuslyTitle => 'Support Musly';
+  String get supportMuslyTitle => 'Soutenir Musly';
 
   @override
-  String get supportMuslySubtitle => 'Join Discord or donate';
+  String get supportMuslySubtitle => 'Rejoindre le Discord ou faire un don';
 
   @override
-  String get rateMuslyDialogTitle => 'Rate Musly';
+  String get rateMuslyDialogTitle => 'Votre avis sur Musly';
 
   @override
-  String get rateMuslyDialogQuestion => 'How would you rate your experience?';
+  String get rateMuslyDialogQuestion =>
+      'Comment évaluez-vous votre expérience d’écoute ?';
 
   @override
-  String get optionalFeedbackHint => 'Optional feedback...';
+  String get optionalFeedbackHint => 'Remarque ou suggestion (facultatif)…';
 
   @override
-  String get submit => 'Submit';
+  String get submit => 'Envoyer';
 
   @override
-  String get thankYouFeedback => 'Thank you for your feedback!';
+  String get thankYouFeedback => 'Merci pour votre retour !';
 
   @override
   String devPlaybackTapsAway(int count) {
@@ -2272,49 +2276,49 @@ class AppLocalizationsFr extends AppLocalizations {
   String get devPlaybackUnlocked => 'Developer Lireback Preview unlocked!';
 
   @override
-  String get craftedWith => 'Crafted with ';
+  String get craftedWith => 'Conçu avec ';
 
   @override
-  String get inItaly => ' in Italy';
+  String get inItaly => ' en Italie';
 
   @override
-  String get switchServerTitle => 'Switch Server';
+  String get switchServerTitle => 'Changer de serveur';
 
   @override
   String get switchServerSubtitle =>
-      'Select an active server or streaming source';
+      'Sélectionnez un serveur actif ou une source musicale';
 
   @override
   String get addServerButton => 'Ajouter un serveur';
 
   @override
-  String get noServersSavedYet => 'No servers saved yet';
+  String get noServersSavedYet => 'Aucun serveur enregistré pour le moment';
 
   @override
   String connectedTo(String name) {
-    return 'Connected to $name';
+    return 'Connecté à $name';
   }
 
   @override
   String errorConnectingServer(String error) {
-    return 'Error connecting to server: $error';
+    return 'Erreur de connexion au serveur : $error';
   }
 
   @override
-  String get renameServerProfile => 'Rename Server Profile';
+  String get renameServerProfile => 'Renommer le profil serveur';
 
   @override
-  String get profileNameLabel => 'Profile Name';
+  String get profileNameLabel => 'Nom du profil';
 
   @override
-  String get enterNewNameHint => 'Enter new name';
+  String get enterNewNameHint => 'Saisissez un nouveau nom';
 
   @override
   String get removeServerTitle => 'Retirer Server';
 
   @override
   String removeServerConfirm(String name) {
-    return 'Are you sure you want to remove \"$name\" from your saved servers?';
+    return 'Voulez-vous vraiment supprimer « $name » de vos serveurs enregistrés ?';
   }
 
   @override
@@ -2322,27 +2326,27 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get supportDialogDescription =>
-      'Musly is a free, open-source project. Your support helps keep it alive!';
+      'Musly est un projet libre et open-source. Votre soutien permet de faire vivre et évoluer l’application !';
 
   @override
-  String get supportDialogJoinDiscord => 'Join our Discord';
+  String get supportDialogJoinDiscord => 'Rejoindre notre Discord';
 
   @override
   String get supportDialogDiscordSubtitle =>
-      'Get help, suggest features, chat with us';
+      'Aide, fonctionnalités en avant-première et échanges';
 
   @override
-  String get supportDialogDonateTitle => 'Support with a Donation';
+  String get supportDialogDonateTitle => 'Faire un don';
 
   @override
   String get supportDialogDonateSubtitle =>
-      'Help cover server costs and development';
+      'Participer aux frais d’hébergement et encourager le développement';
 
   @override
-  String get dontShowAgain => 'Don\'t show this again';
+  String get dontShowAgain => 'Ne plus afficher';
 
   @override
-  String get maybeLater => 'Maybe Later';
+  String get maybeLater => 'Plus tard';
 
   @override
   String get addAllToQueue => 'Tout ajouter à la file d\'attente';
@@ -2352,8 +2356,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count songs added to queue',
-      one: '1 song added to queue',
+      other: '$count morceaux ajoutés à la file',
+      one: '1 morceau ajouté à la file',
     );
     return '$_temp0';
   }
@@ -2365,31 +2369,31 @@ class AppLocalizationsFr extends AppLocalizations {
   String get searchInPlaylist => 'Rechercher in lirelist';
 
   @override
-  String get filterTracks => 'Filter tracks...';
+  String get filterTracks => 'Filtrer les pistes…';
 
   @override
-  String get filterSongs => 'Filter songs...';
+  String get filterSongs => 'Filtrer les morceaux…';
 
   @override
-  String get noSongsInQueue => 'No songs in queue';
+  String get noSongsInQueue => 'Aucun morceau dans la file d’attente';
 
   @override
   String get moreOptions => 'Plus d\'options';
 
   @override
-  String get upNext => 'Up Next';
+  String get upNext => 'À suivre';
 
   @override
   String get removeSelected => 'Retirer selected';
 
   @override
-  String get reorderSongs => 'Reorder songs';
+  String get reorderSongs => 'Réorganiser la file';
 
   @override
-  String get selectSongs => 'Select songs';
+  String get selectSongs => 'Sélectionner des morceaux';
 
   @override
-  String get doneReordering => 'Done reordering';
+  String get doneReordering => 'Terminé';
 
   @override
   String get downloadAlbum => 'Télécharger album';
@@ -2426,12 +2430,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String errorRemovingSong(String error) {
-    return 'Error removing song: $error';
+    return 'Impossible de retirer le morceau : $error';
   }
 
   @override
   String errorReorderingSong(String error) {
-    return 'Error reordering song: $error';
+    return 'Impossible de réorganiser la file : $error';
   }
 
   @override
@@ -2459,34 +2463,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String get addAnyway => 'Ajouter quand même';
 
   @override
-  String get offlineModeQuestion => 'Offline mode?';
+  String get offlineModeQuestion => 'Passer en mode hors-ligne ?';
 
   @override
-  String get drumroll => 'DRUMROLL...';
+  String get drumroll => 'ROULEMENT DE TAMBOURS…';
 
   @override
-  String get readyToDiscoverTopSong => 'Ready to discover\nyour #1 song?';
+  String get readyToDiscoverTopSong => 'Prêt à découvrir\nvotre titre n°1 ?';
 
   @override
-  String get tapToBegin => 'Tap to begin';
+  String get tapToBegin => 'Touchez pour commencer';
 
   @override
-  String get minutesListened => 'MINUTES LISTENED';
+  String get minutesListened => 'MINUTES D’ÉCOUTE';
 
   @override
-  String get totalHours => 'Total hours';
+  String get totalHours => 'Heures totales';
 
   @override
-  String get uniqueTracks => 'Unique tracks';
+  String get uniqueTracks => 'Titres uniques';
 
   @override
-  String get topSongsHeader => 'TOP SONGS';
+  String get topSongsHeader => 'TOP TITRES';
 
   @override
-  String get yourMostListenedSongs => 'Your most listened songs';
+  String get yourMostListenedSongs => 'Vos morceaux les plus écoutés';
 
   @override
-  String get topArtistsHeader => 'TOP ARTISTS';
+  String get topArtistsHeader => 'TOP ARTISTES';
 
   @override
   String playsCount(int count) {
@@ -2500,37 +2504,38 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get topSongBadge => 'Song #1';
+  String get topSongBadge => 'Titre n°1';
 
   @override
-  String get topArtistMetric => 'Top Artist';
+  String get topArtistMetric => 'Artiste phare';
 
   @override
   String get genreMetric => 'Genre';
 
   @override
-  String get muslyPlaybackHeader => 'MUSLY PLAYBACK';
+  String get muslyPlaybackHeader => 'RÉTROSPECTIVE MUSLY';
 
   @override
-  String get enableMuslyConnect => 'Enable Musly Connect';
+  String get enableMuslyConnect => 'Activer Musly Connect';
 
   @override
   String get enableMuslyConnectSubtitle =>
-      'Discover nearby devices over Wi-Fi for remote control and listening sessions';
+      'Détecte les appareils connectés sur le même réseau Wi-Fi pour piloter l’écoute à distance';
 
   @override
   String get availableDevices => 'Appareils disponibles';
 
   @override
-  String get lanDiscoveryActive => 'LAN Discovery active • No nearby devices';
+  String get lanDiscoveryActive =>
+      'Recherche locale active • Aucun appareil à proximité';
 
   @override
   String nearbyDevicesFound(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count nearby devices found',
-      one: '1 nearby device found',
+      other: '$count appareils détectés',
+      one: '1 appareil détecté',
     );
     return '$_temp0';
   }
@@ -2539,50 +2544,51 @@ class AppLocalizationsFr extends AppLocalizations {
   String get minutes => 'Minutes';
 
   @override
-  String get nowPlayingHeader => 'NOW PLAYING';
+  String get nowPlayingHeader => 'EN COURS DE LECTURE';
 
   @override
-  String get privacyFirstTitle => 'Privacy First';
+  String get privacyFirstTitle => 'Priorité à votre vie privée';
 
   @override
-  String get privacyFirstSubtitle => 'Your data stays with you. Always.';
+  String get privacyFirstSubtitle =>
+      'Vos données vous appartiennent. Toujours.';
 
   @override
-  String get noDataSellingTitle => 'No Data Selling';
+  String get noDataSellingTitle => 'Aucune vente de données';
 
   @override
   String get noDataSellingDescription =>
-      'We never sell, share, or transfer your personal data to third parties.';
+      'Vos données personnelles ne sont jamais vendues, partagées ni transmises à qui que ce soit.';
 
   @override
-  String get localFirstStorageTitle => 'Local-First Storage';
+  String get localFirstStorageTitle => 'Stockage 100% local';
 
   @override
   String get localFirstStorageDescription =>
-      'Your music library and credentials stay on your device.';
+      'Votre bibliothèque musicale, historique et identifiants restent exclusivement sur votre appareil.';
 
   @override
-  String get privateOpenTitle => '100% Private & Open';
+  String get privateOpenTitle => '100% Privé et Open-Source';
 
   @override
   String get privateOpenDescription =>
-      'Musly is completely telemetry-free. No personal identifiers, usage tracking, or analytics are collected.';
+      'Musly ne contient aucun traqueur tiers ni outil de télémétrie publicitaire.';
 
   @override
-  String get readFullPrivacyPolicy => 'Read Full Privacy Policy';
+  String get readFullPrivacyPolicy => 'Lire la politique de confidentialité';
 
   @override
   String get viewCompleteDetailsWebsite =>
-      'View complete details on our website';
+      'Voir tous les détails sur notre site web';
 
   @override
-  String get understandAndContinue => 'I Understand & Continue';
+  String get understandAndContinue => 'J’ai compris et je continue';
 
   @override
-  String get declineAndExit => 'Decline & Exit';
+  String get declineAndExit => 'Refuser et quitter';
 
   @override
-  String get exitApp => 'Exit App';
+  String get exitApp => 'Quitter l’application';
 
   @override
   String get stop => 'Arrêter';
@@ -2591,10 +2597,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get closeQueue => 'Fermer Queue';
 
   @override
-  String get timerOff => 'Off';
+  String get timerOff => 'Désactivé';
 
   @override
-  String get history => 'History';
+  String get history => 'Historique';
 
   @override
   String get searchInLibrary => 'Rechercher in Bibliothèque';
@@ -2603,16 +2609,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get add => 'Ajouter';
 
   @override
-  String get clear => 'Clear';
+  String get clear => 'Effacer';
 
   @override
   String get back => 'Retour';
 
   @override
-  String get previousSlide => 'Previous';
+  String get previousSlide => 'Précédent';
 
   @override
-  String get nextSlide => 'Next';
+  String get nextSlide => 'Suivant';
 
   @override
   String get radios => 'Radios';
@@ -2627,7 +2633,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noDownloadedAlbumsYet => 'No téléchargered albums yet';
 
   @override
-  String get connectedToWebStream => 'Connected to Web Stream';
+  String get connectedToWebStream => 'Connecté au flux Web';
 
   @override
   String get allowSelfSignedCertificatesSubtitle =>
@@ -2635,22 +2641,24 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get legacyAuthenticationSubtitle =>
-      'Required for older Subsonic API implementations';
+      'Requis pour les anciennes versions des serveurs Subsonic';
 
   @override
   String get certificateFileSubtitle => 'Fichier .crt, .pem ou .cer';
 
   @override
-  String get clientIdentityFileSubtitle => '.p12 or .pfx client identity file';
+  String get clientIdentityFileSubtitle =>
+      'Fichier d’identité client .p12 ou .pfx';
 
   @override
   String get copyError => 'Copier l\'erreur';
 
   @override
-  String get errorCopiedToClipboard => 'Error copied to clipboard';
+  String get errorCopiedToClipboard => 'Erreur copiée dans le presse-papiers';
 
   @override
-  String get failedToUpdateFavorite => 'Failed to update liked status';
+  String get failedToUpdateFavorite =>
+      'Impossible de mettre à jour le statut favori';
 
   @override
   String queuedSongsFromAlbumsForDownload(int songCount, int albumCount) {
@@ -2682,30 +2690,30 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String removeFromFavoritesConfirm(String title) {
-    return 'Do you want to remove \"$title\" from favorites?';
+    return 'Voulez-vous retirer « $title » de vos favoris ?';
   }
 
   @override
   String failedToRemove(String error) {
-    return 'Failed to remove: $error';
+    return 'Impossible de retirer : $error';
   }
 
   @override
   String streamUrlLabel(String url) {
-    return 'Stream URL: $url';
+    return 'URL du flux : $url';
   }
 
   @override
-  String get shuffleNewSelection => 'Shuffle New Selection';
+  String get shuffleNewSelection => 'Nouvelle sélection aléatoire';
 
   @override
-  String get sortDurationLongest => 'Duration (Longest first)';
+  String get sortDurationLongest => 'Durée (les plus longs d’abord)';
 
   @override
-  String get connectToServer => 'Connect to Server';
+  String get connectToServer => 'Se connecter au serveur';
 
   @override
-  String get renameProfile => 'Rename Profile';
+  String get renameProfile => 'Renommer le profil';
 
   @override
   String get addWebStream => 'Ajouter un flux Web';
@@ -2724,102 +2732,102 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ajoutez des stations de radio dans les paramètres de votre serveur pour les voir ici.';
 
   @override
-  String get onboardingNext => 'Next';
+  String get onboardingNext => 'Suivant';
 
   @override
-  String get onboardingGetStarted => 'Get Started';
+  String get onboardingGetStarted => 'Commencer';
 
   @override
-  String get previousSlideTooltip => 'Previous (Left Arrow)';
+  String get previousSlideTooltip => 'Précédent (Flèche gauche)';
 
   @override
-  String get nextSlideTooltip => 'Next (Right Arrow / Space)';
+  String get nextSlideTooltip => 'Suivant (Flèche droite / Espace)';
 
   @override
   String get onboardingSlide1TitlePrefix => 'Your Music Bibliothèque,\n';
 
   @override
-  String get onboardingSlide1TitleHighlight => 'In Your Pocket.';
+  String get onboardingSlide1TitleHighlight => 'Dans votre poche.';
 
   @override
   String get onboardingSlide1Description =>
       'Connect to Navidrome, Subsonic, Jellyfin, or lire local files with bit-perfect lossless quality.';
 
   @override
-  String get onboardingSlide1Feature1Title => 'Self-Hosted Freedom';
+  String get onboardingSlide1Feature1Title => 'Liberté auto-hébergée';
 
   @override
   String get onboardingSlide1Feature1Desc =>
-      'Full compatibility with Subsonic, Navidrome, and Jellyfin APIs.';
+      'Compatibilité totale avec les serveurs Subsonic, Navidrome et Jellyfin.';
 
   @override
-  String get onboardingSlide1Feature2Title => 'Local Music Support';
+  String get onboardingSlide1Feature2Title => 'Fichiers locaux pris en charge';
 
   @override
   String get onboardingSlide1Feature2Desc =>
       'Lire your offline collection directly without server setup.';
 
   @override
-  String get onboardingSlide1Feature3Title => 'Lossless Hi-Res Audio';
+  String get onboardingSlide1Feature3Title => 'Son Hi-Res sans perte';
 
   @override
   String get onboardingSlide1Feature3Desc =>
       'Bit-perfect FLAC, ALAC, Opus, and gapless audio lireback.';
 
   @override
-  String get onboardingSlide2TitlePrefix => 'Smart Mixes,\n';
+  String get onboardingSlide2TitlePrefix => 'Mix intelligents,\n';
 
   @override
-  String get onboardingSlide2TitleHighlight => 'Built Around You.';
+  String get onboardingSlide2TitleHighlight => 'Pensés pour vous.';
 
   @override
   String get onboardingSlide2Description =>
-      'Musly learns your listening habits on-device to craft dynamic daily mixes and surface forgotten favorites.';
+      'Musly analyse vos écoutes sur l’appareil pour composer des sélections quotidiennes sur mesure.';
 
   @override
-  String get onboardingSlide2Feature1Title => 'Algorithmic Taste Profiling';
+  String get onboardingSlide2Feature1Title => 'Profilage musical intelligent';
 
   @override
   String get onboardingSlide2Feature1Desc =>
       'Learns lire frequencies, skips, and ratings with recency decay.';
 
   @override
-  String get onboardingSlide2Feature2Title => 'Personalized Daily Mixes';
+  String get onboardingSlide2Feature2Title => 'Mix quotidiens personnalisés';
 
   @override
   String get onboardingSlide2Feature2Desc =>
       'Automatic Made For You, Listen Again, and Top Hits lirelists.';
 
   @override
-  String get onboardingSlide2Feature3Title => '100% On-Device Processing';
+  String get onboardingSlide2Feature3Title => '100% calculé sur votre appareil';
 
   @override
   String get onboardingSlide2Feature3Desc =>
-      'Your listening profile stays strictly on your hardware.';
+      'Votre profil d’écoute reste strictement sur votre téléphone, en toute confidentialité.';
 
   @override
-  String get onboardingSlide3TitlePrefix => 'Completely Private.\n';
+  String get onboardingSlide3TitlePrefix => 'Vie privée respectée.\n';
 
   @override
-  String get onboardingSlide3TitleHighlight => 'No Ads, No Tracking.';
+  String get onboardingSlide3TitleHighlight => 'Zéro pub, zéro pistage.';
 
   @override
   String get onboardingSlide3Description =>
       'Zero analytics, zero telemetry. Enjoy time-synced lyrics, offline téléchargers, and desktop sync in total privacy.';
 
   @override
-  String get onboardingSlide3Feature1Title => 'Zero Telemetry & Tracking';
+  String get onboardingSlide3Feature1Title => 'Zéro télémétrie ni traceur';
 
   @override
   String get onboardingSlide3Feature1Desc =>
-      'No third-party SDKs, no trackers, no ads, completely open source.';
+      'Aucun SDK publicitaire, code source ouvert et vérifiable.';
 
   @override
-  String get onboardingSlide3Feature2Title => 'Time-Synced Lyrics';
+  String get onboardingSlide3Feature2Title => 'Paroles synchronisées';
 
   @override
   String get onboardingSlide3Feature2Desc =>
-      'Real-time synchronized karaoke lyrics with LRCLIB fallback.';
+      'Affichage karaoké en temps réel avec secours automatique via LRCLIB.';
 
   @override
   String get onboardingSlide3Feature3Title => 'Offline Télécharger Manager';
@@ -2829,35 +2837,35 @@ class AppLocalizationsFr extends AppLocalizations {
       'Cache full lirelists and albums with batch téléchargering.';
 
   @override
-  String get finishTour => 'Finish Tour';
+  String get finishTour => 'Terminer la visite';
 
   @override
-  String get skip => 'Skip';
+  String get skip => 'Passer';
 
   @override
-  String get profileNameOptional => 'Profile Name (Optional)';
+  String get profileNameOptional => 'Nom du profil (facultatif)';
 
   @override
-  String get serverUrlRequired => 'Server URL *';
+  String get serverUrlRequired => 'URL du serveur *';
 
   @override
-  String get lanServerUrlOptional => 'LAN Server URL (Optional)';
+  String get lanServerUrlOptional => 'URL locale LAN (facultatif)';
 
   @override
-  String get usernameRequired => 'Username *';
+  String get usernameRequired => 'Nom d’utilisateur *';
 
   @override
-  String get passwordRequired => 'Password *';
+  String get passwordRequired => 'Mot de passe *';
 
   @override
   String get playingInSync => 'Lireing in sync';
 
   @override
-  String get switchedBackToThisDevice => 'Switched back to this device';
+  String get switchedBackToThisDevice => 'Lecture basculée sur cet appareil';
 
   @override
   String connectedToDeviceName(String device) {
-    return 'Connected to $device';
+    return 'Connecté à $device';
   }
 
   @override
@@ -2873,37 +2881,38 @@ class AppLocalizationsFr extends AppLocalizations {
   String get muslyPlayback => 'Musly Lireback';
 
   @override
-  String get synthesizingUniverse => 'Synthesizing your listening universe';
+  String get synthesizingUniverse => 'Création de votre univers musical…';
 
   @override
-  String get getReadyForBeatDrop => 'Get ready for the beat drop...';
+  String get getReadyForBeatDrop => 'Préparez-vous à monter le son…';
 
   @override
   String yourYearInSound(int year) {
-    return 'Your $year\nin Sound';
+    return 'Votre année $year\nen musique';
   }
 
   @override
   String get yourYearInSoundSubtitle =>
-      'You explored sonic depths, relived moments, and built memories through music.';
+      'Vous avez exploré de nouveaux horizons, vibré et créé des souvenirs en musique.';
 
   @override
-  String get yourMusicalChronotype => 'YOUR MUSICAL CHRONOTYPE';
+  String get yourMusicalChronotype => 'VOTRE CHRONOTYPE MUSICAL';
 
   @override
-  String get genreGalaxy => 'GENRE GALAXY';
+  String get genreGalaxy => 'GALAXIE DES GENRES';
 
   @override
-  String get soundsThatGuidedYou => 'The sounds that guided you';
+  String get soundsThatGuidedYou => 'Les styles qui ont guidé votre année';
 
   @override
-  String get yourMusicalAnchors => 'Your musical anchors';
+  String get yourMusicalAnchors => 'Vos piliers musicaux';
 
   @override
-  String get yourListeningPersonality => 'YOUR LISTENING PERSONALITY';
+  String get yourListeningPersonality => 'VOTRE PERSONNALITÉ MUSICALE';
 
   @override
-  String get yourYearInReviewIsReady => 'Your Year in Review is ready!';
+  String get yourYearInReviewIsReady =>
+      'Votre rétrospective musicale est prête !';
 
   @override
   String get chronotypeMidnightWanderer => 'Midnight Wanderer 🌙';

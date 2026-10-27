@@ -386,15 +386,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     physics: const BouncingScrollPhysics(),
                     child: Row(
                       children: [
-                        _buildCategoryChip('All', 'All', isDark),
-                        const SizedBox(width: 8),
-                        _buildCategoryChip('Music', 'Music', isDark),
+                        _buildCategoryChip(
+                            'All',
+                            AppLocalizations.of(context)?.filterAll ?? 'Tout',
+                            isDark),
                         const SizedBox(width: 8),
                         _buildCategoryChip(
-                            'MadeForYou', 'Créé pour vous', isDark),
+                            'Music',
+                            AppLocalizations.of(context)?.songs ?? 'Musique',
+                            isDark),
                         const SizedBox(width: 8),
-                        _buildCategoryChip('Playlists', 'Playlists', isDark),
-                      ],
+                        _buildCategoryChip(
+                            'MadeForYou',
+                            AppLocalizations.of(context)?.madeForYou ?? 'Pour vous',
+                            isDark),
+                        const SizedBox(width: 8),
+                        _buildCategoryChip(
+                            'Playlists',
+                            AppLocalizations.of(context)?.playlists ?? 'Playlists',
+                            isDark),                      ],
                     ),
                   ),
                 ),
@@ -1526,3 +1536,4 @@ class _FavoritePlaylistRowState extends State<_FavoritePlaylistRow> {
     );
   }
 }
+
