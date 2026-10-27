@@ -39,12 +39,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       final favoriteService = FavoriteSongsService();
       await favoriteService.initialize(subsonic);
       final songs = await favoriteService.getFavoriteSongs(subsonic);
-      final starred = await subsonic.getStarred();
+      List<Album> albums = [];
+      try {
+        if (subsonic.isConfigured) {
+          final starred = await subsonic.getStarred();
+          albums = starred.albums;
+        }
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
           _favoriteSongs = songs;
-          _favoriteAlbums = starred.albums;
+          _favoriteAlbums = albums;
           _isLoading = false;
         });
       }

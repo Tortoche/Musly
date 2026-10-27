@@ -1030,17 +1030,13 @@ class PlayerProvider extends ChangeNotifier
   int? _findNextAvailableCachedIndex(int startIndex) {
     for (int i = startIndex + 1; i < _queue.length; i++) {
       final s = _queue[i];
-      if (s.isLocal == true ||
-          _offlineService.isSongDownloaded(s.id) ||
-          _audioPrecacheService.hasPrecached(s.id)) {
+      if (s.isLocal == true || _offlineService.isSongDownloaded(s.id) || _audioPrecacheService.hasPrecached(s.id)) {
         return i;
       }
     }
     for (int i = 0; i < startIndex; i++) {
       final s = _queue[i];
-      if (s.isLocal == true ||
-          _offlineService.isSongDownloaded(s.id) ||
-          _audioPrecacheService.hasPrecached(s.id)) {
+      if (s.isLocal == true || _offlineService.isSongDownloaded(s.id) || _audioPrecacheService.hasPrecached(s.id)) {
         return i;
       }
     }
@@ -3056,7 +3052,13 @@ class PlayerProvider extends ChangeNotifier
         }
       },
       onError: (error) {
-        debugPrint('[Player] State stream error (usually harmless): $error');
+        debugPrint('[Player] State stream error: $error');
+        // Si une erreur de lecture survient en cours de route (coupure réseau), basculer automatiquement sur la piste hors-ligne
+        final nextCached = _findNextAvailableCachedIndex(_currentIndex);
+        if (nextCached != null && nextCached != _currentIndex) {
+          debugPrint('[Player] Seamless stream error recovery: skipping to #$nextCached ("${_queue[nextCached].title}")');
+          skipToIndex(nextCached);
+        }
       },
     );
 
