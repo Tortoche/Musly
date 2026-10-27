@@ -374,52 +374,52 @@ class _SongCollectionScreenState extends State<SongCollectionScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isNarrow = constraints.maxWidth < 450;
-                      return Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                MediaPlayButton(
-                                  icon: Icons.play_arrow_rounded,
-                                  label: AppLocalizations.of(context)!.playAll,
-                                  onTap: () => _playAll(shuffle: false),
-                                ),
-                                const SizedBox(width: 12),
-                                OutlinedButton.icon(
-                                  onPressed: () => _playAll(shuffle: true),
-                                  icon: const Icon(Icons.shuffle_rounded, size: 20),
-                                  label: Text(AppLocalizations.of(context)!.shuffle),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: isNarrow ? 12 : 20, vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(24)),
-                                  ),
-                                ),
-                              ],
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => _playAll(shuffle: false),
+                              icon: const Icon(CupertinoIcons.play_fill, size: 16),
+                              label: Text(AppLocalizations.of(context)!.playAll),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
                             ),
                           ),
-                          const Spacer(),
-                          Flexible(
-                            child: Text(
-                              '${AppLocalizations.of(context)!.songsCount(_filteredSongs.length)} • ${FormatUtils.formatDurationSummary(totalDuration)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark
-                                    ? AppTheme.darkSecondaryText
-                                    : AppTheme.lightSecondaryText,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _playAll(shuffle: true),
+                              icon: const Icon(CupertinoIcons.shuffle, size: 16),
+                              label: Text(AppLocalizations.of(context)!.shuffle),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
                           ),
                         ],
-                      );
-                    },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${AppLocalizations.of(context)!.songsCount(_filteredSongs.length)} • ${FormatUtils.formatDurationSummary(totalDuration)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
