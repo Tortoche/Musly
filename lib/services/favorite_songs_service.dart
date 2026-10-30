@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import 'library_database_service.dart';
 import 'subsonic_service.dart';
+import 'audio_quality_manager.dart';
 import 'offline_service.dart';
 
 /// Service centralisé et ultra-fiable pour la gestion des titres favoris (likés).
@@ -149,6 +150,7 @@ class FavoriteSongsService extends ChangeNotifier {
       if (subsonicService.isConfigured) {
         if (targetStarred) {
           await subsonicService.star(id: song.id);
+          AudioQualityManager().onSongLiked(song, subsonicService);
         } else {
           await subsonicService.unstar(id: song.id);
         }

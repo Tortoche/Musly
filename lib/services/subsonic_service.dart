@@ -11,6 +11,7 @@ import 'jellyfin_service.dart';
 import 'youtube_service.dart';
 import 'storage_service.dart';
 import 'lrclib_service.dart';
+import 'audio_quality_manager.dart';
 import 'library_database_service.dart';
 import 'ytdlp_service.dart';
 
@@ -844,6 +845,12 @@ class SubsonicService {
       }
 
       debugPrint('updatePlaylist successful');
+      if (songIdsToAdd != null && songIdsToAdd.isNotEmpty) {
+        AudioQualityManager().prewarmPlaylist(
+          songIdsToAdd.map((id) => Song(id: id, title: '')).toList(),
+          this,
+        );
+      }
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status != null && status >= 500) {

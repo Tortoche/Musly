@@ -40,6 +40,7 @@ import '../providers/library_provider.dart';
 import '../services/android_auto_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/audio_precache_service.dart';
+import '../services/audio_quality_manager.dart';
 
 enum RepeatMode { off, all, one }
 
@@ -999,6 +1000,7 @@ class PlayerProvider extends ChangeNotifier
     });
 
     _audioPrecacheService.initialize();
+    AudioQualityManager().initialize();
     _initConnectivityWatcher();
 
     _initAudioPlayerListeners();

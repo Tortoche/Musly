@@ -11,6 +11,7 @@ import '../models/song.dart';
 import '../models/playlist.dart';
 import 'subsonic_service.dart';
 import 'audio_precache_service.dart';
+import 'audio_quality_manager.dart';
 
 enum DownloadStatus { queued, downloading, done, failed }
 
@@ -66,6 +67,7 @@ class OfflineService {
 
   SharedPreferences? _prefs;
   String? _offlineDir;
+  String? get offlineDir => _offlineDir;
 
   bool _offlineMode = false;
   bool get isOfflineMode => _offlineMode;
@@ -488,6 +490,12 @@ class OfflineService {
       downloadedSongIds.value = {...downloadedSongIds.value, song.id};
       _downloadedSongsMap[song.id] = song;
       await _persistDownloadedSongsData();
+      try {
+        final codec = AudioQualityManager.detectFileFormat(File(filePath));
+        if (codec != AudioCodecFormat.opus && codec != AudioCodecFormat.flac) {
+          AudioQualityManager().enqueueDownloadForUpgrade(song);
+        }
+      } catch (_) {}
       try {
         await LibraryDatabaseService().insertOrUpdateSong(song);
       } catch (_) {}

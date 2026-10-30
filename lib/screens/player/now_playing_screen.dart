@@ -22,6 +22,7 @@ import 'package:musly/widgets/now_playing/queue_view.dart';
 import 'package:musly/widgets/now_playing/now_playing_more_menu.dart';
 import 'package:musly/widgets/now_playing/add_to_menu.dart';
 import 'package:musly/widgets/common/multi_artist_widget.dart';
+import 'package:musly/widgets/now_playing/audio_quality_badge.dart';
 import 'package:musly/services/player_ui_settings_service.dart';
 import 'package:musly/services/wakelock_service.dart';
 import 'package:musly/l10n/app_localizations.dart';
@@ -729,6 +730,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                     fontSize: isLandscape ? 14 : (isSmall ? 15 : 18),
                     color: Colors.white.withValues(alpha: 0.75),
                   ),
+                ),
+                SizedBox(height: isLandscape ? 4.0 : 6.0),
+                AudioQualityBadge(
+                  song: currentSong,
+                  isSmall: isSmall,
                 ),
               ],
             ),
