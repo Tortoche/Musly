@@ -64,7 +64,14 @@ class DeepLinkService {
         return;
       }
 
-      final ctx = navigatorKey.currentContext;
+      BuildContext? ctx = navigatorKey.currentContext;
+      if (ctx == null) {
+        for (int i = 0; i < 6; i++) {
+          await Future.delayed(const Duration(milliseconds: 300));
+          ctx = navigatorKey.currentContext;
+          if (ctx != null) break;
+        }
+      }
       if (ctx == null) {
         debugPrint('[DeepLinkService] Contexte de navigation indisponible');
         return;

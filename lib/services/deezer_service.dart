@@ -127,7 +127,7 @@ class DeezerService {
     final cleanId = trackId.replaceAll('ext_dz_', '').trim();
     if (cleanId.isEmpty) return null;
 
-    final url = Uri.parse('\/track/');
+    final url = Uri.parse('$_baseUrl/track/$cleanId');
     try {
       final res = await http.get(url);
       if (res.statusCode == 200) {
@@ -142,7 +142,7 @@ class DeezerService {
             '';
 
         return Song(
-          id: 'ext_dz_',
+          id: 'ext_dz_$cleanId',
           title: data['title'] ?? '',
           artist: artistData?['name'] ?? 'Artiste inconnu',
           artistId: artistData?['id']?.toString(),
@@ -153,7 +153,7 @@ class DeezerService {
         );
       }
     } catch (e) {
-      debugPrint('[DeezerService] Erreur getTrackDetails: ');
+      debugPrint('[DeezerService] Erreur getTrackDetails: $e');
     }
     return null;
   }
