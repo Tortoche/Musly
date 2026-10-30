@@ -90,8 +90,8 @@ class AudioQualityDetails {
 }
 
 /// Service de gestion et de garantie de la Haute Qualité Audio (CJ Stream).
-/// Orchestre les vérifications sans coupure de lecture, les mises à niveau
-/// transparentes en arrière-plan et la pré-chauffe des playlists.
+/// Orchestre les vérifications sans coupure de lecture, les requêtes séquentielles
+/// actives et le remplacement atomique en tâche de fond.
 class AudioQualityManager extends ChangeNotifier {
   static final AudioQualityManager _instance = AudioQualityManager._internal();
   factory AudioQualityManager() => _instance;
@@ -101,8 +101,8 @@ class AudioQualityManager extends ChangeNotifier {
 
   final Dio _dio = Dio(
     BaseOptions(
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 40),
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 35),
       headers: {
         'User-Agent': 'Musly/2.0.4 (AudioQualityManager)',
       },
@@ -115,6 +115,8 @@ class AudioQualityManager extends ChangeNotifier {
   final Set<String> _pendingUpgradeSongIds = {};
   final Map<String, int> _pollAttempts = {};
   final Map<String, AudioQualityDetails> _cachedSongQuality = {};
+  final Map<String, Song> _songMetadataMap = {};
+  final Set<String> _activePollingSongs = {};
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   bool _isOnline = true;
@@ -139,10 +141,7 @@ class AudioQualityManager extends ChangeNotifier {
         }
       });
 
-      // Nettoyer les fichiers temporaires orphelins (sécurité anti-crash)
       _cleanupOrphanedTmpFiles();
-
-      // Lancer le timer de vérification toutes les 30 secondes
       _startUpgradeTimer();
 
       _isInitialized = true;
@@ -154,7 +153,7 @@ class AudioQualityManager extends ChangeNotifier {
 
   void _startUpgradeTimer() {
     _upgradeTimer?.cancel();
-    _upgradeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _upgradeTimer = Timer.periodic(const Duration(seconds: 25), (_) {
       _triggerUpgradeCheck();
     });
   }
@@ -171,13 +170,20 @@ class AudioQualityManager extends ChangeNotifier {
       for (final songId in idsToProcess) {
         if (!_isOnline) break;
 
+        // Ne pas doubler si ce morceau a déjà un poller actif en direct
+        if (_activePollingSongs.contains(songId)) continue;
+
         final attempts = (_pollAttempts[songId] ?? 0) + 1;
         _pollAttempts[songId] = attempts;
 
         final isReady = await checkServerHasStudioMaster(songId, subsonic);
         if (isReady) {
           debugPrint('[AudioQuality] 🎯 Version Studio Master prête sur le serveur pour $songId ! Déclenchement de l\'upgrade transparent...');
-          final upgraded = await _performAtomicUpgrade(songId, subsonic);
+          final upgraded = await _performAtomicUpgrade(
+            songId,
+            subsonic,
+            songFallback: _songMetadataMap[songId],
+          );
           if (upgraded) {
             _pendingUpgradeSongIds.remove(songId);
             _pollAttempts.remove(songId);
@@ -185,14 +191,10 @@ class AudioQualityManager extends ChangeNotifier {
             notifyListeners();
           }
         } else {
-          // Si après 20 tentatives (~10 minutes) le serveur ne l'a pas promu, on espace les requêtes
-          if (attempts > 20) {
-            debugPrint('[AudioQuality] ⏳ $songId en attente prolongée (tentative $attempts/30)');
-            if (attempts > 30) {
-              _pendingUpgradeSongIds.remove(songId);
-              _pollAttempts.remove(songId);
-              await _persistPendingUpgrades();
-            }
+          if (attempts > 25) {
+            _pendingUpgradeSongIds.remove(songId);
+            _pollAttempts.remove(songId);
+            await _persistPendingUpgrades();
           }
         }
       }
@@ -209,21 +211,20 @@ class AudioQualityManager extends ChangeNotifier {
 
     // 1. Ogg Container (Opus / Vorbis)
     if (bytes[0] == 0x4F && bytes[1] == 0x67 && bytes[2] == 0x67 && bytes[3] == 0x53) {
-      // Chercher "OpusHead" dans les 64 premiers octets
       final maxSearch = bytes.length < 64 ? bytes.length : 64;
       for (int i = 0; i <= maxSearch - 8; i++) {
-        if (bytes[i] == 0x4F &&     // O
-            bytes[i + 1] == 0x70 && // p
-            bytes[i + 2] == 0x75 && // u
-            bytes[i + 3] == 0x73 && // s
-            bytes[i + 4] == 0x48 && // H
-            bytes[i + 5] == 0x65 && // e
-            bytes[i + 6] == 0x61 && // a
-            bytes[i + 7] == 0x64) { // d
+        if (bytes[i] == 0x4F &&
+            bytes[i + 1] == 0x70 &&
+            bytes[i + 2] == 0x75 &&
+            bytes[i + 3] == 0x73 &&
+            bytes[i + 4] == 0x48 &&
+            bytes[i + 5] == 0x65 &&
+            bytes[i + 6] == 0x61 &&
+            bytes[i + 7] == 0x64) {
           return AudioCodecFormat.opus;
         }
       }
-      return AudioCodecFormat.opus; // Conteneur Ogg
+      return AudioCodecFormat.opus;
     }
 
     // 2. FLAC ("fLaC")
@@ -241,7 +242,7 @@ class AudioQualityManager extends ChangeNotifier {
       return AudioCodecFormat.mp3;
     }
 
-    // 5. AAC / M4A (ftyp box dans les 12 premiers octets)
+    // 5. AAC / M4A (ftyp box)
     if (bytes.length >= 8 &&
         bytes[4] == 0x66 && bytes[5] == 0x74 && bytes[6] == 0x79 && bytes[7] == 0x70) {
       return AudioCodecFormat.aac;
@@ -268,6 +269,20 @@ class AudioQualityManager extends ChangeNotifier {
   /// Vérifie si le serveur a promu le morceau en version Studio Master (Opus) ou Lossless (FLAC).
   Future<bool> checkServerHasStudioMaster(String songId, SubsonicService subsonic) async {
     try {
+      // 1. Vérification par métadonnées getSong
+      try {
+        final songInfo = await subsonic.getSong(songId);
+        if (songInfo != null) {
+          final sfx = songInfo.suffix?.toLowerCase() ?? '';
+          final ct = songInfo.contentType?.toLowerCase() ?? '';
+          if (sfx == 'opus' || sfx == 'ogg' || sfx == 'flac' ||
+              ct.contains('opus') || ct.contains('ogg') || ct.contains('flac')) {
+            return true;
+          }
+        }
+      } catch (_) {}
+
+      // 2. Vérification par en-tête et magic bytes sur le flux direct
       final streamUrl = subsonic.getStreamUrl(songId);
       final response = await _dio.get<List<int>>(
         streamUrl,
@@ -295,39 +310,58 @@ class AudioQualityManager extends ChangeNotifier {
     }
   }
 
-  /// Déclenché quand l'utilisateur "Like" un morceau :
-  /// 1. Ne coupe JAMAIS la musique en cours.
-  /// 2. Déclenche la vérification cyclique toutes les 30s.
-  /// 3. Met à jour silencieusement le cache pour les futures réécoutes.
-  void onSongLiked(Song song, SubsonicService subsonic) {
+  /// Déclenche la demande de promotion et lance un polling séquentiel actif
+  /// (retries rapides à 2s, 3s, 5s, 7s, 10s, 15s, 20s, 30s) pour attraper
+  /// l'encodage du serveur dès la seconde où il est terminé sans obliger l'utilisateur
+  /// à dé-liker et re-liker.
+  void requestPromotionAndPoll(Song song, SubsonicService subsonic) {
     final songId = song.id;
-    debugPrint('[AudioQuality] 💖 Like enregistré pour "${song.title}". Surveillance de la promotion HQ...');
-
+    _songMetadataMap[songId] = song;
     _pendingUpgradeSongIds.add(songId);
-    _pollAttempts[songId] = 0;
     _persistPendingUpgrades();
 
-    // Lancer une première vérification après 3 secondes (en cas de promotion déjà en cache NVMe)
-    Future.delayed(const Duration(seconds: 3), () async {
-      final isReady = await checkServerHasStudioMaster(songId, subsonic);
-      if (isReady) {
-        debugPrint('[AudioQuality] ⚡ Morceau déjà prêt en Studio Master sur le serveur pour "${song.title}"');
-        final upgraded = await _performAtomicUpgrade(songId, subsonic);
-        if (upgraded) {
-          _pendingUpgradeSongIds.remove(songId);
-          _pollAttempts.remove(songId);
-          await _persistPendingUpgrades();
-          notifyListeners();
+    if (_activePollingSongs.contains(songId)) return;
+    _activePollingSongs.add(songId);
+
+    debugPrint('[AudioQuality] 🚀 Lancement séquence active de vérification HQ pour "${song.title}"');
+
+    // Séquence d'attente progressive (en secondes)
+    const delays = [2, 3, 4, 6, 8, 12, 16, 20, 30];
+
+    Future.microtask(() async {
+      for (int i = 0; i < delays.length; i++) {
+        await Future.delayed(Duration(seconds: delays[i]));
+
+        if (!_isOnline) break;
+
+        final isReady = await checkServerHasStudioMaster(songId, subsonic);
+        if (isReady) {
+          debugPrint('[AudioQuality] ⚡ Version Studio Master confirmée à l\'étape ${i + 1}/${delays.length} pour "${song.title}" ! Téléchargement...');
+          final upgraded = await _performAtomicUpgrade(songId, subsonic, songFallback: song);
+          if (upgraded) {
+            _pendingUpgradeSongIds.remove(songId);
+            _pollAttempts.remove(songId);
+            _activePollingSongs.remove(songId);
+            await _persistPendingUpgrades();
+            notifyListeners();
+            return;
+          }
+        } else {
+          debugPrint('[AudioQuality] ⏳ Encodage en cours sur le serveur pour "${song.title}" (étape ${i + 1}/${delays.length})...');
         }
       }
+      _activePollingSongs.remove(songId);
     });
+  }
+
+  /// Alias rétrocompatible pour les likes
+  void onSongLiked(Song song, SubsonicService subsonic) {
+    requestPromotionAndPoll(song, subsonic);
   }
 
   /// Enregistre un morceau téléchargé pour amélioration transparente si sa version n'est pas encore HQ.
   void enqueueDownloadForUpgrade(Song song) {
-    _pendingUpgradeSongIds.add(song.id);
-    _persistPendingUpgrades();
-    debugPrint('[AudioQuality] 📥 Morceau "${song.title}" ajouté à la file d\'attente d\'upgrade transparent');
+    requestPromotionAndPoll(song, SubsonicService());
   }
 
   /// Pré-chauffe silencieuse d'une liste de morceaux (ex: ajout dans une playlist).
@@ -339,7 +373,7 @@ class AudioQualityManager extends ChangeNotifier {
         if (!_isOnline) break;
         try {
           final url = subsonic.getStreamUrl(song.id);
-          // Requête ultralégère Range=0-0 pour notifier le CJ Stream Resolver
+          // Ping initial pour déclencher le CJ Stream Resolver
           await _dio.get(
             url,
             options: Options(
@@ -347,29 +381,46 @@ class AudioQualityManager extends ChangeNotifier {
               responseType: ResponseType.bytes,
             ),
           );
-          // Pause de 100 ms entre les pings pour ne pas surcharger le réseau
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Programmer la surveillance active pour chaque morceau
+          requestPromotionAndPoll(song, subsonic);
+          await Future.delayed(const Duration(milliseconds: 150));
         } catch (_) {}
       }
-      debugPrint('[AudioQuality] 📑 Pré-chauffe de playlist terminée (${songs.length} morceaux)');
+      debugPrint('[AudioQuality] 📑 Pré-chauffe et surveillance de playlist activées (${songs.length} morceaux)');
     });
   }
 
   /// Remplacement atomique et sécurisé d'un fichier audio par sa version Studio Master.
-  Future<bool> _performAtomicUpgrade(String songId, SubsonicService subsonic) async {
+  /// Télécharge le fichier Opus dans le cache ou les téléchargements locaux et met à jour l'état.
+  Future<bool> _performAtomicUpgrade(
+    String songId,
+    SubsonicService subsonic, {
+    Song? songFallback,
+  }) async {
     final offline = OfflineService();
     final precache = AudioPrecacheService();
 
     final downloadedPath = offline.getLocalPath(songId);
     final precachedPath = precache.getPrecachedAudioPath(songId);
 
-    // Si le fichier n'est ni téléchargé ni pré-en-cache, rien à remplacer localement
-    if (downloadedPath == null && precachedPath == null) {
-      return true;
+    // Déterminer le chemin cible :
+    // 1. Si téléchargé, on améliore le fichier téléchargé.
+    // 2. Si en pré-cache, on améliore le fichier de pré-cache.
+    // 3. Sinon, on écrit DIRECTEMENT dans le dossier de pré-cache pour que le morceau soit prêt !
+    String targetPath;
+    bool isDownload = false;
+
+    if (downloadedPath != null) {
+      targetPath = downloadedPath;
+      isDownload = true;
+    } else if (precachedPath != null) {
+      targetPath = precachedPath;
+    } else {
+      final target = precache.getTargetAudioPath(songId);
+      if (target == null) return false;
+      targetPath = target;
     }
 
-    final targetPath = downloadedPath ?? precachedPath!;
-    // target file on disk
     final tmpPath = '$targetPath.hq_upgrade.tmp';
     final tmpFile = File(tmpPath);
 
@@ -391,7 +442,7 @@ class AudioQualityManager extends ChangeNotifier {
 
       final format = detectFileFormat(tmpFile);
       if (format != AudioCodecFormat.opus && format != AudioCodecFormat.flac) {
-        // Le flux servi n'est pas encore Studio Master
+        // Le flux servi n'est pas encore Studio Master, le serveur encode encore !
         await tmpFile.delete();
         return false;
       }
@@ -406,8 +457,12 @@ class AudioQualityManager extends ChangeNotifier {
         } catch (_) {}
       }
 
+      if (!isDownload) {
+        precache.recordPrecachedSong(songId, songFallback);
+      }
+
       _cachedSongQuality[songId] = AudioQualityDetails.fromFormat(format);
-      debugPrint('[AudioQuality] ✨ Remplacement atomique réussi vers ${format.name.toUpperCase()} pour $songId');
+      debugPrint('[AudioQuality] ✨ Remplacement atomique réussi vers ${format.name.toUpperCase()} pour $songId !');
       return true;
     } catch (e) {
       debugPrint('[AudioQuality] Échec remplacement atomique pour $songId: $e');

@@ -148,6 +148,22 @@ class AudioPrecacheService {
     return getPrecachedAudioPath(songId) != null;
   }
 
+  /// Retourne le chemin cible thorique du fichier audio dans le cache
+  String? getTargetAudioPath(String songId) {
+    if (_cacheDir == null) return null;
+    return _getSongPath(songId);
+  }
+
+  void recordPrecachedSong(String songId, Song? song) {
+    if (song != null) {
+      _cachedSongsMap[songId] = song;
+      _cachedSongsMap[_sanitizeId(songId)] = song;
+      _knownSongs[songId] = song;
+      _knownSongs[_sanitizeId(songId)] = song;
+      unawaited(_saveCachedMetadata());
+    }
+  }
+
   /// Enregistre les métadonnées d'un morceau pour reconnaissance ultérieure
   void recordSongMetadata(Song song) {
     _knownSongs[song.id] = song;
