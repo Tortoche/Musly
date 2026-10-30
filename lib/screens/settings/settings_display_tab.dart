@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:musly/services/recommendation_service.dart';
 import 'package:musly/services/player_ui_settings_service.dart';
 import 'package:musly/services/theme_service.dart';
+import 'package:musly/services/haptics_service.dart';
 import 'package:musly/services/locale_service.dart';
 import 'package:musly/providers/player_provider.dart';
 import 'package:musly/theme/app_theme.dart';
@@ -53,6 +54,8 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
   AccentColor _accentColor = AccentColor.red;
   bool _liquidGlass = false;
   bool _pureOled = false;
+  bool _hapticsEnabled = true;
+  HapticMode _hapticsMode = HapticMode.subtle;
 
   bool get _isDesktop {
     if (kIsWeb) return false;
@@ -95,6 +98,8 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
       _accentColor = themeService.accentColor;
       _liquidGlass = themeService.liquidGlass;
       _pureOled = themeService.pureOled;
+      _hapticsEnabled = HapticsService().isEnabled;
+      _hapticsMode = HapticsService().mode;
     });
 
     if (_isDesktop) {
@@ -152,6 +157,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
         if (_isDesktop) ...[
           const SizedBox(height: 24),
           _buildSpotverlaySection(),
+        ] else ...[
+          const SizedBox(height: 24),
+          _buildHapticsSection(),
         ],
         const SizedBox(height: 24),
         SettingsSectionCard(
@@ -1288,6 +1296,103 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildHapticsSection() {
+    return SettingsSectionCard(
+      title: 'RETOURS HAPTIQUES & VIBRATIONS',
+      children: [
+        SettingsSwitchTile(
+          title: 'Vibrations tactiles',
+          subtitle:
+              'Micro-vibrations calibrées pour les boutons, onglets et contrôles',
+          icon: CupertinoIcons.waveform,
+          gradientColors: const [Color(0xFFEC4899), Color(0xFFF43F5E)],
+          value: _hapticsEnabled,
+          onChanged: (val) async {
+            await HapticsService().setEnabled(val);
+            if (mounted) setState(() => _hapticsEnabled = val);
+          },
+        ),
+        if (_hapticsEnabled) ...[
+          const SettingsDivider(),
+          SettingsListTile(
+            title: 'Intensité du retour',
+            subtitle: _hapticsMode == HapticMode.subtle
+                ? 'Subtil (Style Apple Taptic)'
+                : 'Standard (Vibrations classiques)',
+            icon: CupertinoIcons.slider_horizontal_3,
+            gradientColors: const [Color(0xFF8B5CF6), Color(0xFF6366F1)],
+            onTap: _showHapticsModeDialog,
+          ),
+          const SettingsDivider(),
+          SettingsListTile(
+            title: 'Tester le retour haptique',
+            subtitle: 'Ressentir la vibration calibrée maintenant',
+            icon: CupertinoIcons.hand_draw,
+            gradientColors: const [Color(0xFF10B981), Color(0xFF059669)],
+            onTap: () {
+              HapticsService.light();
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _showHapticsModeDialog() {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) => CupertinoActionSheet(
+        title: const Text('Intensité des retours haptiques'),
+        message: const Text('Choisissez le calibrage des vibrations'),
+        actions: <CupertinoActionSheetAction>[
+          CupertinoActionSheetAction(
+            isDefaultAction: _hapticsMode == HapticMode.subtle,
+            onPressed: () async {
+              Navigator.pop(context);
+              await HapticsService().setMode(HapticMode.subtle);
+              if (mounted) setState(() => _hapticsMode = HapticMode.subtle);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_hapticsMode == HapticMode.subtle)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(CupertinoIcons.checkmark_alt, size: 18),
+                  ),
+                const Text('Subtil (Style Apple Taptic)'),
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            isDefaultAction: _hapticsMode == HapticMode.medium,
+            onPressed: () async {
+              Navigator.pop(context);
+              await HapticsService().setMode(HapticMode.medium);
+              if (mounted) setState(() => _hapticsMode = HapticMode.medium);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_hapticsMode == HapticMode.medium)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(CupertinoIcons.checkmark_alt, size: 18),
+                  ),
+                const Text('Standard'),
+              ],
+            ),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDestructiveAction: false,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+      ),
     );
   }
 }

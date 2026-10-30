@@ -17,6 +17,7 @@ import 'package:musly/services/palette_service.dart';
 import 'package:musly/services/subsonic_service.dart';
 import 'package:musly/services/offline_service.dart';
 import 'package:musly/services/favorite_songs_service.dart';
+import 'package:musly/services/haptics_service.dart';
 import 'package:musly/services/lrc_ttml_parser.dart';
 import 'package:musly/widgets/now_playing/queue_view.dart';
 import 'package:musly/widgets/now_playing/now_playing_more_menu.dart';
@@ -758,6 +759,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                 ),
                 onPressed: () {
                   if (currentSong == null) return;
+                  HapticsService.medium();
                   provider.toggleFavorite();
                 },
               );

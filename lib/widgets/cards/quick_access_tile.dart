@@ -1,3 +1,4 @@
+import 'package:musly/services/haptics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:musly/widgets/common/album_artwork.dart';
 
@@ -36,7 +37,10 @@ class _QuickAccessTileState extends State<QuickAccessTile> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: InkWell(
-        onTap: widget.onTap,
+        onTap: () {
+          HapticsService.light();
+          widget.onTap();
+        },
         borderRadius: BorderRadius.circular(6),
         child: Container(
           height: 56,

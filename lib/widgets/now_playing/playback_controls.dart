@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart' hide RepeatMode;
-import 'package:flutter/services.dart';
+import 'package:musly/services/haptics_service.dart';
 import '../../providers/player_provider.dart' show RepeatMode;
 
 class PlaybackControls extends StatelessWidget {
@@ -110,7 +110,7 @@ class _PlayPauseButtonState extends State<_PlayPauseButton> {
     return GestureDetector(
       onTapDown: (_) {
         setState(() => _isPressed = true);
-        HapticFeedback.lightImpact();
+        HapticsService.medium();
       },
       onTapUp: (_) {
         setState(() => _isPressed = false);
@@ -162,7 +162,7 @@ class _MainControlButtonState extends State<_MainControlButton> {
     return GestureDetector(
       onTapDown: (_) {
         setState(() => _isPressed = true);
-        HapticFeedback.lightImpact();
+        HapticsService.light();
       },
       onTapUp: (_) {
         setState(() => _isPressed = false);
@@ -239,7 +239,7 @@ class _SecondaryControlButton extends StatelessWidget {
         ),
       ),
       onPressed: () {
-        HapticFeedback.lightImpact();
+        HapticsService.light();
         onTap();
       },
     );

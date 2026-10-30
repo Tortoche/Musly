@@ -1,3 +1,4 @@
+import 'package:musly/services/haptics_service.dart';
 import 'package:flutter/material.dart';
 
 class PlaybackProgressSlider extends StatefulWidget {
@@ -47,6 +48,7 @@ class _PlaybackProgressSliderState extends State<PlaybackProgressSlider> {
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragStart: (details) {
+            HapticsService.selection();
             setState(() {
               _isDragging = true;
             });
@@ -59,12 +61,14 @@ class _PlaybackProgressSliderState extends State<PlaybackProgressSlider> {
             });
           },
           onHorizontalDragEnd: (details) {
+            HapticsService.selection();
             setState(() {
               _isDragging = false;
             });
             widget.onChanged(Duration(milliseconds: _dragValue.toInt()));
           },
           onTapDown: (details) {
+            HapticsService.selection();
             final box = context.findRenderObject() as RenderBox;
             final dx = details.localPosition.dx.clamp(0.0, box.size.width);
             final tapValue = (dx / box.size.width) * safeMax;

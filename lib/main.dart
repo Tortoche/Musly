@@ -87,6 +87,7 @@ void main() async {
     debugPrint('MediaKit init failed: $e');
   }
 
+  await HapticsService().initialize();
   final storageService = StorageService();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {

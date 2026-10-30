@@ -1,3 +1,4 @@
+import 'package:musly/services/haptics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../../theme/app_theme.dart';
@@ -27,7 +28,10 @@ class SettingsSwitchTile extends StatelessWidget {
     final hasLeading = icon != null && gradientColors != null;
 
     return InkWell(
-      onTap: () => onChanged(!value),
+      onTap: () {
+        HapticsService.selection();
+        onChanged(!value);
+      },
       child: Container(
         constraints: const BoxConstraints(minHeight: 48),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -69,7 +73,10 @@ class SettingsSwitchTile extends StatelessWidget {
             CupertinoSwitch(
               value: value,
               activeTrackColor: Theme.of(context).colorScheme.primary,
-              onChanged: onChanged,
+              onChanged: (val) {
+                HapticsService.selection();
+                onChanged(val);
+              },
             ),
           ],
         ),

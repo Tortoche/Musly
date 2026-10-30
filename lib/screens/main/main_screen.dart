@@ -20,6 +20,7 @@ import 'library_screen.dart';
 import 'search_screen.dart';
 import 'tv_main_screen.dart';
 import 'package:musly/screens/media/fantasy_screen.dart';
+import 'package:musly/services/haptics_service.dart';
 
 class PlayPauseIntent extends Intent {
   const PlayPauseIntent();
@@ -520,6 +521,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
+                      HapticsService.selection();
                       final navigatorState =
                           NavigationHelper.appNavigatorKey.currentState;
                       navigatorState?.popUntil((route) => route.isFirst);

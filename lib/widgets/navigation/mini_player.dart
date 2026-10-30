@@ -11,6 +11,7 @@ import 'package:musly/models/radio_station.dart';
 import 'package:musly/providers/player_provider.dart';
 import 'package:musly/services/player_ui_settings_service.dart';
 import 'package:musly/services/theme_service.dart';
+import 'package:musly/services/haptics_service.dart';
 import 'package:musly/theme/app_theme.dart';
 import 'package:musly/utils/screen_helper.dart';
 import 'package:musly/widgets/common/album_artwork.dart';
@@ -106,6 +107,7 @@ class _MiniPlayerState extends State<MiniPlayer>
         final (currentSong, currentRadioStation, isPlayingRadio) = data;
 
         void handleTap() {
+          HapticsService.light();
           if (widget.onTap != null) {
             widget.onTap!();
             return;
@@ -486,7 +488,10 @@ class _MiniPlayerControls extends StatelessWidget {
                             selector: (_, p) => p.currentSong?.starred == true,
                             builder: (context, isStarred, _) {
                               return IconButton(
-                                onPressed: provider.toggleFavorite,
+                                onPressed: () {
+                                  HapticsService.medium();
+                                  provider.toggleFavorite();
+                                },
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
                                     minWidth: 36, minHeight: 36),
@@ -508,7 +513,10 @@ class _MiniPlayerControls extends StatelessWidget {
                             selector: (_, p) => p.shuffleEnabled,
                             builder: (context, shuffleEnabled, _) {
                               return IconButton(
-                                onPressed: provider.toggleShuffle,
+                                onPressed: () {
+                                  HapticsService.light();
+                                  provider.toggleShuffle();
+                                },
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
                                     minWidth: 36, minHeight: 36),
@@ -524,7 +532,10 @@ class _MiniPlayerControls extends StatelessWidget {
                             },
                           ),
                         IconButton(
-                          onPressed: provider.togglePlayPause,
+                          onPressed: () {
+                          HapticsService.medium();
+                          provider.togglePlayPause();
+                        },
                           padding: EdgeInsets.zero,
                           constraints:
                               const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -548,7 +559,10 @@ class _MiniPlayerControls extends StatelessWidget {
                                 icon = CupertinoIcons.repeat;
                               }
                               return IconButton(
-                                onPressed: provider.toggleRepeat,
+                                onPressed: () {
+                                  HapticsService.light();
+                                  provider.toggleRepeat();
+                                },
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
                                     minWidth: 36, minHeight: 36),
@@ -563,7 +577,10 @@ class _MiniPlayerControls extends StatelessWidget {
                           ),
                         if (!isRadio)
                           IconButton(
-                            onPressed: hasNext ? provider.skipNext : null,
+                            onPressed: hasNext ? () {
+                            HapticsService.light();
+                            provider.skipNext();
+                          } : null,
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(
                                 minWidth: 36, minHeight: 36),
