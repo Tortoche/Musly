@@ -1,3 +1,4 @@
+import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
@@ -172,7 +173,21 @@ class ReleaseInfo {
 }
 
 class UpdateService {
-  static const String currentVersion = '2.8.0';
+  static String _currentVersion = '2.9.0';
+  static String get currentVersion => _currentVersion;
+
+  /// Load real package version dynamically from platform bundle
+  static Future<void> initialize() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.isNotEmpty) {
+        _currentVersion = info.version;
+        _dio.options.headers['User-Agent'] = 'Musly-App/$_currentVersion';
+      }
+    } catch (e) {
+      debugPrint('[UpdateService] PackageInfo load error: $e');
+    }
+  }
 
   // Primary: CJ Music server update endpoint
   static const String _primaryServerUrl =

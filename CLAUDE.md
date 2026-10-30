@@ -39,3 +39,27 @@ Tu es un développeur Flutter Senior spécialisé en architecture mobile et UI/U
 4. **Responsivité & Robustesse** :
    - Protège chaque layout contre les dépassements d'écran (`RenderFlex overflowed`) avec `Expanded`, `Flexible`, ou `SingleChildScrollView`.
    - Utilise `SafeArea` et `LayoutBuilder` pour garantir la compatibilité multi-écrans (téléphone, tablette, desktop).
+
+
+---
+
+## 4. REGLE OBLIGATOIRE DE DEPLOIEMENT DE MISE A JOUR (STRICT & SYSTEMATIQUE)
+
+A chaque fois qu'une mise a jour (nouvelle version de l'application Musly) est demandee ou preparee, les etapes suivantes sont **OBLIGATOIRES SANS AUCUNE EXCEPTION** et doivent etre executees dans l'ordre strict :
+
+1. **Incrementer et synchroniser les versions (DANS LES DEUX FICHIERS)** :
+   - `pubspec.yaml` : Incrementer la version et le build (`version: X.Y.Z+build`).
+   - `lib/services/update_service.dart` : Mettre a jour la constante `_currentVersion = 'X.Y.Z';` pour que les Parametres de l'application, l'ecran A propos, l'User-Agent et le comparateur de version affichent toujours la version exacte.
+2. **Compiler le binaire Release propre** :
+   - `cd musly_repo ; flutter build apk --release --target-platform android-arm64`
+3. **Archiver et synchroniser sur le Bureau (Desktop)** :
+   - Copier le binaire `app-release.apk` vers `C:\Users\coren\Desktop\Musly_vX.Y.Z.apk` ET `C:\Users\coren\Desktop\Musly.apk`.
+   - Compresser le binaire en archive zip `C:\Users\coren\Desktop\Musly_vX.Y.Z.zip`.
+4. **Televerser sur le serveur public (tmpfiles) et valider le lien** :
+   - Envoyer via `curl.exe --http1.1 --retry 5 -F "file=@C:\Users\coren\Desktop\Musly_vX.Y.Z.zip" https://tmpfiles.org/api/v1/upload`.
+   - Tester le lien direct `/dl/` via une requete HTTP pour verifier le code 200 OK.
+5. **Generer le payload `version.json` exact pour le serveur** :
+   - Relever la taille exacte en octets du fichier APK (`Length`).
+   - Fournir le bloc JSON complet (`version`, `build_number`, `size`, `release_notes` concises axees sur le confort utilisateur).
+6. **Commit Git propre** :
+   - Commiter tous les fichiers modifies avec un message conventionnel clair (`feat(version): vX.Y.Z ...`).

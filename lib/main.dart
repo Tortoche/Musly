@@ -88,6 +88,7 @@ void main() async {
   }
 
   await HapticsService().initialize();
+  await UpdateService.initialize();
   final storageService = StorageService();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {

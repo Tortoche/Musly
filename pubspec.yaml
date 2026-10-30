@@ -67,6 +67,7 @@ dependencies:
   flutter_secure_storage_tizen: any
   connectivity_plus_tizen: any
   permission_handler_tizen: any
+  package_info_plus: any
   package_info_plus_tizen: any
   audioplayers_tizen:
     git:
