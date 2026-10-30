@@ -172,7 +172,7 @@ class ReleaseInfo {
 }
 
 class UpdateService {
-  static const String currentVersion = '2.7.0';
+  static const String currentVersion = '2.8.0';
 
   // Primary: CJ Music server update endpoint
   static const String _primaryServerUrl =
@@ -185,6 +185,7 @@ class UpdateService {
   static const String _skippedVersionKey = 'skipped_update_version';
   static const String _lastLaterTimestampKey = 'last_update_later_timestamp';
   static const String _lastSeenVersionKey = 'last_seen_app_version';
+  static const String _cachedReleaseNotesKey = 'cached_release_notes_for_version_';
 
   static bool _hasCheckedStartup = false;
   static bool get hasCheckedStartup => _hasCheckedStartup;
@@ -201,6 +202,43 @@ class UpdateService {
       },
     ),
   );
+
+  /// Get the dynamic release notes for current version (fetched from server or cached)
+  static Future<List<String>> getWhatsNewNotes() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getStringList('$_cachedReleaseNotesKey$currentVersion');
+      if (cached != null && cached.isNotEmpty) {
+        return cached;
+      }
+
+      // Try fetching current version notes from server directly if not cached
+      final response = await _dio.get<dynamic>(
+        _primaryServerUrl,
+        options: Options(responseType: ResponseType.json),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        Map<String, dynamic> data;
+        if (response.data is String) {
+          data = jsonDecode(response.data as String) as Map<String, dynamic>;
+        } else {
+          data = response.data as Map<String, dynamic>;
+        }
+        final notes = (data['release_notes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+        if (notes.isNotEmpty) {
+          await prefs.setStringList('$_cachedReleaseNotesKey$currentVersion', notes);
+          return notes;
+        }
+      }
+    } catch (_) {}
+
+    // Fallback notes if offline
+    return [
+      'Améliorations des performances et fluidité accrue',
+      'Optimisation de la lecture haute fidélité Opus',
+      'Nettoyage et gestion intelligente du stockage',
+    ];
+  }
 
   /// Check whether we should show the "What's New" recap dialog on first open after update
   static Future<bool> shouldShowWhatsNew() async {
@@ -219,6 +257,15 @@ class UpdateService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Cache the upcoming release notes when an update is detected or initiated
+  static Future<void> saveReleaseNotesForVersion(String version, List<String> notes) async {
+    try {
+      if (notes.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('$_cachedReleaseNotesKey$version', notes);
+    } catch (_) {}
   }
 
   /// Mark current version as acknowledged in "What's New" dialog, and clean up any leftover installer APK/IPA
@@ -264,6 +311,11 @@ class UpdateService {
 
         final release = ReleaseInfo.fromJson(data);
         if (_isNewer(release.version, currentVersion)) {
+          // Pre-cache release notes for this upcoming version
+          if (release.releaseNotes.isNotEmpty) {
+            await saveReleaseNotesForVersion(release.version, release.releaseNotes);
+          }
+
           if (!force && !release.mandatory) {
             final skippedVersion = prefs.getString(_skippedVersionKey);
             if (skippedVersion == release.version) {

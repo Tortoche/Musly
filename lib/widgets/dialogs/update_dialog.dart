@@ -51,23 +51,30 @@ class UpdateDialog extends StatefulWidget {
     final isDark = theme.brightness == Brightness.dark;
     final primaryColor = theme.colorScheme.primary;
 
-    const highlights = [
-      (
-        CupertinoIcons.waveform_path_badge_plus,
-        'Qualité Studio Master & Hi-Res',
-        'Lecture et téléchargements automatiques au format Opus 48 kHz ultra-haute fidélité.'
-      ),
-      (
-        CupertinoIcons.flame_fill,
-        'Nouveau Thème Pure OLED',
-        'Noir absolu #000000, économie de batterie et contraste pur fidèle au design Apple.'
-      ),
-      (
-        CupertinoIcons.sparkles,
-        'Mises à jour fluides en 1 clic',
-        'Mises à jour transparentes intégrées pour Android et iOS avec SideStore.'
-      ),
-    ];
+    // Load dynamic release notes sent by server for this exact version
+    final notes = await UpdateService.getWhatsNewNotes();
+
+    IconData pickIconForNote(String text) {
+      final t = text.toLowerCase();
+      if (t.contains('qualité') || t.contains('opus') || t.contains('audio') || t.contains('master') || t.contains('hi-res') || t.contains('son')) {
+        return CupertinoIcons.waveform_path_badge_plus;
+      }
+      if (t.contains('thème') || t.contains('oled') || t.contains('noir') || t.contains('visuel') || t.contains('design') || t.contains('couleur')) {
+        return CupertinoIcons.flame_fill;
+      }
+      if (t.contains('cache') || t.contains('stockage') || t.contains('nettoyage') || t.contains('go') || t.contains('mo') || t.contains('téléchargement')) {
+        return CupertinoIcons.trash_circle_fill;
+      }
+      if (t.contains('paramètre') || t.contains('réglage') || t.contains('bouton') || t.contains('option')) {
+        return CupertinoIcons.gear_alt_fill;
+      }
+      if (t.contains('playlist') || t.contains('morceau') || t.contains('musique') || t.contains('like')) {
+        return CupertinoIcons.music_note_list;
+      }
+      return CupertinoIcons.sparkles;
+    }
+
+    if (!context.mounted) return;
 
     await showDialog<void>(
       context: context,
@@ -81,7 +88,7 @@ class UpdateDialog extends StatefulWidget {
           ),
           insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
+            constraints: const BoxConstraints(maxWidth: 440, maxHeight: 620),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -126,18 +133,24 @@ class UpdateDialog extends StatefulWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Voici ce qui a été amélioré pour vous :',
+                    'Nouveautés apportées par cette mise à jour :',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
                       color: isDark ? const Color(0xFF8E8E93) : Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  ...highlights.map((h) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 18),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: notes.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final note = notes[index];
+                        final icon = pickIconForNote(note);
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
@@ -145,36 +158,26 @@ class UpdateDialog extends StatefulWidget {
                                 color: primaryColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(h.$1, color: primaryColor, size: 20),
+                              child: Icon(icon, color: primaryColor, size: 20),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    h.$2,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    h.$3,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? const Color(0xFF8E8E93) : Colors.black54,
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                ],
+                              child: Text(
+                                note,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? const Color(0xFFE5E5EA) : Colors.black87,
+                                  height: 1.35,
+                                ),
                               ),
                             ),
                           ],
-                        ),
-                      )),
-                  const SizedBox(height: 16),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   SizedBox(
                     height: 48,
                     child: ElevatedButton(
