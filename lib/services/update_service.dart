@@ -172,7 +172,7 @@ class ReleaseInfo {
 }
 
 class UpdateService {
-  static const String currentVersion = '2.0.4';
+  static const String currentVersion = '2.7.0';
 
   // Primary: CJ Music server update endpoint
   static const String _primaryServerUrl =
@@ -221,11 +221,13 @@ class UpdateService {
     }
   }
 
-  /// Mark current version as acknowledged in "What's New" dialog
+  /// Mark current version as acknowledged in "What's New" dialog, and clean up any leftover installer APK/IPA
   static Future<void> markWhatsNewSeen() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_lastSeenVersionKey, currentVersion);
+      // Clean up any remaining installer packages from previous installations
+      await cleanupOldInstallers();
     } catch (_) {}
   }
 
@@ -345,6 +347,62 @@ class UpdateService {
     }
   }
 
+  /// Delete any cached installer packages from previous versions to save disk space
+  static Future<void> cleanupOldInstallers({String? currentTargetFile}) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      if (!tempDir.existsSync()) return;
+
+      final entities = tempDir.listSync();
+      for (final entity in entities) {
+        if (entity is File) {
+          final name = entity.path.split(Platform.pathSeparator).last.toLowerCase();
+          // Match any installer or partial update files
+          final isInstaller = name.endsWith('.apk') ||
+              name.endsWith('.part') ||
+              name.endsWith('.ipa') ||
+              name.endsWith('.exe') ||
+              name.endsWith('.dmg') ||
+              name.endsWith('.appimage');
+
+          if (isInstaller) {
+            // Keep the current target file if it matches
+            if (currentTargetFile != null && entity.path == currentTargetFile) {
+              continue;
+            }
+            try {
+              entity.deleteSync();
+              debugPrint('UpdateService: Cleaned up old update cache: ${entity.path}');
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('UpdateService: cleanupOldInstallers error: $e');
+    }
+  }
+
+  /// Check whether the target asset has already been fully downloaded
+  static Future<String?> getExistingDownloadedAssetPath(ReleaseAsset asset) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final sanitizedName = asset.name.replaceAll(RegExp(r'[^\w\.-]'), '_');
+      final filePath = '${tempDir.path}/$sanitizedName';
+      final file = File(filePath);
+
+      if (file.existsSync()) {
+        final length = file.lengthSync();
+        if (asset.size != null && asset.size! > 0) {
+          if (length == asset.size) return filePath;
+        } else if (length > 1024 * 1024) {
+          // If size not known but file > 1MB, considered valid downloaded installer
+          return filePath;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Launch update process: on iOS, trigger SideStore url scheme; on Android/Desktop, download file
   static Future<bool> installUpdate(
     ReleaseInfo release, {
@@ -372,11 +430,22 @@ class UpdateService {
       return false;
     }
 
-    // Android & Desktop: Download asset then execute native installer
+    // Android & Desktop: Check if already downloaded first
     final asset = release.targetAsset;
     if (asset == null) {
       return await openReleasePage(release);
     }
+
+    // Check if this specific version is already present and valid
+    final existingPath = await getExistingDownloadedAssetPath(asset);
+    if (existingPath != null) {
+      debugPrint('UpdateService: Installer for v${release.version} already cached at $existingPath. Reusing immediately without re-downloading.');
+      onProgress?.call(asset.size ?? 1, asset.size ?? 1);
+      return await launchInstallerOrFile(existingPath, release: release);
+    }
+
+    // If not, clean up any previous version's old installer files so cache stays at 0 MB extra
+    await cleanupOldInstallers();
 
     final downloadedPath = await downloadAsset(
       asset,

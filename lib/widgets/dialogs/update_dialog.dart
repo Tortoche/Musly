@@ -215,6 +215,27 @@ class _UpdateDialogState extends State<UpdateDialog> {
   String _downloadStatusText = '';
   CancelToken? _cancelToken;
   String? _errorMessage;
+  bool _isAlreadyDownloaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingDownload();
+  }
+
+  Future<void> _checkExistingDownload() async {
+    final asset = widget.release.targetAsset;
+    if (asset != null) {
+      final existing = await UpdateService.getExistingDownloadedAssetPath(asset);
+      if (existing != null && mounted) {
+        setState(() {
+          _isAlreadyDownloaded = true;
+          _downloadProgress = 1.0;
+          _downloadStatusText = 'Téléchargé et prêt';
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -507,7 +528,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
                               ),
                             )
                           : Text(
-                              Platform.isIOS ? 'Installer via SideStore' : 'Mettre à jour',
+                              Platform.isIOS
+                                  ? 'Installer via SideStore'
+                                  : (_isAlreadyDownloaded ? 'Installer' : 'Mettre à jour'),
                               style: const TextStyle(fontWeight: FontWeight.w600),
                             ),
                     ),
