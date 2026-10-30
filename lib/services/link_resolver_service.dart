@@ -1,8 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:musly/main.dart';
 import 'package:musly/models/song.dart';
 import 'package:musly/services/deezer_service.dart';
+import 'package:musly/services/subsonic_service.dart';
 
 class LinkResolverService {
   static final LinkResolverService _instance = LinkResolverService._internal();
@@ -24,25 +28,78 @@ class LinkResolverService {
   }
 
   /// Résout le lien vers un morceau Song complet
-  static Future<Song?> resolveLink(String link) async {
+  static Future<Song?> resolveLink(String link, {BuildContext? context}) async {
     final t = link.trim();
     if (!isMusicLink(t)) return null;
 
     try {
-      // 1. Lien Musly direct, Deezer track ou Intent (ex: musly://track/ext_dz_3862037071, https://music.corentinjanin.fr/track/ext_dz_3862037071)
+      // 1. Lien Musly direct, Deezer track ou Intent (ex: musly://track/ext_dz_3862037071, musly://track/5mWmy8AoMwEeTUvFBcO3vx)
       final trackMatch = RegExp(r'track\/([a-zA-Z0-9_\-]+)').firstMatch(t);
       if (trackMatch != null) {
-        final rawId = trackMatch.group(1)!;
-        final cleanId = rawId
-            .replaceAll('ext_dz_', '')
+        final rawId = trackMatch
+            .group(1)!
             .split('#')
             .first
             .split('?')
             .first
             .trim();
-        if (cleanId.isNotEmpty) {
-          final song = await DeezerService().getTrackDetails(cleanId);
-          if (song != null) return song;
+
+        if (rawId.isNotEmpty) {
+          // A. Si c'est un morceau Deezer externe (ext_dz_... ou ID numérique)
+          if (rawId.startsWith('ext_dz_') || RegExp(r'^\d+$').hasMatch(rawId)) {
+            final cleanId = rawId.replaceAll('ext_dz_', '');
+            final song = await DeezerService().getTrackDetails(cleanId);
+            if (song != null) return song;
+          }
+
+          // B. Tenter de récupérer le morceau via Subsonic directement si l'app est connectée
+          final ctx = context ?? navigatorKey.currentContext;
+          if (ctx != null) {
+            try {
+              final subsonic = Provider.of<SubsonicService>(ctx, listen: false);
+              final song = await subsonic.getSong(rawId);
+              if (song != null) return song;
+            } catch (_) {}
+          }
+
+          // C. Fallback universel : extraction des métadonnées de la page web Musly
+          try {
+            final pageUrl = Uri.parse('https://music.corentinjanin.fr/track/$rawId');
+            final res = await http.get(pageUrl).timeout(const Duration(seconds: 4));
+            if (res.statusCode == 200) {
+              final html = res.body;
+
+              String title = '';
+              final tMatch = RegExp(r'<h1[^>]*class="track-title"[^>]*>(.*?)</h1>', caseSensitive: false).firstMatch(html) ??
+                  RegExp(r'property="og:title"\s+content="(.*?)"', caseSensitive: false).firstMatch(html);
+              if (tMatch != null) {
+                title = tMatch.group(1)?.trim() ?? '';
+              }
+
+              String artist = 'Musly';
+              final aMatch = RegExp(r'<div[^>]*class="track-artist"[^>]*>(.*?)</div>', caseSensitive: false).firstMatch(html);
+              if (aMatch != null) {
+                artist = aMatch.group(1)?.trim() ?? 'Musly';
+              }
+
+              String? cover;
+              final cMatch = RegExp(r'property="og:image"\s+content="(.*?)"', caseSensitive: false).firstMatch(html);
+              if (cMatch != null) {
+                cover = cMatch.group(1)?.trim();
+              }
+
+              if (title.isNotEmpty) {
+                return Song(
+                  id: rawId,
+                  title: title,
+                  artist: artist,
+                  coverArt: (cover != null && cover.isNotEmpty) ? cover : null,
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint('[LinkResolverService] Erreur fallback web : $e');
+          }
         }
       }
 

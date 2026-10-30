@@ -57,13 +57,6 @@ class DeepLinkService {
     HapticsService.light();
 
     try {
-      final song = await LinkResolverService.resolveLink(link);
-      if (song == null) {
-        debugPrint(
-            '[DeepLinkService] Impossible de résoudre le morceau pour : $link');
-        return;
-      }
-
       BuildContext? ctx = navigatorKey.currentContext;
       if (ctx == null) {
         for (int i = 0; i < 6; i++) {
@@ -72,6 +65,14 @@ class DeepLinkService {
           if (ctx != null) break;
         }
       }
+
+      final song = await LinkResolverService.resolveLink(link, context: ctx);
+      if (song == null) {
+        debugPrint(
+            '[DeepLinkService] Impossible de résoudre le morceau pour : $link');
+        return;
+      }
+
       if (ctx == null) {
         debugPrint('[DeepLinkService] Contexte de navigation indisponible');
         return;

@@ -173,7 +173,7 @@ class ReleaseInfo {
 }
 
 class UpdateService {
-  static String _currentVersion = '2.10.2';
+  static String _currentVersion = '2.10.3';
   static String get currentVersion => _currentVersion;
 
   /// Load real package version dynamically from platform bundle
