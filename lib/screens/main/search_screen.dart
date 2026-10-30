@@ -1,3 +1,5 @@
+import 'package:musly/services/link_resolver_service.dart';
+import 'package:musly/services/haptics_service.dart';
 import '../player/now_playing_screen.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -84,6 +86,20 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _performSearch(String query) async {
     if (query.isEmpty) return;
+
+    if (LinkResolverService.isMusicLink(query)) {
+      setState(() => _isSearching = true);
+      final resolved = await LinkResolverService.resolveLink(query);
+      if (resolved != null && mounted) {
+        setState(() {
+          _searchResult = SearchResult(artists: [], albums: [], songs: [resolved]);
+          _isSearching = false;
+        });
+        HapticsService.medium();
+        _playSong(resolved);
+        return;
+      }
+    }
 
     setState(() {
       _isSearching = true;

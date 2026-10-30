@@ -1733,126 +1733,173 @@ class LibraryProvider extends ChangeNotifier
 
 
 
-  @override
+  static String _normalizeSearch(String text) {
+    return text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[àáâãäå]'), 'a')
+        .replaceAll(RegExp(r'[èéêë]'), 'e')
+        .replaceAll(RegExp(r'[ìíîï]'), 'i')
+        .replaceAll(RegExp(r'[òóôõö]'), 'o')
+        .replaceAll(RegExp(r'[ùúûü]'), 'u')
+        .replaceAll(RegExp(r'[ýÿ]'), 'y')
+        .replaceAll(RegExp(r'[ç]'), 'c')
+        .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
 
+  static int _scoreRelevance(String text, String query) {
+    final normText = _normalizeSearch(text);
+    final normQuery = _normalizeSearch(query);
+    if (normText.isEmpty || normQuery.isEmpty) return 0;
+
+    if (normText == normQuery) return 10000;
+    if (normText.startsWith(normQuery)) return 5000;
+
+    final words = normText.split(' ');
+    for (final w in words) {
+      if (w.startsWith(normQuery)) return 3000;
+    }
+
+    if (normText.contains(normQuery)) return 1000;
+    return 100;
+  }
+
+  @override
   Future<SearchResult> search(String query) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) {
+      return SearchResult(artists: [], albums: [], songs: []);
+    }
 
     if (_localOnlyMode) {
-
-      return _searchLocal(query);
-
+      return _searchLocal(cleanQuery);
     }
-
-
 
     final subsonicFuture = _subsonicService
-
-        .search(query)
-
+        .search(cleanQuery)
         .catchError((_) => SearchResult(artists: [], albums: [], songs: []));
 
-    final deezerSongsFuture =
+    final autoFuture = DeezerService()
+        .searchAutocomplete(cleanQuery)
+        .catchError((_) => (songs: <Song>[], artists: <Artist>[], albums: <Album>[]));
 
-        DeezerService().searchTracks(query).catchError((_) => <Song>[]);
+    final deezerSongsFuture =
+        DeezerService().searchTracks(cleanQuery, limit: 30).catchError((_) => <Song>[]);
 
     final deezerArtistsFuture =
-
-        DeezerService().searchArtists(query).catchError((_) => <Artist>[]);
+        DeezerService().searchArtists(cleanQuery, limit: 15).catchError((_) => <Artist>[]);
 
     final deezerAlbumsFuture =
-
-        DeezerService().searchAlbums(query).catchError((_) => <Album>[]);
-
-
+        DeezerService().searchAlbums(cleanQuery, limit: 15).catchError((_) => <Album>[]);
 
     final results = await Future.wait([
-
       subsonicFuture,
-
+      autoFuture,
       deezerSongsFuture,
-
       deezerArtistsFuture,
-
       deezerAlbumsFuture,
-
     ]);
 
-
-
     final subResult = results[0] as SearchResult;
+    final autoResult = results[1] as ({List<Song> songs, List<Artist> artists, List<Album> albums});
+    final deezerSongs = results[2] as List<Song>;
+    final deezerArtists = results[3] as List<Artist>;
+    final deezerAlbums = results[4] as List<Album>;
 
-    final deezerSongs = results[1] as List<Song>;
+    // Fusionner les titres : Autocomplétion prioritaire + serveur + catalogue universel
+    final Set<String> seenIds = {};
+    final List<Song> mergedSongs = [];
 
-    final deezerArtists = results[2] as List<Artist>;
-
-    final deezerAlbums = results[3] as List<Album>;
-
-
-
-    // Fusionner les titres : bibliothèque serveur d'abord, puis catalogue universel Deezer dédupliqué
-
-    final Set<String> seenIds = subResult.songs.map((s) => s.id).toSet();
-
-    final List<Song> mergedSongs = List.from(subResult.songs);
-
-    for (final s in deezerSongs) {
-
-      if (seenIds.add(s.id)) {
-
+    void addSongIfNew(Song s) {
+      final key = '${_normalizeSearch(s.title)}_${_normalizeSearch(s.artist ?? "")}';
+      if (seenIds.add(s.id) && seenIds.add(key)) {
         mergedSongs.add(s);
-
       }
-
     }
 
+    for (final s in autoResult.songs) {
+      addSongIfNew(s);
+    }
+    for (final s in subResult.songs) {
+      addSongIfNew(s);
+    }
+    for (final s in deezerSongs) {
+      addSongIfNew(s);
+    }
 
+    // Fusionner les artistes
+    final Set<String> seenArtistNames = {};
+    final List<Artist> mergedArtists = [];
 
-    final Set<String> seenArtistNames =
-
-        subResult.artists.map((a) => a.name.toLowerCase()).toSet();
-
-    final List<Artist> mergedArtists = List.from(subResult.artists);
-
-    for (final a in deezerArtists) {
-
-      if (seenArtistNames.add(a.name.toLowerCase())) {
-
+    void addArtistIfNew(Artist a) {
+      final key = _normalizeSearch(a.name);
+      if (key.isNotEmpty && seenArtistNames.add(key)) {
         mergedArtists.add(a);
-
       }
-
     }
 
+    for (final a in autoResult.artists) {
+      addArtistIfNew(a);
+    }
+    for (final a in subResult.artists) {
+      addArtistIfNew(a);
+    }
+    for (final a in deezerArtists) {
+      addArtistIfNew(a);
+    }
 
+    // Fusionner les albums
+    final Set<String> seenAlbumNames = {};
+    final List<Album> mergedAlbums = [];
 
-    final Set<String> seenAlbumNames =
-
-        subResult.albums.map((a) => a.name.toLowerCase()).toSet();
-
-    final List<Album> mergedAlbums = List.from(subResult.albums);
-
-    for (final alb in deezerAlbums) {
-
-      if (seenAlbumNames.add(alb.name.toLowerCase())) {
-
+    void addAlbumIfNew(Album alb) {
+      final key = '${_normalizeSearch(alb.name)}_${_normalizeSearch(alb.artist ?? "")}';
+      if (seenAlbumNames.add(key)) {
         mergedAlbums.add(alb);
-
       }
-
     }
 
+    for (final alb in autoResult.albums) {
+      addAlbumIfNew(alb);
+    }
+    for (final alb in subResult.albums) {
+      addAlbumIfNew(alb);
+    }
+    for (final alb in deezerAlbums) {
+      addAlbumIfNew(alb);
+    }
 
+    // Tri de pertinence intelligent (Préfixe exact > Début de mot > Contient)
+    mergedArtists.sort((a, b) {
+      final scoreA = _scoreRelevance(a.name, cleanQuery);
+      final scoreB = _scoreRelevance(b.name, cleanQuery);
+      return scoreB.compareTo(scoreA);
+    });
+
+    mergedSongs.sort((a, b) {
+      final scoreTitleA = _scoreRelevance(a.title, cleanQuery);
+      final scoreArtistA = _scoreRelevance(a.artist ?? '', cleanQuery);
+      final maxA = scoreTitleA > scoreArtistA ? scoreTitleA : scoreArtistA;
+
+      final scoreTitleB = _scoreRelevance(b.title, cleanQuery);
+      final scoreArtistB = _scoreRelevance(b.artist ?? '', cleanQuery);
+      final maxB = scoreTitleB > scoreArtistB ? scoreTitleB : scoreArtistB;
+
+      return maxB.compareTo(maxA);
+    });
+
+    mergedAlbums.sort((a, b) {
+      final scoreA = _scoreRelevance(a.name, cleanQuery);
+      final scoreB = _scoreRelevance(b.name, cleanQuery);
+      return scoreB.compareTo(scoreA);
+    });
 
     return SearchResult(
-
       artists: mergedArtists,
-
       albums: mergedAlbums,
-
       songs: mergedSongs,
-
     );
-
   }
 
 

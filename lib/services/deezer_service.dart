@@ -49,6 +49,115 @@ class DeezerService {
     return [];
   }
 
+  /// Recherche enrichie avec autocomplétion intelligente Deezer
+  Future<({List<Song> songs, List<Artist> artists, List<Album> albums})> searchAutocomplete(String query, {int limit = 25}) async {
+    final clean = query.trim();
+    if (clean.length < 2) {
+      return (songs: <Song>[], artists: <Artist>[], albums: <Album>[]);
+    }
+
+    final url = Uri.parse('$_baseUrl/search/autocomplete?q=${Uri.encodeComponent(clean)}&limit=$limit');
+
+    try {
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+
+        final artistsData = (data['artists']?['data'] as List?) ?? [];
+        final tracksData = (data['tracks']?['data'] as List?) ?? [];
+        final albumsData = (data['albums']?['data'] as List?) ?? [];
+
+        final songs = tracksData.map((t) {
+          final id = t['id']?.toString() ?? '';
+          final albumData = t['album'] as Map<String, dynamic>?;
+          final artistData = t['artist'] as Map<String, dynamic>?;
+          final coverUrl = albumData?['cover_xl'] ??
+              albumData?['cover_big'] ??
+              albumData?['cover_medium'] ??
+              '';
+
+          return Song(
+            id: id.startsWith('ext_dz_') ? id : 'ext_dz_$id',
+            title: t['title'] ?? '',
+            artist: artistData?['name'] ?? 'Artiste inconnu',
+            artistId: artistData?['id']?.toString(),
+            album: albumData?['title'] ?? '',
+            albumId: albumData?['id']?.toString(),
+            coverArt: coverUrl.isNotEmpty ? coverUrl : null,
+            duration: (t['duration'] as num?)?.toInt() ?? 0,
+          );
+        }).toList();
+
+        final artists = artistsData.map((a) {
+          final id = a['id']?.toString() ?? '';
+          final picture = a['picture_xl'] ?? a['picture_big'] ?? a['picture_medium'];
+          return Artist(
+            id: id,
+            name: a['name'] ?? 'Artiste inconnu',
+            coverArt: picture,
+            artistImageUrl: picture,
+            albumCount: (a['nb_album'] as num?)?.toInt(),
+          );
+        }).toList();
+
+        final albums = albumsData.map((al) {
+          final id = al['id']?.toString() ?? '';
+          final cover = al['cover_xl'] ?? al['cover_big'] ?? al['cover_medium'];
+          final artistData = al['artist'] as Map<String, dynamic>?;
+          return Album(
+            id: 'ext_dz_alb_$id',
+            name: al['title'] ?? 'Album inconnu',
+            artist: artistData?['name'] ?? '',
+            artistId: artistData?['id']?.toString(),
+            coverArt: cover,
+          );
+        }).toList();
+
+        return (songs: songs, artists: artists, albums: albums);
+      }
+    } catch (e) {
+      debugPrint('[DeezerService] Erreur searchAutocomplete: $e');
+    }
+
+    return (songs: <Song>[], artists: <Artist>[], albums: <Album>[]);
+  }
+
+  /// Récupère les métadonnées détaillées d'un morceau Deezer par son ID
+  Future<Song?> getTrackDetails(String trackId) async {
+    final cleanId = trackId.replaceAll('ext_dz_', '').trim();
+    if (cleanId.isEmpty) return null;
+
+    final url = Uri.parse('\/track/');
+    try {
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data == null || data['error'] != null) return null;
+
+        final albumData = data['album'] as Map<String, dynamic>?;
+        final artistData = data['artist'] as Map<String, dynamic>?;
+        final coverUrl = albumData?['cover_xl'] ??
+            albumData?['cover_big'] ??
+            albumData?['cover_medium'] ??
+            '';
+
+        return Song(
+          id: 'ext_dz_',
+          title: data['title'] ?? '',
+          artist: artistData?['name'] ?? 'Artiste inconnu',
+          artistId: artistData?['id']?.toString(),
+          album: albumData?['title'] ?? '',
+          albumId: albumData?['id']?.toString(),
+          coverArt: coverUrl.isNotEmpty ? coverUrl : null,
+          duration: (data['duration'] as num?)?.toInt() ?? 0,
+        );
+      }
+    } catch (e) {
+      debugPrint('[DeezerService] Erreur getTrackDetails: ');
+    }
+    return null;
+  }
+
   /// Recherche d'artistes sur Deezer
   Future<List<Artist>> searchArtists(String query, {int limit = 15}) async {
     if (query.trim().length < 2) return [];

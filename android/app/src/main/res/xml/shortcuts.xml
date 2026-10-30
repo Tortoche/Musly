@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="shortcut_discovery"
+        android:enabled="true"
+        android:icon="@drawable/ic_auto_radio"
+        android:shortcutShortLabel="@string/shortcut_discovery"
+        android:shortcutLongLabel="@string/shortcut_discovery_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.corentinjanin.musly"
+            android:targetClass="com.corentinjanin.musly.MainActivity"
+            android:data="musly://shortcut/discovery" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="shortcut_favorites"
+        android:enabled="true"
+        android:icon="@drawable/ic_auto_favorites"
+        android:shortcutShortLabel="@string/shortcut_favorites"
+        android:shortcutLongLabel="@string/shortcut_favorites_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.corentinjanin.musly"
+            android:targetClass="com.corentinjanin.musly.MainActivity"
+            android:data="musly://shortcut/favorites" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="shortcut_search"
+        android:enabled="true"
+        android:icon="@drawable/ic_auto_recent"
+        android:shortcutShortLabel="@string/shortcut_search"
+        android:shortcutLongLabel="@string/shortcut_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.corentinjanin.musly"
+            android:targetClass="com.corentinjanin.musly.MainActivity"
+            android:data="musly://shortcut/search" />
+    </shortcut>
+</shortcuts>

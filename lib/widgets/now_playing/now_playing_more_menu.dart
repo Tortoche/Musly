@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import 'package:musly/services/share_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/player_provider.dart';
@@ -61,6 +63,17 @@ class NowPlayingMoreMenu extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
+              ListTile(
+                leading: const Icon(CupertinoIcons.share),
+                title: const Text('Partager le morceau'),
+                onTap: () {
+                  Navigator.pop(context);
+                  final currentSong = provider.currentSong;
+                  if (currentSong != null) {
+                    ShareService.shareSong(context, currentSong);
+                  }
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.timer_outlined),
                 title: Text(AppLocalizations.of(context)!.sleepTimer),

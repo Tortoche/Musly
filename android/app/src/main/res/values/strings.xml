@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_discovery">Découverte</string>
+    <string name="shortcut_discovery_long">Découverte du jour</string>
+    <string name="shortcut_favorites">Favoris</string>
+    <string name="shortcut_favorites_long">Mes morceaux favoris</string>
+    <string name="shortcut_search">Recherche</string>
+    <string name="shortcut_search_long">Rechercher un morceau ou artiste</string>
+</resources>

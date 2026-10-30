@@ -28,3 +28,5 @@ export 'crossfade_service.dart';
 
 export 'favorite_songs_service.dart';
 export 'haptics_service.dart';
+export 'share_service.dart';
+export 'link_resolver_service.dart';

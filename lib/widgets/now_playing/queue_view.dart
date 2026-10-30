@@ -1,3 +1,6 @@
+import 'package:flutter/cupertino.dart';
+import '../../providers/library_provider.dart';
+import '../../services/haptics_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -65,6 +68,107 @@ class _QueueViewState extends State<QueueView> {
     setState(() => _initialScrollDone = true);
   }
 
+
+  Future<void> _showSaveQueueDialog(BuildContext context, PlayerProvider provider) async {
+    HapticsService.light();
+    if (provider.queue.isEmpty) return;
+
+    final controller = TextEditingController(
+      text: 'Session Musly (${provider.queue.length} titres)',
+    );
+
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141417),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Enregistrer la file d\'attente', style: TextStyle(color: Colors.white, fontSize: 18)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Nom de la playlist...',
+            hintStyle: TextStyle(color: Colors.white38),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Créer'),
+          ),
+        ],
+      ),
+    );
+
+    if (name != null && name.isNotEmpty && mounted) {
+      try {
+        final songIds = provider.queue.map((s) => s.id).toList();
+        await Provider.of<LibraryProvider>(context, listen: false).createPlaylist(name, songIds: songIds);
+        HapticsService.medium();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Playlist "$name" enregistrée avec succès !'),
+              backgroundColor: const Color(0xFF141417),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur création playlist: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _confirmClearQueue(BuildContext context, PlayerProvider provider) {
+    HapticsService.medium();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141417),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Vider la file d\'attente ?', style: TextStyle(color: Colors.white, fontSize: 18)),
+        content: const Text(
+          'Les morceaux suivants seront retirés de la lecture en cours.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              provider.clearQueue();
+              HapticsService.medium();
+            },
+            child: const Text('Vider'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -118,10 +222,21 @@ class _QueueViewState extends State<QueueView> {
                     ),
                   ),
                   const Spacer(),
+                  IconButton(
+                    tooltip: 'Sauvegarder en playlist',
+                    icon: const Icon(CupertinoIcons.text_badge_plus, color: Colors.white70, size: 22),
+                    onPressed: () => _showSaveQueueDialog(context, provider),
+                  ),
+                  IconButton(
+                    tooltip: 'Vider la file d\'attente',
+                    icon: const Icon(CupertinoIcons.trash, color: Colors.white70, size: 20),
+                    onPressed: () => _confirmClearQueue(context, provider),
+                  ),
+                  const SizedBox(width: 4),
                   _AutoplayInfinityButton(
                     isEnabled: provider.isAutoplayEnabled,
                     onTap: () {
-                      HapticFeedback.lightImpact();
+                      HapticsService.light();
                       provider.toggleAutoplay();
                     },
                   ),
