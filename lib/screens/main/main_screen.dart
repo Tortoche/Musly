@@ -21,6 +21,7 @@ import 'search_screen.dart';
 import 'tv_main_screen.dart';
 import 'package:musly/screens/media/fantasy_screen.dart';
 import 'package:musly/services/haptics_service.dart';
+import 'package:musly/services/deep_link_service.dart';
 
 class PlayPauseIntent extends Intent {
   const PlayPauseIntent();
@@ -85,6 +86,8 @@ class _MainScreenState extends State<MainScreen> {
     NavigationHelper.registerTabChangeCallback((index) {
       setState(() => _currentIndex = index);
     });
+
+    DeepLinkService().initialize();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);

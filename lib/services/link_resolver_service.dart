@@ -9,21 +9,18 @@ class LinkResolverService {
   factory LinkResolverService() => _instance;
   LinkResolverService._internal();
 
-  /// Vérifie si le texte saisi correspond à une URL de partage musical
+  /// Vérifie si le texte saisi correspond à une URL ou URI de partage musical
   static bool isMusicLink(String text) {
     final t = text.trim().toLowerCase();
-    if (!t.startsWith('http://') &&
-        !t.startsWith('https://') &&
-        !t.startsWith('spotify:') &&
-        !t.startsWith('deezer:') &&
-        !t.startsWith('musly:')) {
-      return false;
-    }
     return t.contains('spotify.com') ||
+        t.contains('spotify:') ||
         t.contains('deezer.com') ||
         t.contains('deezer.page.link') ||
-        t.contains('music.corentinjanin.fr/track/') ||
-        t.contains('musly://track/');
+        t.contains('deezer:') ||
+        t.contains('music.corentinjanin.fr/track') ||
+        t.contains('musly://') ||
+        t.contains('intent://') ||
+        t.contains('/track/');
   }
 
   /// Résout le lien vers un morceau Song complet
@@ -32,32 +29,24 @@ class LinkResolverService {
     if (!isMusicLink(t)) return null;
 
     try {
-      // 1. Lien Musly direct (ex: https://music.corentinjanin.fr/track/{songId} ou musly://track/{id})
-      if (t.contains('/track/')) {
-        final uri = Uri.tryParse(t);
-        if (uri != null && uri.pathSegments.isNotEmpty) {
-          final songId = uri.pathSegments.last;
-          if (songId.isNotEmpty) {
-            final cleanId = songId.replaceAll('ext_dz_', '');
-            final song = await DeezerService().getTrackDetails(cleanId);
-            if (song != null) return song;
-          }
+      // 1. Lien Musly direct, Deezer track ou Intent (ex: musly://track/ext_dz_3862037071, https://music.corentinjanin.fr/track/ext_dz_3862037071)
+      final trackMatch = RegExp(r'track\/([a-zA-Z0-9_\-]+)').firstMatch(t);
+      if (trackMatch != null) {
+        final rawId = trackMatch.group(1)!;
+        final cleanId = rawId
+            .replaceAll('ext_dz_', '')
+            .split('#')
+            .first
+            .split('?')
+            .first
+            .trim();
+        if (cleanId.isNotEmpty) {
+          final song = await DeezerService().getTrackDetails(cleanId);
+          if (song != null) return song;
         }
       }
 
-      // 2. Lien Deezer (ex: https://www.deezer.com/track/1109731 ou deezer.com/fr/track/1109731)
-      if (t.contains('deezer.com/track/') || t.contains('/track/')) {
-        final regExp = RegExp(r'track\/(\d+)');
-        final match = regExp.firstMatch(t);
-        if (match != null) {
-          final trackId = match.group(1);
-          if (trackId != null) {
-            return await DeezerService().getTrackDetails(trackId);
-          }
-        }
-      }
-
-      // 3. Lien Spotify (ex: https://open.spotify.com/track/{id})
+      // 2. Lien Spotify (ex: https://open.spotify.com/track/{id})
       if (t.contains('spotify.com/track/')) {
         final oembedUrl = Uri.parse(
           'https://open.spotify.com/oembed?url=${Uri.encodeComponent(t)}',

@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import androidx.core.content.FileProvider
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
@@ -23,9 +24,56 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val CHANNEL = "com.devid.musly/ytdlp"
     private val TV_CHANNEL = "com.devid.musly/tv_mode"
     private val APK_CHANNEL = "com.devid.musly/apk_installer"
+    private val DEEP_LINK_CHANNEL = "com.devid.musly/deep_link"
+
+    private var initialLink: String? = null
+    private var deepLinkChannel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        handleIncomingIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        var link: String? = null
+        if (Intent.ACTION_VIEW == intent.action) {
+            link = intent.dataString
+        } else if (Intent.ACTION_SEND == intent.action && "text/plain" == intent.type) {
+            link = intent.getStringExtra(Intent.EXTRA_TEXT)
+        }
+
+        if (!link.isNullOrEmpty()) {
+            initialLink = link
+            deepLinkChannel?.invokeMethod("onNewLink", link)
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Native Deep Link channel
+        val linkChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEEP_LINK_CHANNEL)
+        deepLinkChannel = linkChannel
+        linkChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getInitialLink" -> {
+                    val link = initialLink
+                    initialLink = null
+                    result.success(link)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        if (!initialLink.isNullOrEmpty()) {
+            deepLinkChannel?.invokeMethod("onNewLink", initialLink)
+        }
 
         // Native APK installer channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, APK_CHANNEL).setMethodCallHandler { call, result ->

@@ -30,3 +30,4 @@ export 'favorite_songs_service.dart';
 export 'haptics_service.dart';
 export 'share_service.dart';
 export 'link_resolver_service.dart';
+export 'deep_link_service.dart';
