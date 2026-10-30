@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -15,7 +18,7 @@ class UpdateDialog extends StatefulWidget {
   static Future<void> show(BuildContext context, ReleaseInfo release) {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: !release.mandatory,
       builder: (context) => UpdateDialog(release: release),
     );
   }
@@ -23,6 +26,15 @@ class UpdateDialog extends StatefulWidget {
   static Future<void> checkAndShow(BuildContext context) async {
     if (UpdateService.hasCheckedStartup) return;
     UpdateService.markStartupChecked();
+
+    // 1. First check if a "What's New" dialog should be displayed (first launch after an update)
+    final showWhatsNew = await UpdateService.shouldShowWhatsNew();
+    if (showWhatsNew && context.mounted) {
+      await showWhatsNewDialog(context);
+      return;
+    }
+
+    // 2. Otherwise check if a new update is available
     try {
       final release = await UpdateService.checkForUpdate();
       if (release != null && context.mounted) {
@@ -31,6 +43,166 @@ class UpdateDialog extends StatefulWidget {
     } catch (e) {
       debugPrint('UpdateDialog: startup check error – $e');
     }
+  }
+
+  /// Single-time "What's New" recap dialog shown after updating the app
+  static Future<void> showWhatsNewDialog(BuildContext context) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
+
+    const highlights = [
+      (
+        CupertinoIcons.waveform_path_badge_plus,
+        'Qualité Studio Master & Hi-Res',
+        'Lecture et téléchargements automatiques au format Opus 48 kHz ultra-haute fidélité.'
+      ),
+      (
+        CupertinoIcons.flame_fill,
+        'Nouveau Thème Pure OLED',
+        'Noir absolu #000000, économie de batterie et contraste pur fidèle au design Apple.'
+      ),
+      (
+        CupertinoIcons.sparkles,
+        'Mises à jour fluides en 1 clic',
+        'Mises à jour transparentes intégrées pour Android et iOS avec SideStore.'
+      ),
+    ];
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: isDark ? const Color(0xFF09090B) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: isDark ? const BorderSide(color: Color(0x1FFFFFFF), width: 0.5) : BorderSide.none,
+          ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [primaryColor, primaryColor.withValues(alpha: 0.7)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withValues(alpha: 0.3),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.sparkles,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Bienvenue dans Musly v${UpdateService.currentVersion}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Voici ce qui a été amélioré pour vous :',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? const Color(0xFF8E8E93) : Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ...highlights.map((h) => Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(h.$1, color: primaryColor, size: 20),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    h.$2,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    h.$3,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark ? const Color(0xFF8E8E93) : Colors.black54,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await UpdateService.markWhatsNewSeen();
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'C\'est parti !',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -43,15 +215,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
   String _downloadStatusText = '';
   CancelToken? _cancelToken;
   String? _errorMessage;
-  late final String _changelog;
-  DateTime? _lastProgressUpdateTime;
-  double _lastProgressFraction = 0.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _changelog = UpdateService.stripMarkdown(widget.release.body);
-  }
 
   @override
   void dispose() {
@@ -63,30 +226,20 @@ class _UpdateDialogState extends State<UpdateDialog> {
     if (!mounted) return;
     if (total > 0) {
       final fraction = (received / total).clamp(0.0, 1.0);
-      final now = DateTime.now();
-      final isDone = received >= total;
-      final timePassed = _lastProgressUpdateTime == null ||
-          now.difference(_lastProgressUpdateTime!).inMilliseconds >= 80;
-      final progressChanged = (fraction - _lastProgressFraction).abs() >= 0.01;
-
-      if (isDone || (timePassed && progressChanged)) {
-        _lastProgressUpdateTime = now;
-        _lastProgressFraction = fraction;
-        final recMb = (received / (1024 * 1024)).toStringAsFixed(1);
-        final totMb = (total / (1024 * 1024)).toStringAsFixed(1);
-        final percent = (fraction * 100).toInt();
-        setState(() {
-          _downloadProgress = fraction;
-          _downloadStatusText = '$percent% ($recMb / $totMb MB)';
-        });
-      }
+      final recMb = (received / (1024 * 1024)).toStringAsFixed(1);
+      final totMb = (total / (1024 * 1024)).toStringAsFixed(1);
+      final percent = (fraction * 100).toInt();
+      setState(() {
+        _downloadProgress = fraction;
+        _downloadStatusText = '$percent% ($recMb / $totMb Mo)';
+      });
     }
   }
 
-  Future<void> _startDownloadAndInstall() async {
-    final asset = widget.release.targetAsset;
-    if (asset == null) {
-      await UpdateService.openReleasePage(widget.release);
+  Future<void> _triggerUpdate() async {
+    // On iOS, redirect directly to SideStore or browser
+    if (!kIsWeb && Platform.isIOS) {
+      await UpdateService.installUpdate(widget.release);
       if (mounted) Navigator.of(context).pop();
       return;
     }
@@ -97,30 +250,23 @@ class _UpdateDialogState extends State<UpdateDialog> {
       _downloadStatusText = '0%';
       _errorMessage = null;
       _cancelToken = CancelToken();
-      _lastProgressUpdateTime = null;
-      _lastProgressFraction = 0.0;
     });
 
     try {
-      final downloadedPath = await UpdateService.downloadAsset(
-        asset,
-        cancelToken: _cancelToken,
+      final success = await UpdateService.installUpdate(
+        widget.release,
         onProgress: _onDownloadProgress,
+        cancelToken: _cancelToken,
       );
 
       if (!mounted) return;
-      setState(() {
-        _downloadProgress = 1.0;
-        _downloadStatusText = 'Download completato!';
-      });
-
-      await UpdateService.launchInstallerOrFile(
-        downloadedPath,
-        release: widget.release,
-      );
-
-      if (mounted) {
+      if (success) {
         Navigator.of(context).pop();
+      } else {
+        setState(() {
+          _isDownloading = false;
+          _errorMessage = 'Impossible de lancer l\'installateur.';
+        });
       }
     } catch (e) {
       if (!mounted) return;
@@ -134,24 +280,13 @@ class _UpdateDialogState extends State<UpdateDialog> {
       }
       setState(() {
         _isDownloading = false;
-        _errorMessage = 'Download non riuscito: $e';
+        _errorMessage = 'Erreur de téléchargement : $e';
       });
     }
   }
 
-  void _cancelDownload() {
-    _cancelToken?.cancel();
-    setState(() {
-      _isDownloading = false;
-      _downloadProgress = 0.0;
-      _downloadStatusText = '';
-      _lastProgressUpdateTime = null;
-      _lastProgressFraction = 0.0;
-    });
-  }
-
-  Future<void> _skipVersion() async {
-    await UpdateService.skipVersion(widget.release.version);
+  Future<void> _onLaterPressed() async {
+    await UpdateService.snoozeUpdate();
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -160,15 +295,22 @@ class _UpdateDialogState extends State<UpdateDialog> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primaryColor = theme.colorScheme.primary;
-    final l10n = AppLocalizations.of(context)!;
-    final asset = widget.release.targetAsset;
+    final l10n = AppLocalizations.of(context);
+    final release = widget.release;
+
+    final notes = release.releaseNotes.isNotEmpty
+        ? release.releaseNotes
+        : (release.body.isNotEmpty ? [release.body] : ['Améliorations générales des performances et de la stabilité.']);
 
     return Dialog(
-      backgroundColor: isDark ? const Color(0xFF1E1E22) : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: isDark ? const Color(0xFF0C0C0E) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: isDark ? const BorderSide(color: Color(0x1FFFFFFF), width: 0.5) : BorderSide.none,
+      ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480, maxHeight: 620),
+        constraints: const BoxConstraints(maxWidth: 440, maxHeight: 600),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -184,7 +326,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      Icons.system_update_rounded,
+                      CupertinoIcons.arrow_down_circle_fill,
                       color: primaryColor,
                       size: 26,
                     ),
@@ -195,10 +337,11 @@ class _UpdateDialogState extends State<UpdateDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l10n.updateAvailable,
+                          l10n?.updateAvailable ?? 'Mise à jour disponible',
                           style: const TextStyle(
-                            fontSize: 19,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            letterSpacing: -0.3,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -208,29 +351,28 @@ class _UpdateDialogState extends State<UpdateDialog> {
                               'v${UpdateService.currentVersion}',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: isDark ? Colors.white54 : Colors.black45,
+                                color: isDark ? const Color(0xFF8E8E93) : Colors.black45,
                               ),
                             ),
                             const SizedBox(width: 6),
                             const Icon(
                               Icons.arrow_forward_rounded,
-                              size: 14,
+                              size: 13,
                               color: Colors.grey,
                             ),
                             const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.15),
+                                color: primaryColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                'v${widget.release.version}',
-                                style: const TextStyle(
+                                'v${release.version}',
+                                style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
+                                  fontWeight: FontWeight.w700,
+                                  color: primaryColor,
                                 ),
                               ),
                             ),
@@ -239,191 +381,139 @@ class _UpdateDialogState extends State<UpdateDialog> {
                       ],
                     ),
                   ),
-                  if (!_isDownloading)
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                      tooltip: 'Chiudi',
-                    ),
                 ],
               ),
-              const SizedBox(height: 16),
-              if (asset != null && asset.formattedSize.isNotEmpty) ...[
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.download_rounded,
-                          size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          asset.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        asset.formattedSize,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
+              const SizedBox(height: 18),
               Text(
-                'Novità e Changelog:',
+                'Nouveautés :',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : Colors.black87,
+                  color: isDark ? Colors.white : Colors.black87,
                 ),
               ),
               const SizedBox(height: 8),
-              Expanded(
+              Flexible(
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.03)
-                        : Colors.black.withValues(alpha: 0.02),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.08),
-                    ),
+                    color: isDark ? const Color(0xFF141417) : const Color(0xFFF2F2F7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: isDark ? Border.all(color: const Color(0x14FFFFFF), width: 0.5) : null,
                   ),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      _changelog.isNotEmpty
-                          ? _changelog
-                          : 'Nuovi miglioramenti e correzioni di bug.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: isDark ? Colors.white70 : Colors.black87,
-                      ),
-                    ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: notes.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '•  ',
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              notes[index],
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                color: isDark ? const Color(0xFFE5E5EA) : Colors.black87,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
-              if (_isDownloading) ...[
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: _downloadProgress > 0 ? _downloadProgress : null,
-                    minHeight: 8,
-                    backgroundColor: isDark ? Colors.white12 : Colors.black12,
-                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _downloadStatusText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white60 : Colors.black54,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: _cancelDownload,
-                      child:
-                          const Text('Annulla', style: TextStyle(fontSize: 12)),
-                    ),
-                  ],
-                ),
-              ],
               if (_errorMessage != null) ...[
                 const SizedBox(height: 10),
                 Text(
                   _errorMessage!,
                   style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                  textAlign: TextAlign.center,
                 ),
               ],
-              const SizedBox(height: 16),
-              if (!_isDownloading) ...[
-                Row(
-                  children: [
+              if (_isDownloading) ...[
+                const SizedBox(height: 18),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: _downloadProgress > 0 ? _downloadProgress : null,
+                    backgroundColor: isDark ? const Color(0xFF242428) : const Color(0xFFE5E5EA),
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _downloadStatusText,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? const Color(0xFF8E8E93) : Colors.black54,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  if (!release.mandatory && !_isDownloading)
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () =>
-                            UpdateService.openReleasePage(widget.release),
-                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                        label: Text(l10n.openOnGitHub),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: TextButton(
+                        onPressed: _onLaterPressed,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _startDownloadAndInstall,
-                        icon: const Icon(Icons.download_rounded, size: 18),
-                        label: Text(l10n.updateNow),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        child: Text(
+                          'Plus tard',
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFF8E8E93) : Colors.black54,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: _skipVersion,
-                      child: Text(
-                        l10n.skipThisVersion,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white38 : Colors.black38,
+                  if (!release.mandatory && !_isDownloading) const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: _isDownloading ? null : _triggerUpdate,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
+                      child: _isDownloading
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              Platform.isIOS ? 'Installer via SideStore' : 'Mettre à jour',
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(
-                        'Più tardi',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ],
           ),
         ),

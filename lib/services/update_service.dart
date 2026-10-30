@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -35,6 +36,11 @@ class ReleaseInfo {
   final String tagName;
   final String htmlUrl;
   final String body;
+  final List<String> releaseNotes;
+  final bool mandatory;
+  final String? directApkUrl;
+  final String? directIpaUrl;
+  final String? sidestoreInstallUrl;
   final List<ReleaseAsset> assets;
 
   const ReleaseInfo({
@@ -42,16 +48,68 @@ class ReleaseInfo {
     required this.tagName,
     required this.htmlUrl,
     required this.body,
+    this.releaseNotes = const [],
+    this.mandatory = false,
+    this.directApkUrl,
+    this.directIpaUrl,
+    this.sidestoreInstallUrl,
     required this.assets,
   });
 
   factory ReleaseInfo.fromJson(Map<String, dynamic> json) {
+    // Check if custom server version.json format
+    if (json.containsKey('android') || json.containsKey('ios') || json.containsKey('release_notes')) {
+      final v = (json['version'] as String? ?? '1.0.0').replaceFirst(RegExp(r'^v'), '');
+      final notesList = (json['release_notes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+      final notesBody = notesList.map((e) => '• $e').join('\n');
+      
+      final androidMap = json['android'] as Map<String, dynamic>?;
+      final iosMap = json['ios'] as Map<String, dynamic>?;
+      
+      final apkUrl = androidMap?['download_url'] as String?;
+      final ipaUrl = iosMap?['download_url'] as String?;
+      final sidestoreUrl = iosMap?['sidestore_install_url'] as String? ?? 
+          (ipaUrl != null ? 'sidestore://install?url=$ipaUrl' : null);
+
+      final assets = <ReleaseAsset>[];
+      if (apkUrl != null) {
+        assets.add(ReleaseAsset(name: 'Musly.apk', browserDownloadUrl: apkUrl));
+      }
+      if (ipaUrl != null) {
+        assets.add(ReleaseAsset(name: 'Musly.ipa', browserDownloadUrl: ipaUrl));
+      }
+
+      return ReleaseInfo(
+        version: v,
+        tagName: 'v$v',
+        htmlUrl: 'https://music.corentinjanin.fr',
+        body: notesBody.isNotEmpty ? notesBody : (json['description'] as String? ?? ''),
+        releaseNotes: notesList,
+        mandatory: json['mandatory'] as bool? ?? false,
+        directApkUrl: apkUrl,
+        directIpaUrl: ipaUrl,
+        sidestoreInstallUrl: sidestoreUrl,
+        assets: assets,
+      );
+    }
+
+    // Fallback: GitHub Releases format
     final tag = json['tag_name'] as String? ?? '';
+    final bodyStr = json['body'] as String? ?? '';
+    final extractedNotes = bodyStr
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.startsWith('- ') || l.startsWith('* ') || l.startsWith('• '))
+        .map((l) => l.substring(2).trim())
+        .toList();
+
     return ReleaseInfo(
       version: tag.replaceFirst(RegExp(r'^v'), ''),
       tagName: tag,
       htmlUrl: json['html_url'] as String? ?? '',
-      body: json['body'] as String? ?? '',
+      body: bodyStr,
+      releaseNotes: extractedNotes.isNotEmpty ? extractedNotes : [bodyStr],
+      mandatory: false,
       assets: (json['assets'] as List<dynamic>?)
               ?.map((a) => ReleaseAsset.fromJson(a as Map<String, dynamic>))
               .toList() ??
@@ -60,43 +118,53 @@ class ReleaseInfo {
   }
 
   ReleaseAsset? get targetAsset {
+    if (!kIsWeb && Platform.isAndroid && directApkUrl != null) {
+      return ReleaseAsset(name: 'Musly.apk', browserDownloadUrl: directApkUrl!);
+    }
+    if (!kIsWeb && Platform.isIOS && directIpaUrl != null) {
+      return ReleaseAsset(name: 'Musly.ipa', browserDownloadUrl: directIpaUrl!);
+    }
+
     if (assets.isEmpty) return null;
 
     if (!kIsWeb && Platform.isAndroid) {
-      final apk = assets.firstWhere(
+      return assets.firstWhere(
         (a) => a.name.endsWith('.apk'),
         orElse: () => assets.first,
       );
-      return apk;
+    }
+
+    if (!kIsWeb && Platform.isIOS) {
+      return assets.firstWhere(
+        (a) => a.name.endsWith('.ipa'),
+        orElse: () => assets.first,
+      );
     }
 
     if (!kIsWeb && Platform.isWindows) {
-      final exe = assets.firstWhere(
+      return assets.firstWhere(
         (a) =>
             a.name.toLowerCase().endsWith('-setup.exe') ||
             a.name.toLowerCase().endsWith('.exe'),
         orElse: () => assets.first,
       );
-      return exe;
     }
 
     if (!kIsWeb && Platform.isMacOS) {
-      final dmg = assets.firstWhere(
+      return assets.firstWhere(
         (a) => a.name.endsWith('.dmg'),
         orElse: () => assets.first,
       );
-      return dmg;
     }
 
     if (!kIsWeb && Platform.isLinux) {
-      final linux = assets.firstWhere(
+      return assets.firstWhere(
         (a) =>
             a.name.contains('linux') ||
             a.name.endsWith('.tar.gz') ||
             a.name.endsWith('.AppImage'),
         orElse: () => assets.first,
       );
-      return linux;
     }
 
     return assets.isNotEmpty ? assets.first : null;
@@ -106,11 +174,17 @@ class ReleaseInfo {
 class UpdateService {
   static const String currentVersion = '2.0.4';
 
-  static const String _apiUrl =
+  // Primary: CJ Music server update endpoint
+  static const String _primaryServerUrl =
+      'https://music.corentinjanin.fr/updates/version.json';
+
+  // Fallback: GitHub releases
+  static const String _fallbackGithubUrl =
       'https://api.github.com/repos/dddevid/Musly/releases/latest';
 
   static const String _skippedVersionKey = 'skipped_update_version';
-  static const String _lastCheckTimestampKey = 'last_update_check_timestamp';
+  static const String _lastLaterTimestampKey = 'last_update_later_timestamp';
+  static const String _lastSeenVersionKey = 'last_seen_app_version';
 
   static bool _hasCheckedStartup = false;
   static bool get hasCheckedStartup => _hasCheckedStartup;
@@ -119,58 +193,137 @@ class UpdateService {
 
   static final _dio = Dio(
     BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: const Duration(seconds: 6),
+      receiveTimeout: const Duration(seconds: 8),
       headers: {
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
+        'Accept': 'application/json',
         'User-Agent': 'Musly-App/$currentVersion',
       },
     ),
   );
 
-  static Future<ReleaseInfo?> checkForUpdate({bool force = false}) async {
+  /// Check whether we should show the "What's New" recap dialog on first open after update
+  static Future<bool> shouldShowWhatsNew() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      final response = await _dio.get<Map<String, dynamic>>(_apiUrl);
-      final data = response.data;
-      if (data == null) return null;
-
-      await prefs.setInt(
-          _lastCheckTimestampKey, DateTime.now().millisecondsSinceEpoch);
-
-      final release = ReleaseInfo.fromJson(data);
-      if (_isNewer(release.version, currentVersion)) {
-        if (!force) {
-          final skippedVersion = prefs.getString(_skippedVersionKey);
-          if (skippedVersion == release.version) {
-            debugPrint(
-                'UpdateService: version ${release.version} was skipped by user');
-            return null;
-          }
-        }
-        return release;
+      final lastSeen = prefs.getString(_lastSeenVersionKey);
+      if (lastSeen == null) {
+        // First run ever: mark current version as seen so we don't spam
+        await prefs.setString(_lastSeenVersionKey, currentVersion);
+        return false;
       }
-      return null;
-    } catch (e) {
-      debugPrint('UpdateService: check failed – $e');
-      return null;
+      if (_isNewer(currentVersion, lastSeen)) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
     }
   }
 
+  /// Mark current version as acknowledged in "What's New" dialog
+  static Future<void> markWhatsNewSeen() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastSeenVersionKey, currentVersion);
+    } catch (_) {}
+  }
+
+  /// Check for update from primary server, falling back to GitHub
+  static Future<ReleaseInfo?> checkForUpdate({bool force = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Check "Plus tard" snooze: if user snoozed within the last 24h and not forced
+    if (!force) {
+      final lastLater = prefs.getInt(_lastLaterTimestampKey);
+      if (lastLater != null) {
+        final elapsed = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(lastLater));
+        if (elapsed < const Duration(hours: 24)) {
+          debugPrint('UpdateService: Snoozed ("Plus tard") for ${24 - elapsed.inHours}h remaining.');
+          return null;
+        }
+      }
+    }
+
+    // 1. Try Primary Server (music.corentinjanin.fr/updates/version.json)
+    try {
+      final response = await _dio.get<dynamic>(
+        _primaryServerUrl,
+        options: Options(responseType: ResponseType.json),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        Map<String, dynamic> data;
+        if (response.data is String) {
+          data = jsonDecode(response.data as String) as Map<String, dynamic>;
+        } else {
+          data = response.data as Map<String, dynamic>;
+        }
+
+        final release = ReleaseInfo.fromJson(data);
+        if (_isNewer(release.version, currentVersion)) {
+          if (!force && !release.mandatory) {
+            final skippedVersion = prefs.getString(_skippedVersionKey);
+            if (skippedVersion == release.version) {
+              return null;
+            }
+          }
+          return release;
+        }
+      }
+    } catch (e) {
+      debugPrint('UpdateService: Primary server check failed ($e), trying GitHub...');
+    }
+
+    // 2. Fallback to GitHub releases
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        _fallbackGithubUrl,
+        options: Options(
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+        ),
+      );
+      final data = response.data;
+      if (data != null) {
+        final release = ReleaseInfo.fromJson(data);
+        if (_isNewer(release.version, currentVersion)) {
+          if (!force) {
+            final skippedVersion = prefs.getString(_skippedVersionKey);
+            if (skippedVersion == release.version) {
+              return null;
+            }
+          }
+          return release;
+        }
+      }
+    } catch (e) {
+      debugPrint('UpdateService: GitHub check failed – $e');
+    }
+
+    return null;
+  }
+
+  /// User clicked "Plus tard": snooze prompt for 24 hours
+  static Future<void> snoozeUpdate() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lastLaterTimestampKey, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  /// User chose to ignore/skip this specific version completely
   static Future<void> skipVersion(String version) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_skippedVersionKey, version);
   }
 
-  static bool isNewerVersion(String remote, String current) =>
-      _isNewer(remote, current);
+  static bool isNewerVersion(String remote, String current) => _isNewer(remote, current);
 
   static bool _isNewer(String remote, String current) {
     try {
       List<int> parse(String v) =>
-          v.split('.').map((p) => int.tryParse(p) ?? 0).toList();
+          v.split('.').map((p) => int.tryParse(p.split('+').first.replaceAll(RegExp(r'[^\d]'), '')) ?? 0).toList();
 
       final r = parse(remote);
       final c = parse(current);
@@ -192,6 +345,48 @@ class UpdateService {
     }
   }
 
+  /// Launch update process: on iOS, trigger SideStore url scheme; on Android/Desktop, download file
+  static Future<bool> installUpdate(
+    ReleaseInfo release, {
+    void Function(int received, int total)? onProgress,
+    CancelToken? cancelToken,
+  }) async {
+    if (!kIsWeb && Platform.isIOS) {
+      final sidestoreUri = release.sidestoreInstallUrl ??
+          (release.directIpaUrl != null ? 'sidestore://install?url=${release.directIpaUrl}' : null);
+
+      if (sidestoreUri != null) {
+        final uri = Uri.parse(sidestoreUri);
+        if (await canLaunchUrl(uri)) {
+          return await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      }
+
+      // If SideStore scheme cannot be opened, open direct download URL
+      if (release.directIpaUrl != null) {
+        final uri = Uri.parse(release.directIpaUrl!);
+        if (await canLaunchUrl(uri)) {
+          return await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      }
+      return false;
+    }
+
+    // Android & Desktop: Download asset then execute native installer
+    final asset = release.targetAsset;
+    if (asset == null) {
+      return await openReleasePage(release);
+    }
+
+    final downloadedPath = await downloadAsset(
+      asset,
+      onProgress: onProgress,
+      cancelToken: cancelToken,
+    );
+
+    return await launchInstallerOrFile(downloadedPath, release: release);
+  }
+
   static Future<String> downloadAsset(
     ReleaseAsset asset, {
     void Function(int received, int total)? onProgress,
@@ -202,7 +397,6 @@ class UpdateService {
     final filePath = '${tempDir.path}/$sanitizedName';
     final targetFile = File(filePath);
 
-    // If file already exists and is complete, reuse it immediately
     if (targetFile.existsSync() && asset.size != null && asset.size! > 0) {
       if (targetFile.lengthSync() == asset.size) {
         onProgress?.call(asset.size!, asset.size!);
@@ -268,9 +462,7 @@ class UpdateService {
           sink.closeSync();
 
           try {
-            if (targetFile.existsSync()) {
-              targetFile.deleteSync();
-            }
+            if (targetFile.existsSync()) targetFile.deleteSync();
             partFile.renameSync(filePath);
           } catch (_) {
             partFile.copySync(filePath);
@@ -286,9 +478,7 @@ class UpdateService {
           } catch (_) {}
         }
       } catch (e) {
-        if (e is DioException && e.type == DioExceptionType.cancel) {
-          rethrow;
-        }
+        if (e is DioException && e.type == DioExceptionType.cancel) rethrow;
         if (partFile.existsSync()) {
           try {
             partFile.deleteSync();
@@ -308,9 +498,7 @@ class UpdateService {
     );
 
     try {
-      if (targetFile.existsSync()) {
-        targetFile.deleteSync();
-      }
+      if (targetFile.existsSync()) targetFile.deleteSync();
       File(partPath).renameSync(filePath);
     } catch (_) {
       File(partPath).copySync(filePath);
@@ -322,8 +510,7 @@ class UpdateService {
     return filePath;
   }
 
-  static const MethodChannel _apkChannel =
-      MethodChannel('com.devid.musly/apk_installer');
+  static const MethodChannel _apkChannel = MethodChannel('com.devid.musly/apk_installer');
 
   static Future<bool> launchInstallerOrFile(
     String filePath, {
@@ -378,14 +565,6 @@ class UpdateService {
 
   static Future<bool> openReleasePage(ReleaseInfo release) async {
     final uri = Uri.parse(release.htmlUrl);
-    if (await canLaunchUrl(uri)) {
-      return await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-    return false;
-  }
-
-  static Future<bool> openAssetDownloadUrl(ReleaseAsset asset) async {
-    final uri = Uri.parse(asset.browserDownloadUrl);
     if (await canLaunchUrl(uri)) {
       return await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
