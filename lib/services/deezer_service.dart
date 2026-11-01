@@ -57,7 +57,28 @@ class DeezerService {
         final duration = (data['duration'] as num?)?.toInt();
 
         final tracksData = (data['tracks']?['data'] as List?) ?? [];
-        final songs = tracksData.map((t) {
+        final List allTracksData = List.from(tracksData);
+        var nextUrl = data['tracks']?['next'] as String?;
+        int pageCount = 0;
+        // Paginer pour récupérer tous les morceaux (jusqu'à 1000+ morceaux)
+        while (nextUrl != null && nextUrl.isNotEmpty && pageCount < 15) {
+          try {
+            final pageRes = await http.get(Uri.parse(nextUrl)).timeout(const Duration(seconds: 4));
+            if (pageRes.statusCode == 200) {
+              final pageData = jsonDecode(pageRes.body);
+              final pageList = (pageData['data'] as List?) ?? [];
+              allTracksData.addAll(pageList);
+              nextUrl = pageData['next'] as String?;
+              pageCount++;
+            } else {
+              break;
+            }
+          } catch (_) {
+            break;
+          }
+        }
+
+        final songs = allTracksData.map((t) {
           final tId = t['id']?.toString() ?? '';
           final albumData = t['album'] as Map<String, dynamic>?;
           final artistData = t['artist'] as Map<String, dynamic>?;

@@ -60,7 +60,7 @@ class LinkResolverService {
       // B. Serveur CJ Music Resolver (si implémenté /api/resolve)
       try {
         final serverUrl = Uri.parse('https://music.corentinjanin.fr/api/resolve?url=${Uri.encodeComponent(t)}');
-        final res = await http.get(serverUrl).timeout(const Duration(seconds: 4));
+        final res = await http.get(serverUrl).timeout(const Duration(seconds: 12));
         if (res.statusCode == 200) {
           final data = jsonDecode(res.body) as Map<String, dynamic>;
           if (data['status'] == 'success' && data['resolved_type'] == 'playlist') {
@@ -112,23 +112,45 @@ class LinkResolverService {
 
                 final rawTracks = (entity['trackList'] as List?) ?? [];
 
-                // Convertir les morceaux en parallèle via Future.wait pour une vitesse instantanée
-                final tracksToResolve = rawTracks.take(35).toList();
+                // Convertir TOUS les morceaux sans limite artificielle
+                final tracksToResolve = rawTracks.whereType<Map<String, dynamic>>().toList();
                 final songFutures = tracksToResolve.map((rt) async {
                   final title = rt['title']?.toString() ?? '';
-                  final artistsList = (rt['artists'] as List?)
-                          ?.map((a) => a['name']?.toString() ?? '')
-                          .where((n) => n.isNotEmpty)
-                          .toList() ??
-                      [];
-                  final artist = artistsList.isNotEmpty ? artistsList.first : '';
+                  final artist = rt['subtitle']?.toString() ??
+                      ((rt['artists'] as List?)
+                              ?.map((a) => a['name']?.toString() ?? '')
+                              .where((n) => n.isNotEmpty)
+                              .firstOrNull ??
+                          '');
                   if (title.isEmpty) return null;
+
+                  final spotifyDurMs = (rt['duration'] as num?)?.toInt();
+                  final spotifyDurSec = (spotifyDurMs != null && spotifyDurMs > 0)
+                      ? spotifyDurMs ~/ 1000
+                      : null;
+
                   try {
                     final query = artist.isNotEmpty ? '$title $artist' : title;
                     final found = await DeezerService().searchTracks(query, limit: 1);
-                    if (found.isNotEmpty) return found.first;
+                    if (found.isNotEmpty) {
+                      final dzSong = found.first;
+                      return dzSong.copyWith(
+                        duration: (dzSong.duration != null && dzSong.duration! > 0)
+                            ? dzSong.duration
+                            : spotifyDurSec,
+                      );
+                    }
                   } catch (_) {}
-                  return null;
+
+                  // Repli sans perte : conserver 100% des titres même si non encore résolus
+                  return Song(
+                    id: 'ext_dz_query_${Uri.encodeComponent(title)}_${Uri.encodeComponent(artist)}',
+                    title: title,
+                    artist: artist.isNotEmpty ? artist : 'Artiste inconnu',
+                    album: plName,
+                    coverArt: plCover,
+                    duration: spotifyDurSec ?? 210,
+                  );
                 });
 
                 final resolvedTracks = (await Future.wait(songFutures)).whereType<Song>().toList();
@@ -178,7 +200,7 @@ class LinkResolverService {
               } catch (_) {}
             }
 
-            final tracksToResolve = rawTracks.take(35).toList();
+            final tracksToResolve = rawTracks.whereType<Map<String, dynamic>>().toList();
             final songFutures = tracksToResolve.map((tr) async {
               final trackName = tr['name']?.toString() ?? '';
               final artistName = tr['byArtist']?['name']?.toString() ?? '';
@@ -188,7 +210,15 @@ class LinkResolverService {
                 final found = await DeezerService().searchTracks(query, limit: 1);
                 if (found.isNotEmpty) return found.first;
               } catch (_) {}
-              return null;
+
+              return Song(
+                id: 'ext_dz_query_${Uri.encodeComponent(trackName)}_${Uri.encodeComponent(artistName)}',
+                title: trackName,
+                artist: artistName.isNotEmpty ? artistName : 'Artiste inconnu',
+                album: title,
+                coverArt: plCover,
+                duration: 210,
+              );
             });
 
             final resolvedTracks = (await Future.wait(songFutures)).whereType<Song>().toList();
