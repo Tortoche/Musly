@@ -625,7 +625,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${_playlist!.songs?.length ?? 0} songs • ${_playlist!.formattedDuration}',
+                    '${AppLocalizations.of(context)!.songsCount(_playlist!.songs?.length ?? 0)}${_playlist!.formattedDuration.isNotEmpty ? ' • ${_playlist!.formattedDuration}' : ''}',
                     style: theme.textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -904,7 +904,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${AppLocalizations.of(context)!.songsCount(_playlist!.songs?.length ?? 0)} • ${_playlist!.formattedDuration}',
+                    '${AppLocalizations.of(context)!.songsCount(_playlist!.songs?.length ?? 0)}${_playlist!.formattedDuration.isNotEmpty ? ' • ${_playlist!.formattedDuration}' : ''}',
                     style: theme.textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

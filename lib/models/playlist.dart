@@ -98,13 +98,25 @@ class Playlist {
     };
   }
 
-  String get formattedDuration {
-    if (duration == null) return '';
-    final hours = duration! ~/ 3600;
-    final minutes = (duration! % 3600) ~/ 60;
-    if (hours > 0) {
-      return '$hours h $minutes min';
+  int get totalDurationSeconds {
+    if (duration != null && duration! > 0) return duration!;
+    if (songs != null && songs!.isNotEmpty) {
+      return songs!.fold<int>(0, (sum, s) => sum + (s.duration ?? 0));
     }
-    return '$minutes min';
+    return 0;
+  }
+
+  String get formattedDuration {
+    final total = totalDurationSeconds;
+    if (total <= 0) return '';
+    final hours = total ~/ 3600;
+    final minutes = (total % 3600) ~/ 60;
+    if (hours > 0) {
+      return minutes > 0 ? '$hours h $minutes min' : '$hours h';
+    }
+    if (minutes > 0) {
+      return '$minutes min';
+    }
+    return total > 0 ? '< 1 min' : '';
   }
 }

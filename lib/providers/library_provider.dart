@@ -1490,7 +1490,8 @@ class LibraryProvider extends ChangeNotifier
     }
 
     if (playlistId.startsWith('ext_sp_pl_') || playlistId.startsWith('sp_pl_')) {
-      final sp = await LinkResolverService.resolvePlaylistLink(playlistId);
+      final cleanId = playlistId.replaceAll('ext_sp_pl_', '').replaceAll('sp_pl_', '');
+      final sp = await LinkResolverService.resolvePlaylistLink('https://open.spotify.com/playlist/' + cleanId);
       if (sp != null) {
         _dynamicPlaylistsCache[playlistId] = sp;
         return sp;
@@ -1964,12 +1965,16 @@ class LibraryProvider extends ChangeNotifier
     final deezerAlbumsFuture =
         DeezerService().searchAlbums(cleanQuery, limit: 15).catchError((_) => <Album>[]);
 
+    final deezerPlaylistsFuture =
+        DeezerService().searchPlaylists(cleanQuery, limit: 25).catchError((_) => <Playlist>[]);
+
     final results = await Future.wait([
       subsonicFuture,
       autoFuture,
       deezerSongsFuture,
       deezerArtistsFuture,
       deezerAlbumsFuture,
+      deezerPlaylistsFuture,
     ]);
 
     final subResult = results[0] as SearchResult;
@@ -1977,6 +1982,7 @@ class LibraryProvider extends ChangeNotifier
     final deezerSongs = results[2] as List<Song>;
     final deezerArtists = results[3] as List<Artist>;
     final deezerAlbums = results[4] as List<Album>;
+    final deezerPlaylists = results[5] as List<Playlist>;
 
     // Fusionner les titres : Autocomplétion prioritaire + serveur + catalogue universel
     final Set<String> seenIds = {};
@@ -2060,10 +2066,41 @@ class LibraryProvider extends ChangeNotifier
       return scoreB.compareTo(scoreA);
     });
 
+    // Fusionner les playlists (locales + serveur + Deezer universel)
+    final Set<String> seenPlaylistKeys = {};
+    final List<Playlist> mergedPlaylists = [];
+
+    void addPlaylistIfNew(Playlist pl) {
+      final key = '${_normalizeSearch(pl.name)}_${pl.owner ?? ""}';
+      if (seenPlaylistKeys.add(key) && seenPlaylistKeys.add(pl.id)) {
+        mergedPlaylists.add(pl);
+      }
+    }
+
+    final lowerClean = cleanQuery.toLowerCase();
+    for (final pl in _playlists) {
+      if (pl.name.toLowerCase().contains(lowerClean)) {
+        addPlaylistIfNew(pl);
+      }
+    }
+    for (final pl in subResult.playlists) {
+      addPlaylistIfNew(pl);
+    }
+    for (final pl in deezerPlaylists) {
+      addPlaylistIfNew(pl);
+    }
+
+    mergedPlaylists.sort((a, b) {
+      final scoreA = _scoreRelevance(a.name, cleanQuery);
+      final scoreB = _scoreRelevance(b.name, cleanQuery);
+      return scoreB.compareTo(scoreA);
+    });
+
     return SearchResult(
       artists: mergedArtists,
       albums: mergedAlbums,
       songs: mergedSongs,
+      playlists: mergedPlaylists,
     );
   }
 
@@ -2147,7 +2184,17 @@ class LibraryProvider extends ChangeNotifier
 
         .toList();
 
-    return SearchResult(songs: songs, artists: artists, albums: albums);
+    final localPlaylists = _playlists
+        .where((p) => p.name.toLowerCase().contains(lowerQuery))
+        .take(15)
+        .toList();
+
+    return SearchResult(
+      songs: songs,
+      artists: artists,
+      albums: albums,
+      playlists: localPlaylists,
+    );
 
   }
 

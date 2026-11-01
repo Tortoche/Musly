@@ -699,33 +699,84 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
           if ((_selectedFilter == 'All' || _selectedFilter == 'Playlists') &&
               playlists.isNotEmpty) ...[
-            HorizontalScrollSection(
-              title: 'Playlists',
-              padding: EdgeInsets.zero,
-              cardSize: _isDesktop ? 175 : 150,
-              children: playlists.map((playlist) {
-                final cardSize = _isDesktop ? 175.0 : 150.0;
-                return MediaCard(
-                  title: playlist.name,
-                  subtitle: 'Playlist • Musly',
-                  coverArt: playlist.coverArt,
-                  artwork: PlaylistArtwork(
-                    playlist: playlist,
-                    size: cardSize - 24,
-                    borderRadius: 4,
-                  ),
-                  size: cardSize,
-                  onTap: () => NavigationHelper.push(
-                    context,
-                    PlaylistScreen(
-                      playlistId: playlist.id,
-                      playlistName: playlist.name,
-                      initialPlaylist: playlist,
+            if (_selectedFilter == 'All') ...[
+              HorizontalScrollSection(
+                title: 'Playlists',
+                padding: EdgeInsets.zero,
+                cardSize: _isDesktop ? 175 : 150,
+                children: playlists.map((playlist) {
+                  final cardSize = _isDesktop ? 175.0 : 150.0;
+                  final subtitle = (playlist.owner != null && playlist.owner!.isNotEmpty)
+                      ? playlist.owner!
+                      : (playlist.songCount != null && playlist.songCount! > 0
+                          ? '\${playlist.songCount} titres'
+                          : 'Playlist');
+                  return MediaCard(
+                    title: playlist.name,
+                    subtitle: subtitle,
+                    coverArt: playlist.coverArt,
+                    artwork: PlaylistArtwork(
+                      playlist: playlist,
+                      size: cardSize - 24,
+                      borderRadius: 4,
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
+                    size: cardSize,
+                    onTap: () => NavigationHelper.push(
+                      context,
+                      PlaylistScreen(
+                        playlistId: playlist.id,
+                        playlistName: playlist.name,
+                        initialPlaylist: playlist,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ] else ...[
+              const Text(
+                'Playlists',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: _isDesktop ? 4 : 2,
+                  childAspectRatio: 0.75,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: playlists.length,
+                itemBuilder: (context, index) {
+                  final playlist = playlists[index];
+                  final subtitle = (playlist.owner != null && playlist.owner!.isNotEmpty)
+                      ? playlist.owner!
+                      : (playlist.songCount != null && playlist.songCount! > 0
+                          ? '\${playlist.songCount} titres'
+                          : 'Playlist');
+                  return MediaCard(
+                    title: playlist.name,
+                    subtitle: subtitle,
+                    coverArt: playlist.coverArt,
+                    artwork: PlaylistArtwork(
+                      playlist: playlist,
+                      size: double.infinity,
+                      borderRadius: 8,
+                    ),
+                    size: double.infinity,
+                    onTap: () => NavigationHelper.push(
+                      context,
+                      PlaylistScreen(
+                        playlistId: playlist.id,
+                        playlistName: playlist.name,
+                        initialPlaylist: playlist,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ],
       ),

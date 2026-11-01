@@ -34,7 +34,32 @@ class PlaylistArtwork extends StatelessWidget {
       builder: (context, _, __) {
         final playlistId = playlist?.id ?? '';
 
-        // 1. Récupérer les chansons pour le collage 2x2 (top 4 morceaux)
+        // 1. Pochette officielle explicite ou distante prioritaire
+        var effectiveCoverArt = coverArt ?? playlist?.coverArt;
+        if ((effectiveCoverArt == null || effectiveCoverArt.isEmpty) &&
+            playlistId.isNotEmpty) {
+          try {
+            final lib = Provider.of<LibraryProvider>(context, listen: false);
+            final found = lib.playlists.firstWhere(
+              (p) => p.id == playlistId,
+              orElse: () => playlist!,
+            );
+            if (found.coverArt != null && found.coverArt!.isNotEmpty) {
+              effectiveCoverArt = found.coverArt;
+            }
+          } catch (_) {}
+        }
+
+        if (effectiveCoverArt != null && effectiveCoverArt.isNotEmpty) {
+          return AlbumArtwork(
+            coverArt: effectiveCoverArt,
+            size: validSize,
+            borderRadius: borderRadius,
+            shadow: shadow,
+          );
+        }
+
+        // 2. Si aucune pochette propre, générer la mosaïque 2x2 des morceaux
         List<Song> allSongs = songs ?? playlist?.songs ?? [];
         if (allSongs.isEmpty && playlist != null) {
           try {
@@ -107,30 +132,7 @@ class PlaylistArtwork extends StatelessWidget {
           }
         }
 
-        // 3. Repli : pochette explicite ou pochette du serveur
-        var effectiveCoverArt = coverArt ?? playlist?.coverArt;
-        if ((effectiveCoverArt == null || effectiveCoverArt.isEmpty) &&
-            playlistId.isNotEmpty) {
-          try {
-            final lib = Provider.of<LibraryProvider>(context, listen: false);
-            final found = lib.playlists.firstWhere(
-              (p) => p.id == playlistId,
-              orElse: () => playlist!,
-            );
-            if (found.coverArt != null && found.coverArt!.isNotEmpty) {
-              effectiveCoverArt = found.coverArt;
-            }
-          } catch (_) {}
-        }
-
-        if (effectiveCoverArt != null && effectiveCoverArt.isNotEmpty) {
-          return AlbumArtwork(
-            coverArt: effectiveCoverArt,
-            size: validSize,
-            borderRadius: borderRadius,
-            shadow: shadow,
-          );
-        }
+        // 3. Repli : icône générique
 
 
 
