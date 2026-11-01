@@ -9,6 +9,7 @@ import 'package:musly/services/offline_service.dart';
 import 'package:musly/services/tv_detection_service.dart';
 import 'package:musly/services/favorite_playlists_service.dart';
 import 'package:musly/services/playlist_cover_service.dart';
+import 'package:musly/services/haptics_service.dart';
 import 'package:musly/services/discovery_service.dart';
 import 'package:musly/theme/app_theme.dart';
 import 'package:musly/widgets/widgets.dart';
@@ -496,6 +497,325 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     );
   }
 
+  void _showAddToMyPlaylistsModal() {
+    if (_playlist == null) return;
+    final songs = _playlist!.songs ?? [];
+    if (songs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cette playlist ne contient aucun morceau à ajouter.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    HapticsService.light();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF141416) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(
+              color: isDark ? const Color(0x1AFFFFFF) : Colors.black12,
+              width: 0.5,
+            ),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(bottomSheetContext).padding.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black26,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    PlaylistArtwork(
+                      playlist: _playlist,
+                      size: 48,
+                      borderRadius: 6,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _playlist!.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${songs.length} titres • ${_playlist!.formattedDuration}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.white54 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    CupertinoIcons.plus,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Enregistrer comme nouvelle playlist',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text('Ajoute la liste complète à votre bibliothèque'),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  _promptSaveAsNewPlaylist();
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    CupertinoIcons.square_stack_3d_down_right,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Ajouter à une playlist existante...',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text("Fusionner ces morceaux dans l'une de vos listes"),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  _showSelectTargetPlaylistModal();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _promptSaveAsNewPlaylist() async {
+    final textController = TextEditingController(text: _playlist!.name);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dlgContext) {
+        return AlertDialog(
+          title: const Text('Enregistrer dans mes listes'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Donnez un nom à votre playlist :',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: textController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Nom de la playlist',
+                  filled: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dlgContext, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dlgContext, true),
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      final name = textController.text.trim().isNotEmpty
+          ? textController.text.trim()
+          : _playlist!.name;
+      final lib = Provider.of<LibraryProvider>(context, listen: false);
+      try {
+        await lib.savePlaylistToLibrary(
+          name: name,
+          songs: _playlist!.songs ?? [],
+          coverArt: _playlist!.coverArt,
+        );
+        HapticsService.medium();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('Playlist "$name" enregistrée dans vos listes !'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Erreur lors de l'enregistrement : $e"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showSelectTargetPlaylistModal() {
+    final lib = Provider.of<LibraryProvider>(context, listen: false);
+    final myPlaylists = lib.playlists.where((p) => p.id != widget.playlistId).toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF141416) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.7,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black26,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Text(
+                      'Choisir une liste existante',
+                      style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (myPlaylists.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text(
+                    "Aucune liste de lecture disponible.\nCréez-en une nouvelle d'abord !",
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: myPlaylists.length,
+                    itemBuilder: (ctx, i) {
+                      final target = myPlaylists[i];
+                      return ListTile(
+                        leading: PlaylistArtwork(
+                          playlist: target,
+                          size: 42,
+                          borderRadius: 6,
+                        ),
+                        title: Text(target.name),
+                        subtitle: Text('${target.songCount ?? 0} titres'),
+                        onTap: () async {
+                          Navigator.pop(sheetContext);
+                          final songsToAdd = _playlist!.songs ?? [];
+                          await lib.addSongsToPlaylist(target.id, songsToAdd);
+                          HapticsService.medium();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '${songsToAdd.length} titres ajoutés à "${target.name}" !',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget? _buildBottomPlayer(BuildContext context) {
     final isInner =
         Navigator.of(context) == NavigationHelper.appNavigatorKey.currentState;
@@ -650,6 +970,41 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: _showAddToMyPlaylistsModal,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF161618) : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark ? const Color(0x1AFFFFFF) : Colors.black12,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            CupertinoIcons.plus_rectangle_on_rectangle,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Ajouter à mes listes de lecture',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -795,6 +1150,11 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                 ),
               ] else ...[
                 IconButton(
+                  tooltip: 'Ajouter à mes listes de lecture',
+                  icon: const Icon(CupertinoIcons.plus_rectangle_on_rectangle),
+                  onPressed: _showAddToMyPlaylistsModal,
+                ),
+                IconButton(
                   tooltip: AppLocalizations.of(context)!.searchInPlaylist,
                   icon: Icon(_showSearch
                       ? CupertinoIcons.search_circle_fill
@@ -810,7 +1170,9 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                   icon: const Icon(CupertinoIcons.ellipsis_circle),
                   tooltip: AppLocalizations.of(context)!.moreOptions,
                   onSelected: (value) {
-                    if (value == 'queue_all') {
+                    if (value == 'add_to_my_playlists') {
+                      _showAddToMyPlaylistsModal();
+                    } else if (value == 'queue_all') {
                       final songs = _playlist?.songs ?? [];
                       final playerProvider =
                           Provider.of<PlayerProvider>(context, listen: false);
@@ -827,6 +1189,16 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                     }
                   },
                   itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'add_to_my_playlists',
+                      child: Row(
+                        children: [
+                          const Icon(CupertinoIcons.plus_rectangle_on_rectangle, size: 18),
+                          const SizedBox(width: 12),
+                          const Text('Ajouter à mes playlists'),
+                        ],
+                      ),
+                    ),
                     PopupMenuItem(
                       value: 'queue_all',
                       child: Row(
@@ -931,6 +1303,41 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: _showAddToMyPlaylistsModal,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF161618) : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark ? const Color(0x1AFFFFFF) : Colors.black12,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            CupertinoIcons.plus_rectangle_on_rectangle,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Ajouter à mes listes de lecture',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   if (_showSearch) ...[
                     const SizedBox(height: 16),

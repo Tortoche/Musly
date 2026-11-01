@@ -1597,6 +1597,109 @@ class LibraryProvider extends ChangeNotifier
 
   }
 
+  /// Enregistre une playlist complète (ex: Deezer, Spotify, Apple Music) dans la bibliothèque
+  Future<Playlist> savePlaylistToLibrary({
+    required String name,
+    required List<Song> songs,
+    String? coverArt,
+  }) async {
+    // 1. Essayer de créer la playlist sur le serveur pour synchronisation
+    String? serverPlaylistId;
+    try {
+      final serverSongIds = songs
+          .where((s) => !s.id.startsWith('ext_') && !s.id.startsWith('cj_dz_') && !s.id.startsWith('dz_'))
+          .map((s) => s.id)
+          .toList();
+      await _subsonicService.createPlaylist(name: name, songIds: serverSongIds.isNotEmpty ? serverSongIds : null);
+      await loadPlaylists();
+      final found = _playlists.where((p) => p.name == name).toList();
+      if (found.isNotEmpty) {
+        serverPlaylistId = found.last.id;
+      }
+    } catch (_) {}
+
+    final id = serverPlaylistId ?? 'pl_${DateTime.now().millisecondsSinceEpoch}';
+    final newPlaylist = Playlist(
+      id: id,
+      name: name,
+      songCount: songs.length,
+      coverArt: coverArt,
+      duration: songs.fold<int>(0, (sum, s) => sum + (s.duration ?? 0)),
+      songs: songs,
+      created: DateTime.now(),
+      changed: DateTime.now(),
+      public: false,
+    );
+
+    await cacheSongsLocally(songs);
+    await updatePlaylistInMemoryAndDb(newPlaylist);
+
+    if (coverArt == null || coverArt.isEmpty) {
+      PlaylistCoverService().checkAndGenerateCover(
+        playlistId: id,
+        songs: songs,
+        subsonicService: _subsonicService,
+      );
+    }
+
+    notifyListeners();
+    return newPlaylist;
+  }
+
+  /// Ajoute une liste de morceaux à une playlist existante
+  Future<void> addSongsToPlaylist(String playlistId, List<Song> newSongs) async {
+    if (newSongs.isEmpty) return;
+
+    Playlist fullPlaylist;
+    try {
+      fullPlaylist = await getPlaylist(playlistId);
+    } catch (_) {
+      final local = await _db.getPlaylist(playlistId);
+      final idx = _playlists.indexWhere((p) => p.id == playlistId);
+      final inMem = idx != -1 ? _playlists[idx] : Playlist(id: playlistId, name: 'Playlist');
+      fullPlaylist = local ?? inMem;
+    }
+
+    final currentSongs = List<Song>.from(fullPlaylist.songs ?? []);
+    final currentIds = currentSongs.map((s) => s.id).toSet();
+    for (final s in newSongs) {
+      if (currentIds.add(s.id)) {
+        currentSongs.add(s);
+      }
+    }
+
+    final updated = fullPlaylist.copyWith(
+      songs: currentSongs,
+      songCount: currentSongs.length,
+      duration: currentSongs.fold<int>(0, (sum, s) => sum + (s.duration ?? 0)),
+      changed: DateTime.now(),
+    );
+
+    await cacheSongsLocally(newSongs);
+    await updatePlaylistInMemoryAndDb(updated);
+
+    PlaylistCoverService().checkAndGenerateCover(
+      playlistId: playlistId,
+      songs: currentSongs,
+      subsonicService: _subsonicService,
+    );
+
+    final serverIdsToAdd = newSongs
+        .where((s) => !s.id.startsWith('ext_') && !s.id.startsWith('cj_dz_') && !s.id.startsWith('dz_') && !s.isLocal)
+        .map((s) => s.id)
+        .toList();
+    if (serverIdsToAdd.isNotEmpty) {
+      try {
+        await _subsonicService.updatePlaylist(
+          playlistId: playlistId,
+          songIdsToAdd: serverIdsToAdd,
+        );
+      } catch (_) {}
+    }
+
+    notifyListeners();
+  }
+
 
 
   Future<Playlist> importPlaylistFromPreview({
