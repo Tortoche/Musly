@@ -19,11 +19,13 @@ import 'package:musly/utils/navigation_helper.dart';
 class PlaylistScreen extends StatefulWidget {
   final String playlistId;
   final String? playlistName;
+  final Playlist? initialPlaylist;
 
   const PlaylistScreen({
     super.key,
     required this.playlistId,
     this.playlistName,
+    this.initialPlaylist,
   });
 
   @override
@@ -45,6 +47,12 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialPlaylist != null) {
+      _playlist = widget.initialPlaylist;
+      if (widget.initialPlaylist!.songs != null && widget.initialPlaylist!.songs!.isNotEmpty) {
+        _isLoading = false;
+      }
+    }
     if (widget.playlistId == DiscoveryService.kDiscoveryPlaylistId ||
         widget.playlistId.startsWith('pl_discovery_')) {
       _playlist = DiscoveryService().currentDiscoveryPlaylist;
@@ -516,10 +524,35 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
 
     if (_playlist == null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          title: Text(widget.playlistName ?? 'Playlist'),
+        ),
         bottomNavigationBar: _buildBottomPlayer(context),
-        body:
-            Center(child: Text(AppLocalizations.of(context)!.playlistNotFound)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(CupertinoIcons.music_note_list, size: 56, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.playlistNotFound,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.playlistId.contains('sp')
+                      ? 'Cette playlist Spotify semble privée ou introuvable. Vérifiez qu\'elle est bien en mode Public sur Spotify.'
+                      : 'Impossible de charger les titres de cette playlist. Vérifiez votre connexion internet.',
+                  style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 

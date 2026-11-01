@@ -1468,12 +1468,37 @@ class LibraryProvider extends ChangeNotifier
 
 
 
+  final Map<String, Playlist> _dynamicPlaylistsCache = {};
+
+  void cacheDynamicPlaylist(Playlist playlist) {
+    _dynamicPlaylistsCache[playlist.id] = playlist;
+  }
+
   @override
 
   Future<Playlist> getPlaylist(String playlistId) async {
+    if (_dynamicPlaylistsCache.containsKey(playlistId)) {
+      return _dynamicPlaylistsCache[playlistId]!;
+    }
+
     if (playlistId.startsWith('ext_dz_pl_') || playlistId.startsWith('dz_pl_')) {
       final dz = await DeezerService().getPlaylist(playlistId);
-      if (dz != null) return dz;
+      if (dz != null) {
+        _dynamicPlaylistsCache[playlistId] = dz;
+        return dz;
+      }
+    }
+
+    if (playlistId.startsWith('ext_sp_pl_') || playlistId.startsWith('sp_pl_')) {
+      final sp = await LinkResolverService.resolvePlaylistLink(playlistId);
+      if (sp != null) {
+        _dynamicPlaylistsCache[playlistId] = sp;
+        return sp;
+      }
+    }
+
+    if (playlistId.startsWith('ext_')) {
+      throw Exception('Playlist externe introuvable : $playlistId');
     }
 
     if (playlistId == DiscoveryService.kDiscoveryPlaylistId) {

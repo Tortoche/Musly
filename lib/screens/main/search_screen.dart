@@ -101,9 +101,14 @@ class _SearchScreenState extends State<SearchScreen> {
           _isSearching = false;
         });
         HapticsService.medium();
+        Provider.of<LibraryProvider>(context, listen: false).cacheDynamicPlaylist(pl);
         NavigationHelper.push(
           context,
-          PlaylistScreen(playlistId: pl.id, playlistName: pl.name),
+          PlaylistScreen(
+            playlistId: pl.id,
+            playlistName: pl.name,
+            initialPlaylist: pl,
+          ),
         );
         return;
       }
@@ -713,7 +718,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   onTap: () => NavigationHelper.push(
                     context,
                     PlaylistScreen(
-                        playlistId: playlist.id, playlistName: playlist.name),
+                      playlistId: playlist.id,
+                      playlistName: playlist.name,
+                      initialPlaylist: playlist,
+                    ),
                   ),
                 );
               }).toList(),
