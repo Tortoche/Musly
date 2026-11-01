@@ -15,6 +15,11 @@ class ShareService {
     return '$_baseShareUrl/${song.id}';
   }
 
+  /// Construit l'URL de l'affiche de partage OpenGraph / Story Instagram générée par le serveur
+  static String getShareCardUrl(Song song, {bool story = false}) {
+    return 'https://music.corentinjanin.fr/share/card/${song.id}.png?format=${story ? "story" : "og"}';
+  }
+
   /// Partage le morceau via la feuille de partage native du système
   static Future<void> shareSong(BuildContext context, Song song) async {
     HapticsService.light();

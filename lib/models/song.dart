@@ -27,6 +27,7 @@ class Song {
   final List<ArtistRef>? artistParticipants;
   final DateTime? created;
   final bool? hasDolbyAtmos;
+  final int? rank;
 
   Song({
     required this.id,
@@ -55,6 +56,7 @@ class Song {
     this.artistParticipants,
     this.created,
     this.hasDolbyAtmos,
+    this.rank,
   });
 
   factory Song.fromJson(Map<String, dynamic> json) {
@@ -126,6 +128,7 @@ class Song {
           ? DateTime.tryParse(json['created'].toString())
           : null,
       hasDolbyAtmos: json['hasDolbyAtmos'] as bool?,
+      rank: (json['rank'] as num?)?.toInt(),
     );
   }
 
@@ -159,6 +162,7 @@ class Song {
             artistParticipants!.map((artist) => artist.toJson()).toList(),
       'created': created?.toIso8601String(),
       if (hasDolbyAtmos != null) 'hasDolbyAtmos': hasDolbyAtmos,
+      if (rank != null) 'rank': rank,
     };
   }
 
@@ -196,6 +200,7 @@ class Song {
     List<ArtistRef>? artistParticipants,
     DateTime? created,
     bool? hasDolbyAtmos,
+    int? rank,
   }) {
     return Song(
       id: id ?? this.id,
@@ -224,6 +229,7 @@ class Song {
       artistParticipants: artistParticipants ?? this.artistParticipants,
       created: created ?? this.created,
       hasDolbyAtmos: hasDolbyAtmos ?? this.hasDolbyAtmos,
+      rank: rank ?? this.rank,
     );
   }
 }

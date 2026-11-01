@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -33,6 +32,26 @@ class LinkResolverService {
     if (!isMusicLink(t)) return null;
 
     try {
+      // 0. Résolution dynamique via le serveur CJ Music Resolver si accessible
+      try {
+        final serverUrl = Uri.parse('https://music.corentinjanin.fr/api/resolve?url=${Uri.encodeComponent(t)}');
+        final sRes = await http.get(serverUrl).timeout(const Duration(seconds: 3));
+        if (sRes.statusCode == 200) {
+          final sData = jsonDecode(sRes.body) as Map<String, dynamic>;
+          if (sData['status'] == 'success' && sData['id'] != null) {
+            final songId = sData['id'].toString();
+            return Song(
+              id: songId,
+              title: sData['title'] ?? 'Titre inconnu',
+              artist: sData['artist'] ?? 'Artiste inconnu',
+              album: sData['album']?.toString(),
+              coverArt: sData['cover_url']?.toString(),
+              duration: (sData['duration'] as num?)?.toInt(),
+            );
+          }
+        }
+      } catch (_) {}
+
       // 1. Lien Musly direct, Deezer track ou Intent (ex: musly://track/ext_dz_3862037071, musly://track/5mWmy8AoMwEeTUvFBcO3vx)
       final trackMatch = RegExp(r'track\/([a-zA-Z0-9_\-]+)').firstMatch(t);
       if (trackMatch != null) {
@@ -54,7 +73,7 @@ class LinkResolverService {
 
           // B. Tenter de récupérer le morceau via Subsonic directement si l'app est connectée
           final ctx = context ?? navigatorKey.currentContext;
-          if (ctx != null) {
+          if (ctx != null && ctx.mounted) {
             try {
               final subsonic = Provider.of<SubsonicService>(ctx, listen: false);
               final song = await subsonic.getSong(rawId);

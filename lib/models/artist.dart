@@ -8,6 +8,7 @@ class Artist {
   final String? artistImageUrl;
   final bool isLocal;
   final List<ArtistRef>? artistParticipants;
+  final int? nbFans;
 
   Artist({
     required this.id,
@@ -17,6 +18,7 @@ class Artist {
     this.artistImageUrl,
     this.isLocal = false,
     this.artistParticipants,
+    this.nbFans,
   });
 
   factory Artist.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,7 @@ class Artist {
       albumCount: json['albumCount'] as int?,
       artistImageUrl: json['artistImageUrl']?.toString(),
       artistParticipants: ArtistRef.parseList(json['artists']),
+      nbFans: (json['nb_fan'] ?? json['nbFans'] ?? json['fansCount']) as int?,
     );
   }
 
@@ -40,6 +43,7 @@ class Artist {
       if (artistParticipants != null)
         'artists':
             artistParticipants!.map((artist) => artist.toJson()).toList(),
+      if (nbFans != null) 'nbFans': nbFans,
     };
   }
 }

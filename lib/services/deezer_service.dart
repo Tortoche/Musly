@@ -40,6 +40,7 @@ class DeezerService {
             albumId: albumData?['id']?.toString(),
             coverArt: coverUrl.isNotEmpty ? coverUrl : null,
             duration: (t['duration'] as num?)?.toInt() ?? 0,
+            rank: (t['rank'] as num?)?.toInt(),
           );
         }).toList();
       }
@@ -85,6 +86,7 @@ class DeezerService {
             albumId: albumData?['id']?.toString(),
             coverArt: coverUrl.isNotEmpty ? coverUrl : null,
             duration: (t['duration'] as num?)?.toInt() ?? 0,
+            rank: (t['rank'] as num?)?.toInt(),
           );
         }).toList();
 
@@ -97,6 +99,7 @@ class DeezerService {
             coverArt: picture,
             artistImageUrl: picture,
             albumCount: (a['nb_album'] as num?)?.toInt(),
+            nbFans: (a['nb_fan'] as num?)?.toInt(),
           );
         }).toList();
 
@@ -177,6 +180,7 @@ class DeezerService {
             coverArt: picture,
             artistImageUrl: picture,
             albumCount: (a['nb_album'] as num?)?.toInt(),
+            nbFans: (a['nb_fan'] as num?)?.toInt(),
           );
         }).toList();
       }
@@ -241,6 +245,7 @@ class DeezerService {
             albumId: albumData?['id']?.toString(),
             coverArt: coverUrl.isNotEmpty ? coverUrl : null,
             duration: (t['duration'] as num?)?.toInt() ?? 0,
+            rank: (t['rank'] as num?)?.toInt(),
           );
         }).toList();
       }
@@ -437,6 +442,7 @@ class DeezerService {
             albumId: albumData?['id']?.toString(),
             coverArt: coverUrl.isNotEmpty ? coverUrl : null,
             duration: (t['duration'] as num?)?.toInt() ?? 0,
+            rank: (t['rank'] as num?)?.toInt(),
           );
         }).toList();
       }
@@ -475,6 +481,7 @@ class DeezerService {
             albumId: albumData?['id']?.toString(),
             coverArt: coverUrl.isNotEmpty ? coverUrl : null,
             duration: (t['duration'] as num?)?.toInt() ?? 0,
+            rank: (t['rank'] as num?)?.toInt(),
           );
         }).toList();
       }

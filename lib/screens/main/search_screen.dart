@@ -603,13 +603,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              if (artists.isNotEmpty &&
-                  (_selectedFilter == 'All' || _selectedFilter == 'Artists'))
-                _buildArtistTopResult(artists.first, subsonicService)
-              else if (songs.isNotEmpty)
-                _buildSongTopResult(songs.first, songs, subsonicService)
-              else if (albums.isNotEmpty)
-                _buildAlbumTopResult(albums.first, subsonicService),
+              _buildSmartTopResult(artists, songs, albums, query, subsonicService),
               const SizedBox(height: 24),
             ],
           ],
@@ -716,6 +710,41 @@ class _SearchScreenState extends State<SearchScreen> {
       onTap: () => _playSong(song),
       onPlayPressed: () => _playSong(song),
     );
+  }
+
+  Widget _buildSmartTopResult(
+    List<Artist> artists,
+    List<Song> songs,
+    List<Album> albums,
+    String query,
+    SubsonicService subsonicService,
+  ) {
+    if (_selectedFilter == 'Artists' && artists.isNotEmpty) {
+      return _buildArtistTopResult(artists.first, subsonicService);
+    }
+    if (_selectedFilter == 'Songs' && songs.isNotEmpty) {
+      return _buildSongTopResult(songs.first, songs, subsonicService);
+    }
+    if (_selectedFilter == 'Albums' && albums.isNotEmpty) {
+      return _buildAlbumTopResult(albums.first, subsonicService);
+    }
+
+    final int artistScore = artists.isNotEmpty
+        ? LibraryProvider.scoreArtistStatic(artists.first, query)
+        : -1;
+    final int songScore = songs.isNotEmpty
+        ? LibraryProvider.scoreSongStatic(songs.first, query)
+        : -1;
+
+    // Affiche l'entité qui possède le score de pertinence le plus élevé
+    if (artistScore >= songScore && artists.isNotEmpty) {
+      return _buildArtistTopResult(artists.first, subsonicService);
+    } else if (songs.isNotEmpty) {
+      return _buildSongTopResult(songs.first, songs, subsonicService);
+    } else if (albums.isNotEmpty) {
+      return _buildAlbumTopResult(albums.first, subsonicService);
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildArtistTopResult(Artist artist, SubsonicService subsonicService) {

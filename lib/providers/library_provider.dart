@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 
 import 'dart:convert';
@@ -1748,6 +1749,147 @@ class LibraryProvider extends ChangeNotifier
         .trim();
   }
 
+  static final Map<String, List<String>> _artistAliases = {
+    'maitre': ['gims', 'maitregims'],
+    'gims': ['maitregims', 'gims'],
+    'stro': ['stromae'],
+    'stromae': ['stro'],
+    'nek': ['nekfeu'],
+    'nekfeu': ['nek'],
+    'booba': ['b2o', 'kopp'],
+    'sch': ['les'],
+    'jul': ['lej', 'ovni', 'doretdeplatine'],
+    'damso': ['dems'],
+    'plk': ['polak'],
+    'orelsan': ['orel'],
+    'ninho': ['ni'],
+    'freeze': ['freezecorleone', '667'],
+    'koba': ['kobalad'],
+    'tiakola': ['tiako'],
+    'sdm': ['ocho'],
+    'eminem': ['slimshady', 'marshall'],
+    'drake': ['champagnepapi', 'drizzy'],
+    'travis': ['travisscott', 'laflame'],
+    'weeknd': ['theweeknd', 'abel'],
+  };
+
+  static bool _matchesAlias(String query, String target) {
+    final q = _normalizeSearch(query).replaceAll(' ', '');
+    final t = _normalizeSearch(target).replaceAll(' ', '');
+    if (q.isEmpty || t.isEmpty) return false;
+    
+    if (_artistAliases.containsKey(q)) {
+      final targets = _artistAliases[q]!;
+      for (final alias in targets) {
+        if (t.contains(alias) || alias.contains(t)) return true;
+      }
+    }
+    return false;
+  }
+
+  static int scoreArtistStatic(Artist a, String query) => _scoreArtist(a, query);
+  static int scoreSongStatic(Song s, String query) => _scoreSong(s, query);
+
+  static int _scoreArtist(Artist a, String query) {
+    final normName = _normalizeSearch(a.name);
+    final normQuery = _normalizeSearch(query);
+    if (normName.isEmpty || normQuery.isEmpty) return 0;
+
+    int score = 0;
+    final fans = a.nbFans ?? 0;
+    final isAlias = _matchesAlias(normQuery, normName);
+
+    if (isAlias) {
+      score += 6500;
+    }
+
+    if (normName == normQuery) {
+      // Pour une recherche courte (ex: "stro", "nek"), un homonyme inconnu de 50 fans ne doit pas écraser une superstar mondiale
+      if (normQuery.length <= 4 && fans < 2000) {
+        score += 4500;
+      } else {
+        score += 9000;
+      }
+    } else if (normName.startsWith(normQuery)) {
+      score += 6000;
+    } else {
+      final words = normName.split(' ');
+      bool wordPrefix = false;
+      for (final w in words) {
+        if (w.startsWith(normQuery)) {
+          score += 4500;
+          wordPrefix = true;
+          break;
+        }
+      }
+      if (!wordPrefix) {
+        if (normName.contains(normQuery)) {
+          score += 2500;
+        } else if (!isAlias) {
+          score += 100;
+        }
+      }
+    }
+
+    // Boost logarithmique de popularité (nombre d'auditeurs/fans)
+    if (fans > 0) {
+      final fanBoost = (math.log(fans) / math.ln10 * 800).round();
+      score += fanBoost;
+    }
+
+    return score;
+  }
+
+  static int _scoreSong(Song s, String query) {
+    final normTitle = _normalizeSearch(s.title);
+    final normArtist = _normalizeSearch(s.artist ?? '');
+    final normQuery = _normalizeSearch(query);
+    if (normTitle.isEmpty || normQuery.isEmpty) return 0;
+
+    int score = 0;
+    final rank = s.rank ?? 0;
+    final artistMatchesAlias = _matchesAlias(normQuery, normArtist);
+    final titleMatchesAlias = _matchesAlias(normQuery, normTitle);
+
+    if (normTitle == normQuery) {
+      score = 9000;
+    } else if (normTitle.startsWith(normQuery)) {
+      score = 6500;
+    } else if (normArtist == normQuery) {
+      score = 6000;
+    } else if (normArtist.startsWith(normQuery)) {
+      score = 5500;
+    } else {
+      final words = normTitle.split(' ');
+      bool wordPrefix = false;
+      for (final w in words) {
+        if (w.startsWith(normQuery)) {
+          score += 4500;
+          wordPrefix = true;
+          break;
+        }
+      }
+      if (!wordPrefix) {
+        if (normTitle.contains(normQuery)) {
+          score += 3000;
+        } else if (normArtist.contains(normQuery)) {
+          score += 2500;
+        } else if (artistMatchesAlias || titleMatchesAlias) {
+          score += 5000;
+        } else {
+          score += 100;
+        }
+      }
+    }
+
+    // Boost de popularité Deezer rank (0 à 1 000 000)
+    if (rank > 0) {
+      score += (rank / 250).round();
+    }
+
+    return score;
+  }
+
   static int _scoreRelevance(String text, String query) {
     final normText = _normalizeSearch(text);
     final normQuery = _normalizeSearch(query);
@@ -1870,23 +2012,17 @@ class LibraryProvider extends ChangeNotifier
       addAlbumIfNew(alb);
     }
 
-    // Tri de pertinence intelligent (Préfixe exact > Début de mot > Contient)
+    // Tri de pertinence intelligent (Scoring avec popularité, alias et préfixes)
     mergedArtists.sort((a, b) {
-      final scoreA = _scoreRelevance(a.name, cleanQuery);
-      final scoreB = _scoreRelevance(b.name, cleanQuery);
+      final scoreA = _scoreArtist(a, cleanQuery);
+      final scoreB = _scoreArtist(b, cleanQuery);
       return scoreB.compareTo(scoreA);
     });
 
     mergedSongs.sort((a, b) {
-      final scoreTitleA = _scoreRelevance(a.title, cleanQuery);
-      final scoreArtistA = _scoreRelevance(a.artist ?? '', cleanQuery);
-      final maxA = scoreTitleA > scoreArtistA ? scoreTitleA : scoreArtistA;
-
-      final scoreTitleB = _scoreRelevance(b.title, cleanQuery);
-      final scoreArtistB = _scoreRelevance(b.artist ?? '', cleanQuery);
-      final maxB = scoreTitleB > scoreArtistB ? scoreTitleB : scoreArtistB;
-
-      return maxB.compareTo(maxA);
+      final scoreA = _scoreSong(a, cleanQuery);
+      final scoreB = _scoreSong(b, cleanQuery);
+      return scoreB.compareTo(scoreA);
     });
 
     mergedAlbums.sort((a, b) {
