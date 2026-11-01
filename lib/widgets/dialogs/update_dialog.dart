@@ -310,7 +310,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Future<void> _onLaterPressed() async {
-    await UpdateService.snoozeUpdate();
+    await UpdateService.snoozeUpdate(widget.release);
     if (mounted) Navigator.of(context).pop();
   }
 

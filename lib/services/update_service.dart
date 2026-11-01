@@ -34,6 +34,7 @@ class ReleaseAsset {
 
 class ReleaseInfo {
   final String version;
+  final int? buildNumber;
   final String tagName;
   final String htmlUrl;
   final String body;
@@ -46,6 +47,7 @@ class ReleaseInfo {
 
   const ReleaseInfo({
     required this.version,
+    this.buildNumber,
     required this.tagName,
     required this.htmlUrl,
     required this.body,
@@ -59,15 +61,18 @@ class ReleaseInfo {
 
   factory ReleaseInfo.fromJson(Map<String, dynamic> json) {
     // Check if custom server version.json format
-    if (json.containsKey('android') || json.containsKey('ios') || json.containsKey('release_notes')) {
+    if (json.containsKey('android') || json.containsKey('ios') || json.containsKey('release_notes') || json.containsKey('build_number') || json.containsKey('buildNumber')) {
       final v = (json['version'] as String? ?? '1.0.0').replaceFirst(RegExp(r'^v'), '');
+      final rawBuild = json['build_number'] ?? json['buildNumber'];
+      final bNum = rawBuild is int ? rawBuild : (rawBuild != null ? int.tryParse(rawBuild.toString()) : null);
+
       final notesList = (json['release_notes'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
       final notesBody = notesList.map((e) => '• $e').join('\n');
       
       final androidMap = json['android'] as Map<String, dynamic>?;
       final iosMap = json['ios'] as Map<String, dynamic>?;
       
-      final apkUrl = androidMap?['download_url'] as String?;
+      final apkUrl = androidMap?['download_url'] as String? ?? json['downloadUrl'] as String?;
       final ipaUrl = iosMap?['download_url'] as String?;
       final sidestoreUrl = iosMap?['sidestore_install_url'] as String? ?? 
           (ipaUrl != null ? 'sidestore://install?url=$ipaUrl' : null);
@@ -82,6 +87,7 @@ class ReleaseInfo {
 
       return ReleaseInfo(
         version: v,
+        buildNumber: bNum,
         tagName: 'v$v',
         htmlUrl: 'https://music.corentinjanin.fr',
         body: notesBody.isNotEmpty ? notesBody : (json['description'] as String? ?? ''),
@@ -104,8 +110,17 @@ class ReleaseInfo {
         .map((l) => l.substring(2).trim())
         .toList();
 
+    int? githubBuild;
+    if (tag.contains('+')) {
+      final parts = tag.split('+');
+      if (parts.length > 1) {
+        githubBuild = int.tryParse(parts[1]);
+      }
+    }
+
     return ReleaseInfo(
-      version: tag.replaceFirst(RegExp(r'^v'), ''),
+      version: tag.replaceFirst(RegExp(r'^v'), '').split('+').first,
+      buildNumber: githubBuild,
       tagName: tag,
       htmlUrl: json['html_url'] as String? ?? '',
       body: bodyStr,
@@ -173,8 +188,11 @@ class ReleaseInfo {
 }
 
 class UpdateService {
-  static String _currentVersion = '2.10.3';
+  static String _currentVersion = '2.10.4';
   static String get currentVersion => _currentVersion;
+
+  static int _currentBuildNumber = 19;
+  static int get currentBuildNumber => _currentBuildNumber;
 
   /// Load real package version dynamically from platform bundle
   static Future<void> initialize() async {
@@ -183,6 +201,10 @@ class UpdateService {
       if (info.version.isNotEmpty) {
         _currentVersion = info.version;
         _dio.options.headers['User-Agent'] = 'Musly-App/$_currentVersion';
+      }
+      final parsedBuild = int.tryParse(info.buildNumber);
+      if (parsedBuild != null) {
+        _currentBuildNumber = parsedBuild;
       }
     } catch (e) {
       debugPrint('[UpdateService] PackageInfo load error: $e');
@@ -198,6 +220,8 @@ class UpdateService {
       'https://api.github.com/repos/dddevid/Musly/releases/latest';
 
   static const String _skippedVersionKey = 'skipped_update_version';
+  static const String _snoozedVersionKey = 'snoozed_update_version';
+  static const String _snoozedBuildKey = 'snoozed_update_build';
   static const String _lastLaterTimestampKey = 'last_update_later_timestamp';
   static const String _lastSeenVersionKey = 'last_seen_app_version';
   static const String _cachedReleaseNotesKey = 'cached_release_notes_for_version_';
@@ -288,6 +312,9 @@ class UpdateService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_lastSeenVersionKey, currentVersion);
+      await prefs.remove(_snoozedVersionKey);
+      await prefs.remove(_snoozedBuildKey);
+      await prefs.remove(_lastLaterTimestampKey);
       // Clean up any remaining installer packages from previous installations
       await cleanupOldInstallers();
     } catch (_) {}
@@ -296,18 +323,7 @@ class UpdateService {
   /// Check for update from primary server, falling back to GitHub
   static Future<ReleaseInfo?> checkForUpdate({bool force = false}) async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Check "Plus tard" snooze: if user snoozed within the last 24h and not forced
-    if (!force) {
-      final lastLater = prefs.getInt(_lastLaterTimestampKey);
-      if (lastLater != null) {
-        final elapsed = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(lastLater));
-        if (elapsed < const Duration(hours: 24)) {
-          debugPrint('UpdateService: Snoozed ("Plus tard") for ${24 - elapsed.inHours}h remaining.');
-          return null;
-        }
-      }
-    }
+    ReleaseInfo? candidateRelease;
 
     // 1. Try Primary Server (music.corentinjanin.fr/updates/version.json)
     try {
@@ -324,60 +340,94 @@ class UpdateService {
           data = response.data as Map<String, dynamic>;
         }
 
-        final release = ReleaseInfo.fromJson(data);
-        if (_isNewer(release.version, currentVersion)) {
-          // Pre-cache release notes for this upcoming version
-          if (release.releaseNotes.isNotEmpty) {
-            await saveReleaseNotesForVersion(release.version, release.releaseNotes);
-          }
-
-          if (!force && !release.mandatory) {
-            final skippedVersion = prefs.getString(_skippedVersionKey);
-            if (skippedVersion == release.version) {
-              return null;
-            }
-          }
-          return release;
-        }
+        candidateRelease = ReleaseInfo.fromJson(data);
       }
     } catch (e) {
       debugPrint('UpdateService: Primary server check failed ($e), trying GitHub...');
     }
 
     // 2. Fallback to GitHub releases
-    try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        _fallbackGithubUrl,
-        options: Options(
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-        ),
-      );
-      final data = response.data;
-      if (data != null) {
-        final release = ReleaseInfo.fromJson(data);
-        if (_isNewer(release.version, currentVersion)) {
-          if (!force) {
-            final skippedVersion = prefs.getString(_skippedVersionKey);
-            if (skippedVersion == release.version) {
-              return null;
-            }
-          }
-          return release;
+    if (candidateRelease == null) {
+      try {
+        final response = await _dio.get<Map<String, dynamic>>(
+          _fallbackGithubUrl,
+          options: Options(
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+            },
+          ),
+        );
+        final data = response.data;
+        if (data != null) {
+          candidateRelease = ReleaseInfo.fromJson(data);
         }
+      } catch (e) {
+        debugPrint('UpdateService: GitHub check failed – $e');
       }
-    } catch (e) {
-      debugPrint('UpdateService: GitHub check failed – $e');
     }
 
-    return null;
+    if (candidateRelease == null) return null;
+
+    // Check if remote candidate is newer than current app version/build
+    final isNewer = _isNewer(
+      candidateRelease.version,
+      currentVersion,
+      remoteBuild: candidateRelease.buildNumber,
+      currentBuild: currentBuildNumber,
+    );
+    if (!isNewer) return null;
+
+    // Pre-cache release notes for this upcoming version
+    if (candidateRelease.releaseNotes.isNotEmpty) {
+      await saveReleaseNotesForVersion(candidateRelease.version, candidateRelease.releaseNotes);
+    }
+
+    // If forced manual check or mandatory update, always show
+    if (force || candidateRelease.mandatory) {
+      return candidateRelease;
+    }
+
+    // Check if user skipped this exact version
+    final skippedVersion = prefs.getString(_skippedVersionKey);
+    if (skippedVersion == candidateRelease.version) {
+      return null;
+    }
+
+    // Check "Plus tard" snooze:
+    // Snooze ONLY suppresses the dialog for this exact version/build.
+    // If a newer version or build is released, the dialog shows again automatically!
+    final snoozedVersion = prefs.getString(_snoozedVersionKey);
+    final snoozedBuild = prefs.getInt(_snoozedBuildKey);
+    if (snoozedVersion != null) {
+      final isNewerThanSnoozed = _isNewer(
+        candidateRelease.version,
+        snoozedVersion,
+        remoteBuild: candidateRelease.buildNumber,
+        currentBuild: snoozedBuild,
+      );
+      if (!isNewerThanSnoozed) {
+        debugPrint('UpdateService: Version ${candidateRelease.version} (build ${candidateRelease.buildNumber}) was snoozed ("Plus tard"). Suppressing startup dialog.');
+        return null;
+      } else {
+        debugPrint('UpdateService: New release ${candidateRelease.version} (build ${candidateRelease.buildNumber}) > snoozed $snoozedVersion (build $snoozedBuild). Showing dialog!');
+      }
+    }
+
+    return candidateRelease;
   }
 
-  /// User clicked "Plus tard": snooze prompt for 24 hours
-  static Future<void> snoozeUpdate() async {
+  /// User clicked "Plus tard": snooze prompt for this specific release
+  static Future<void> snoozeUpdate([ReleaseInfo? release]) async {
     final prefs = await SharedPreferences.getInstance();
+    if (release != null) {
+      await prefs.setString(_snoozedVersionKey, release.version);
+      if (release.buildNumber != null) {
+        await prefs.setInt(_snoozedBuildKey, release.buildNumber!);
+      } else {
+        await prefs.remove(_snoozedBuildKey);
+      }
+    }
     await prefs.setInt(_lastLaterTimestampKey, DateTime.now().millisecondsSinceEpoch);
   }
 
@@ -387,9 +437,19 @@ class UpdateService {
     await prefs.setString(_skippedVersionKey, version);
   }
 
-  static bool isNewerVersion(String remote, String current) => _isNewer(remote, current);
+  static bool isNewerVersion(
+    String remote,
+    String current, {
+    int? remoteBuild,
+    int? currentBuild,
+  }) => _isNewer(remote, current, remoteBuild: remoteBuild, currentBuild: currentBuild);
 
-  static bool _isNewer(String remote, String current) {
+  static bool _isNewer(
+    String remote,
+    String current, {
+    int? remoteBuild,
+    int? currentBuild,
+  }) {
     try {
       List<int> parse(String v) =>
           v.split('.').map((p) => int.tryParse(p.split('+').first.replaceAll(RegExp(r'[^\d]'), '')) ?? 0).toList();
@@ -408,6 +468,12 @@ class UpdateService {
         if (r[i] > c[i]) return true;
         if (r[i] < c[i]) return false;
       }
+
+      // If semantic versions match, compare build numbers if available
+      if (remoteBuild != null && currentBuild != null) {
+        return remoteBuild > currentBuild;
+      }
+
       return false;
     } catch (_) {
       return false;
