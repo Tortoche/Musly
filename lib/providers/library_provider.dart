@@ -1471,6 +1471,10 @@ class LibraryProvider extends ChangeNotifier
   @override
 
   Future<Playlist> getPlaylist(String playlistId) async {
+    if (playlistId.startsWith('ext_dz_pl_') || playlistId.startsWith('dz_pl_')) {
+      final dz = await DeezerService().getPlaylist(playlistId);
+      if (dz != null) return dz;
+    }
 
     if (playlistId == DiscoveryService.kDiscoveryPlaylistId) {
 

@@ -365,6 +365,24 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  DateTime? _lastResumeCheck;
+
+  void _checkUpdateOnResume() {
+    final now = DateTime.now();
+    if (_lastResumeCheck != null && now.difference(_lastResumeCheck!) < const Duration(minutes: 5)) {
+      return;
+    }
+    _lastResumeCheck = now;
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      final ctx = navigatorKey.currentContext ?? context;
+      if (ctx.mounted) {
+        UpdateService.resetStartupCheck();
+        UpdateDialog.checkAndShow(ctx);
+      }
+    });
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -372,6 +390,7 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
         Provider.of<PlayerProvider>(context, listen: false)
             .checkPending50Milestone();
       } catch (_) {}
+      _checkUpdateOnResume();
     }
   }
 

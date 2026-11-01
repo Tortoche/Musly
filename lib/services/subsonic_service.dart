@@ -1464,18 +1464,21 @@ class SearchResult {
   final List<Album> albums;
   final List<Song> songs;
   final List<Song>? youtubeVideos;
+  final List<Playlist> playlists;
 
   SearchResult({
     required this.artists,
     required this.albums,
     required this.songs,
     this.youtubeVideos,
+    this.playlists = const [],
   });
 
   bool get isEmpty =>
       artists.isEmpty &&
       albums.isEmpty &&
       songs.isEmpty &&
+      playlists.isEmpty &&
       (youtubeVideos == null || youtubeVideos!.isEmpty);
 }
 

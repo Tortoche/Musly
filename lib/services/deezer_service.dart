@@ -1,3 +1,4 @@
+import '../models/playlist.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -6,6 +7,92 @@ import '../models/artist.dart';
 import '../models/song.dart';
 
 class DeezerService {
+  /// Recherche de playlists publiques sur Deezer
+  Future<List<Playlist>> searchPlaylists(String query, {int limit = 25}) async {
+    final clean = query.trim();
+    if (clean.length < 2) return [];
+
+    final url = Uri.parse('$_baseUrl/search/playlist?q=${Uri.encodeComponent(clean)}&limit=$limit');
+    try {
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final List list = data['data'] ?? [];
+        return list.map((p) {
+          final id = p['id']?.toString() ?? '';
+          final cover = p['picture_xl'] ?? p['picture_big'] ?? p['picture_medium'];
+          final creator = p['user']?['name']?.toString() ?? 'Deezer';
+          final nbTracks = (p['nb_tracks'] as num?)?.toInt() ?? 0;
+
+          return Playlist(
+            id: 'ext_dz_pl_$id',
+            name: p['title'] ?? 'Playlist',
+            owner: creator,
+            songCount: nbTracks,
+            coverArt: cover,
+            public: true,
+          );
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint('[DeezerService] Erreur searchPlaylists: $e');
+    }
+    return [];
+  }
+
+  /// Récupérer les détails d'une playlist Deezer par son ID
+  Future<Playlist?> getPlaylist(String playlistId) async {
+    final cleanId = playlistId.replaceAll('ext_dz_pl_', '').replaceAll('dz_pl_', '');
+    if (cleanId.isEmpty) return null;
+
+    final url = Uri.parse('$_baseUrl/playlist/$cleanId');
+    try {
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final id = data['id']?.toString() ?? cleanId;
+        final cover = data['picture_xl'] ?? data['picture_big'] ?? data['picture_medium'];
+        final creator = data['creator']?['name']?.toString() ?? 'Deezer';
+        final nbTracks = (data['nb_tracks'] as num?)?.toInt() ?? 0;
+        final duration = (data['duration'] as num?)?.toInt();
+
+        final tracksData = (data['tracks']?['data'] as List?) ?? [];
+        final songs = tracksData.map((t) {
+          final tId = t['id']?.toString() ?? '';
+          final albumData = t['album'] as Map<String, dynamic>?;
+          final artistData = t['artist'] as Map<String, dynamic>?;
+          final tCover = albumData?['cover_xl'] ?? albumData?['cover_big'] ?? albumData?['cover_medium'];
+
+          return Song(
+            id: tId.startsWith('ext_dz_') ? tId : 'ext_dz_$tId',
+            title: t['title'] ?? '',
+            artist: artistData?['name'] ?? 'Artiste inconnu',
+            artistId: artistData?['id']?.toString(),
+            album: albumData?['title'] ?? '',
+            albumId: albumData?['id']?.toString(),
+            coverArt: tCover,
+            duration: (t['duration'] as num?)?.toInt() ?? 0,
+            rank: (t['rank'] as num?)?.toInt(),
+          );
+        }).toList();
+
+        return Playlist(
+          id: 'ext_dz_pl_$id',
+          name: data['title'] ?? 'Playlist',
+          owner: creator,
+          songCount: nbTracks > 0 ? nbTracks : songs.length,
+          duration: duration,
+          coverArt: cover,
+          public: true,
+          songs: songs,
+        );
+      }
+    } catch (e) {
+      debugPrint('[DeezerService] Erreur getPlaylist: $e');
+    }
+    return null;
+  }
+
   static final DeezerService _instance = DeezerService._internal();
   factory DeezerService() => _instance;
   DeezerService._internal();

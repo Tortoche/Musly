@@ -87,6 +87,28 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _performSearch(String query) async {
     if (query.isEmpty) return;
 
+    if (LinkResolverService.isPlaylistLink(query)) {
+      setState(() => _isSearching = true);
+      final pl = await LinkResolverService.resolvePlaylistLink(query);
+      if (pl != null && mounted) {
+        setState(() {
+          _searchResult = SearchResult(
+            artists: [],
+            albums: [],
+            songs: pl.songs ?? [],
+            playlists: [pl],
+          );
+          _isSearching = false;
+        });
+        HapticsService.medium();
+        NavigationHelper.push(
+          context,
+          PlaylistScreen(playlistId: pl.id, playlistName: pl.name),
+        );
+        return;
+      }
+    }
+
     if (LinkResolverService.isMusicLink(query)) {
       setState(() => _isSearching = true);
       final resolved = await LinkResolverService.resolveLink(query);
@@ -558,9 +580,11 @@ class _SearchScreenState extends State<SearchScreen> {
     final songs = result.songs;
     final artists = result.artists;
     final albums = result.albums;
-    final playlists = libraryProvider.playlists
-        .where((p) => p.name.toLowerCase().contains(query))
-        .toList();
+    final playlists = result.playlists.isNotEmpty
+        ? result.playlists
+        : libraryProvider.playlists
+            .where((p) => p.name.toLowerCase().contains(query))
+            .toList();
 
     if (songs.isEmpty &&
         artists.isEmpty &&
