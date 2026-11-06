@@ -1540,6 +1540,9 @@ class PlayerProvider extends ChangeNotifier
               _applyReplayGain(_queue[targetIndex]).catchError((_) {});
             }
             await _audioPlayer.seek(Duration.zero, index: targetIndex);
+            if (_currentIndex != targetIndex) {
+              await adoptTrackAt(targetIndex);
+            }
             return;
           } else if (targetIndex == _currentIndex && !_isPlaying) {
             await play();
@@ -2491,7 +2494,15 @@ class PlayerProvider extends ChangeNotifier
 
   void addToQueue(Song song) {
     _queue.add(song);
+    if (_concatenatingSource != null && !_isRenderingRemotely) {
+      _buildAudioSourceForSong(song).then((source) {
+        _concatenatingSource!.add(source);
+      }).catchError((e) {
+        debugPrint('[Player] Error appending to concatenating source: $e');
+      });
+    }
     notifyListeners();
+    _saveQueueState();
   }
 
   Future<void> addToQueueNext(Song song) async {
@@ -2859,8 +2870,12 @@ class PlayerProvider extends ChangeNotifier
   Future<void> adoptTrackAt(int newIndex) async {
     if (newIndex < 0 || newIndex >= _queue.length) return;
     if (_isCrossfadingOut) {
-      debugPrint('[Player] adoptTrackAt deferred: crossfade handover active');
-      return;
+      _crossfadeTimer?.cancel();
+      _crossfadeTimer = null;
+      _isCrossfadingOut = false;
+      _crossfadeNextSong = null;
+      _standbyPlayer.stop().catchError((_) {});
+      debugPrint('[Player] adoptTrackAt: cancelled pending crossfade to adopt track #$newIndex cleanly');
     }
 
     _isCrossfadingOut = false;

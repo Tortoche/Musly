@@ -1,3 +1,4 @@
+import 'package:musly/widgets/settings/apple_signer_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:musly/l10n/app_localizations.dart';
@@ -19,6 +20,21 @@ class SettingsAboutTab extends StatefulWidget {
 class _SettingsAboutTabState extends State<SettingsAboutTab> {
   int _versionTapCount = 0;
   bool _isCheckingUpdates = false;
+  bool _isRenewingCert = false;
+  Duration? _certRemaining;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCertTime();
+  }
+
+  Future<void> _loadCertTime() async {
+    final remaining = await UpdateService.getRemainingCertificateTime();
+    if (mounted) {
+      setState(() => _certRemaining = remaining);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +80,50 @@ class _SettingsAboutTabState extends State<SettingsAboutTab> {
             ),
           ],
         ),
+        if (Theme.of(context).platform == TargetPlatform.iOS) ...[
+          const SizedBox(height: 16),
+          SettingsSectionCard(
+            title: 'Auto-Renouvellement (iOS)',
+            children: [
+              _buildInfoTile(
+                context,
+                icon: CupertinoIcons.shield_lefthalf_fill,
+                iconColor: const Color(0xFFFF9F0A),
+                title: 'Expiration du certificat',
+                subtitle: _certRemaining != null && _certRemaining! > Duration.zero
+                    ? '${_certRemaining!.inDays} j ${_certRemaining!.inHours % 24} h restantes'
+                    : 'Renouvellement requis ou non configuré',
+              ),
+              _buildDivider(context),
+              _buildActionTile(
+                context,
+                icon: CupertinoIcons.lock_shield,
+                iconColor: const Color(0xFF007AFF),
+                title: 'Configurer Apple ID & Pairing',
+                subtitle: 'Pour signer automatiquement tous les 4 jours',
+                onTap: _openAppleConfigDialog,
+              ),
+              _buildDivider(context),
+              _buildActionTile(
+                context,
+                icon: CupertinoIcons.arrow_clockwise,
+                iconColor: const Color(0xFF34C759),
+                title: 'Renouveler immédiatement',
+                subtitle: _isRenewingCert
+                    ? 'Signature et injection locale en cours...'
+                    : 'Force le rafraîchissement des 7 jours',
+                trailing: _isRenewingCert
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
+                onTap: _isRenewingCert ? null : _renewCertificateManual,
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 40),
       ],
     );
@@ -200,5 +260,46 @@ class _SettingsAboutTabState extends State<SettingsAboutTab> {
         setState(() => _isCheckingUpdates = false);
       }
     }
+  }
+
+  Future<void> _openAppleConfigDialog() async {
+    final result = await AppleSignerDialog.show(context);
+    if (result == true) {
+      _loadCertTime();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Identifiants Apple enregistrés avec succès.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _renewCertificateManual() async {
+    if (_isRenewingCert) return;
+    setState(() => _isRenewingCert = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Renouvellement du certificat en cours...'),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    final success = await UpdateService.forceCertificateRefresh();
+    if (!mounted) return;
+    setState(() => _isRenewingCert = false);
+    _loadCertTime();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? 'Certificat Apple renouvelé avec succès pour 7 jours.'
+            : 'Échec du renouvellement. Vérifiez vos identifiants ou le réseau.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 }

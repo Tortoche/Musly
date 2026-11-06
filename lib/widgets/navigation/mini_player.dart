@@ -394,7 +394,12 @@ class _MiniPlayerRow extends StatelessWidget {
               child: const Icon(Icons.radio, color: Colors.white, size: 24),
             )
           else
-            AlbumArtwork(coverArt: coverArt, size: 44, borderRadius: 6),
+            AlbumArtwork(
+              key: ValueKey('mini_art_${coverArt ?? title}'),
+              coverArt: coverArt,
+              size: 44,
+              borderRadius: 6,
+            ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

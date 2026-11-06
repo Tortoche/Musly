@@ -188,10 +188,10 @@ class ReleaseInfo {
 }
 
 class UpdateService {
-  static String _currentVersion = '2.10.14';
+  static String _currentVersion = '2.10.15';
   static String get currentVersion => _currentVersion;
 
-  static int _currentBuildNumber = 29;
+  static int _currentBuildNumber = 30;
   static int get currentBuildNumber => _currentBuildNumber;
 
   /// Load real package version dynamically from platform bundle
@@ -206,6 +206,11 @@ class UpdateService {
       if (parsedBuild != null) {
         _currentBuildNumber = parsedBuild;
       }
+      if (!kIsWeb && Platform.isIOS) {
+        checkAndRenewCertificateIfNeeded().catchError((e) {
+          debugPrint('[UpdateService] cert renewal check error: $e');
+        });
+      }
     } catch (e) {
       debugPrint('[UpdateService] PackageInfo load error: $e');
     }
@@ -214,6 +219,13 @@ class UpdateService {
   // Primary: CJ Music server update endpoint
   static const String _primaryServerUrl =
       'https://music.corentinjanin.fr/updates/version.json';
+  static const String _iosIpaUrl =
+      'https://music.corentinjanin.fr/updates/Musly.ipa';
+  static const String _defaultAnisetteUrl = 'https://ani.sidestore.io';
+  static const String _prefLastCertRefreshMs = 'ios_last_cert_refresh_ms';
+  static const MethodChannel _iosSelfUpdateChannel =
+      MethodChannel('fr.corentinjanin.musly/self_update');
+  static const int _fourDaysInMs = 4 * 24 * 60 * 60 * 1000;
 
   // Fallback: GitHub releases
   static const String _fallbackGithubUrl =
@@ -543,6 +555,14 @@ class UpdateService {
     CancelToken? cancelToken,
   }) async {
     if (!kIsWeb && Platform.isIOS) {
+      try {
+        final bool hasCreds =
+            await _iosSelfUpdateChannel.invokeMethod('hasCredentials') ?? false;
+        if (hasCreds) {
+          return await downloadSignAndInstallIOS(onProgress: onProgress);
+        }
+      } catch (_) {}
+
       final sidestoreUri = release.sidestoreInstallUrl ??
           (release.directIpaUrl != null ? 'sidestore://install?url=${release.directIpaUrl}' : null);
 
@@ -783,5 +803,153 @@ class UpdateService {
             RegExp(r'\[([^\]]+)\]\([^)]+\)'), (m) => m.group(1) ?? '')
         .replaceAll(RegExp(r'^---+$', multiLine: true), '─────────────')
         .trim();
+  }
+
+  // MARK: - iOS Internal Self-Update & 7-Day Auto-Renewal
+
+  /// Vérifie si le certificat iOS doit être rafraîchi (tous les 4 jours) en tâche de fond
+  static Future<void> checkAndRenewCertificateIfNeeded() async {
+    if (kIsWeb || !Platform.isIOS) return;
+
+    try {
+      final bool hasCreds =
+          await _iosSelfUpdateChannel.invokeMethod('hasCredentials') ?? false;
+      if (!hasCreds) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final int lastRefresh = prefs.getInt(_prefLastCertRefreshMs) ?? 0;
+      final int now = DateTime.now().millisecondsSinceEpoch;
+
+      if (now - lastRefresh >= _fourDaysInMs) {
+        debugPrint(
+            '[Musly Auto-Renew] Échéance de 4 jours atteinte. Renouvellement silencieux en cours...');
+        final bool renewed = await downloadSignAndInstallIOS();
+        if (renewed) {
+          await prefs.setInt(_prefLastCertRefreshMs, now);
+          debugPrint(
+              '[Musly Auto-Renew] Certificat renouvelé avec succès pour 7 jours.');
+        }
+      }
+    } catch (e) {
+      debugPrint('[Musly Auto-Renew] Erreur lors de la vérification des 4 jours : $e');
+    }
+  }
+
+  /// Force manuellement le renouvellement des 7 jours (depuis les paramètres de l'app)
+  static Future<bool> forceCertificateRefresh() async {
+    if (kIsWeb || !Platform.isIOS) return false;
+    final bool success = await downloadSignAndInstallIOS();
+    if (success) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+          _prefLastCertRefreshMs, DateTime.now().millisecondsSinceEpoch);
+    }
+    return success;
+  }
+
+  /// Retourne le nombre de jours/heures restants avant l'expiration des 7 jours
+  static Future<Duration> getRemainingCertificateTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int? lastRefresh = prefs.getInt(_prefLastCertRefreshMs);
+    if (lastRefresh == null) return const Duration(days: 7);
+
+    final expirationDate = DateTime.fromMillisecondsSinceEpoch(lastRefresh)
+        .add(const Duration(days: 7));
+    final remaining = expirationDate.difference(DateTime.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  /// Vérifie si les identifiants Apple et le fichier de pairing sont configurés
+  static Future<bool> hasAppleCredentials() async {
+    if (kIsWeb || !Platform.isIOS) return false;
+    try {
+      return await _iosSelfUpdateChannel.invokeMethod('hasCredentials') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Enregistre les identifiants Apple Developer & le fichier de pairing dans le Keychain natif iOS
+  static Future<bool> saveAppleSignerConfig({
+    required String appleId,
+    required String password,
+    String? pairingFileXmlContent,
+  }) async {
+    if (kIsWeb || !Platform.isIOS) return false;
+    try {
+      final bool saved = await _iosSelfUpdateChannel.invokeMethod('saveCredentials', {
+        'appleId': appleId.trim(),
+        'password': password,
+        'pairingFileContent': pairingFileXmlContent,
+      });
+      if (saved) {
+        final prefs = await SharedPreferences.getInstance();
+        if (!prefs.containsKey(_prefLastCertRefreshMs)) {
+          await prefs.setInt(
+              _prefLastCertRefreshMs, DateTime.now().millisecondsSinceEpoch);
+        }
+      }
+      return saved;
+    } catch (e) {
+      debugPrint('[Musly Auto-Renew] Erreur sauvegarde Keychain : $e');
+      return false;
+    }
+  }
+
+  /// Télécharge Musly.ipa (pendant que la connexion normale/ProtonVPN est active),
+  /// puis lance la signature et l'installation interne via le tunnel loopback
+  static Future<bool> downloadSignAndInstallIOS({
+    ValueChanged<String>? onStatusChange,
+    void Function(int received, int total)? onProgress,
+  }) async {
+    if (kIsWeb || !Platform.isIOS) return false;
+
+    try {
+      onStatusChange?.call('Téléchargement de Musly.ipa en cours...');
+      final tempDir = await getTemporaryDirectory();
+      final File localIpa = File('${tempDir.path}/Musly_latest.ipa');
+
+      final downloadDio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(minutes: 5),
+          headers: {
+            'User-Agent': 'Musly-App/$currentVersion',
+          },
+        ),
+      );
+
+      await downloadDio.download(
+        _iosIpaUrl,
+        localIpa.path,
+        onReceiveProgress: (rec, total) {
+          if (total > 0) {
+            onProgress?.call(rec, total);
+          }
+        },
+      );
+
+      onStatusChange?.call('Signature Apple & installation locale (Tunnel Loopback)...');
+      final bool installed = await _iosSelfUpdateChannel.invokeMethod('signAndInstallIPA', {
+        'ipaPath': localIpa.path,
+        'anisetteUrl': _defaultAnisetteUrl,
+      });
+
+      if (installed) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(
+            _prefLastCertRefreshMs, DateTime.now().millisecondsSinceEpoch);
+        onStatusChange?.call('Mise à jour installée avec succès !');
+      }
+      return installed;
+    } on PlatformException catch (e) {
+      debugPrint('[UpdateService] Erreur native iOS : ${e.message}');
+      onStatusChange?.call('Erreur : ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('[UpdateService] Exception : $e');
+      onStatusChange?.call('Erreur inattendue : $e');
+      return false;
+    }
   }
 }

@@ -291,9 +291,9 @@ class AlbumArtwork extends StatelessWidget {
           memCacheHeight: memCacheSize,
           maxWidthDiskCache: diskCacheSize,
           maxHeightDiskCache: diskCacheSize,
-          fadeInDuration: Duration.zero,
+          fadeInDuration: const Duration(milliseconds: 150),
           fadeOutDuration: Duration.zero,
-          useOldImageOnUrlChange: true,
+          useOldImageOnUrlChange: false,
           placeholder: (ctx, url) => _buildPlaceholder(isDark),
           errorWidget: (ctx, err, stack) {
             return _buildPlaceholder(isDark);
@@ -359,9 +359,9 @@ class AlbumArtwork extends StatelessWidget {
           memCacheHeight: memCacheSize,
           maxWidthDiskCache: diskCacheSize,
           maxHeightDiskCache: diskCacheSize,
-          fadeInDuration: Duration.zero,
+          fadeInDuration: const Duration(milliseconds: 150),
           fadeOutDuration: Duration.zero,
-          useOldImageOnUrlChange: true,
+          useOldImageOnUrlChange: false,
           placeholder: (ctx, url) => _buildPlaceholder(isDark),
           errorWidget: (ctx, err, stack) {
             return _buildPlaceholder(isDark);

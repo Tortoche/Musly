@@ -30,6 +30,10 @@ import AVFoundation
         registerAirPlayButtonFactory(with: airPlayRegistrar!)
       }
 
+      // Musly Self-Update & Auto-Renew Bridge
+      if let updateRegistrar = registrar(forPlugin: "UpdateBridge") {
+        UpdateBridge.register(with: updateRegistrar)
+      }
     }
     
     // Configure audio session for background playback

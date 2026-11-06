@@ -1240,6 +1240,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                           }
                         },
                         child: AlbumArtView(
+                          key: ValueKey('now_playing_art_${currentSong?.id}'),
                           song: currentSong,
                           coverArt: currentSong?.coverArt,
                           image: _currentImageProvider ?? widget.image,

@@ -1,0 +1,37 @@
+name: Build & Deploy Musly iOS
+
+on:
+  workflow_dispatch: # Déclenchement manuel quand tu veux publier une release
+
+jobs:
+  build_ipa:
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies & CocoaPods
+        run: |
+          flutter pub get
+          cd ios && pod install
+
+      - name: Build unsigned IPA
+        run: |
+          flutter build ios --release --no-codesign
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r -y Musly.ipa Payload
+
+      - name: Deploy IPA to music.corentinjanin.fr
+        run: |
+          curl -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
+            -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" \
+            -F "file=@Musly.ipa" \
+            -F "version=2.10.15" \
+            -F "build_number=30" \
+            -F 'release_notes=["Intégration du système interne d auto-mise à jour et renouvellement 7 jours"]'

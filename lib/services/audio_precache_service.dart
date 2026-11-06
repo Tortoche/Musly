@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song.dart';
@@ -118,8 +119,12 @@ class AudioPrecacheService {
     }
   }
 
-  String _sanitizeId(String id) {
+  String _legacySanitizeId(String id) {
     return id.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+  }
+
+  String _sanitizeId(String id) {
+    return md5.convert(utf8.encode(id)).toString();
   }
 
   String _getSongPath(String songId) {
@@ -135,11 +140,14 @@ class AudioPrecacheService {
     if (_cacheDir == null) return null;
     final path = _getSongPath(songId);
     final file = File(path);
-    if (file.existsSync()) {
-      final len = file.lengthSync();
-      if (len > 30000) {
-        return path;
-      }
+    if (file.existsSync() && file.lengthSync() > 30000) {
+      return path;
+    }
+    // Rétrocompatibilité avec les anciens caches non hachés
+    final legacyPath = '${_cacheDir!.path}/${_legacySanitizeId(songId)}.mp3';
+    final legacyFile = File(legacyPath);
+    if (legacyFile.existsSync() && legacyFile.lengthSync() > 30000) {
+      return legacyPath;
     }
     return null;
   }

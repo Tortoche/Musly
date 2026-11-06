@@ -1,5 +1,6 @@
 import 'library_database_service.dart';
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -331,8 +332,12 @@ class OfflineService {
 
 
 
-  static String _sanitizeId(String id) {
+  static String _legacySanitizeId(String id) {
     return id.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+  }
+
+  static String _sanitizeId(String id) {
+    return md5.convert(utf8.encode(id)).toString();
   }
 
   String _getSongPath(String songId) {
@@ -355,6 +360,8 @@ class OfflineService {
     if (_offlineDir == null) return null;
     final path = _getCoverArtPath(songId);
     if (File(path).existsSync()) return path;
+    final legacyPath = '$_offlineDir/${_legacySanitizeId(songId)}.jpg';
+    if (File(legacyPath).existsSync()) return legacyPath;
     return null;
   }
 
@@ -365,6 +372,10 @@ class OfflineService {
     final path = _getCoverArtByArtIdPath(coverArtId);
     if (File(path).existsSync()) {
       return path;
+    }
+    final legacyPath = '$_offlineDir/art_${_legacySanitizeId(coverArtId)}.jpg';
+    if (File(legacyPath).existsSync()) {
+      return legacyPath;
     }
     return null;
   }
@@ -963,7 +974,10 @@ class OfflineService {
 
   String? getLocalPath(String songId) {
     if (isSongDownloaded(songId)) {
-      return _getSongPath(songId);
+      final path = _getSongPath(songId);
+      if (File(path).existsSync()) return path;
+      final legacyPath = '$_offlineDir/${_legacySanitizeId(songId)}.mp3';
+      if (File(legacyPath).existsSync()) return legacyPath;
     }
     return null;
   }

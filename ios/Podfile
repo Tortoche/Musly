@@ -29,11 +29,21 @@ flutter_ios_podfile_setup
 
 target 'Runner' do
   use_frameworks!
+  use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # Moteur de signature Apple Developer & Anisette
+  pod 'AltSign', :git => 'https://github.com/SideStore/AltSign.git', :branch => 'main'
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
+end
+
+# Cible pour l'extension VPN Loopback interne
+target 'MuslyTunnel' do
+  use_frameworks!
 end
 
 post_install do |installer|
@@ -41,6 +51,7 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      config.build_settings['ENABLE_BITCODE'] = 'NO'
     end
   end
 end
