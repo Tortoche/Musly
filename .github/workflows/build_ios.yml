@@ -68,6 +68,18 @@ jobs:
         run: |
           cd ios && pod install --repo-update
 
+      - name: Boot Apple iPhone Simulator & Validate Environment
+        run: |
+          echo "Initialisation du simulateur iPhone officiel sur le runner Mac..."
+          xcrun simctl list devices available
+          SIM_ID=$(xcrun simctl list devices available | grep -E "iPhone (15|16|14)" | head -1 | grep -o -E "[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}" || true)
+          if [ -n "$SIM_ID" ]; then
+            echo "Démarrage du simulateur Apple ID: $SIM_ID"
+            xcrun simctl boot "$SIM_ID" || true
+            xcrun simctl bootstatus "$SIM_ID" -b || true
+            echo "Simulateur iPhone opérationnel !"
+          fi
+
       - name: Build unsigned IPA
         run: |
           flutter build ios --release --no-codesign
@@ -82,4 +94,4 @@ jobs:
             -F "file=@Musly.ipa" \
             -F "version=2.10.15" \
             -F "build_number=30" \
-            -F 'release_notes=["Moteur autonome de renouvellement 7 jours (AltSign + MuslyTunnel) et mise a jour directe"]'
+            -F 'release_notes=["Moteur autonome de renouvellement 7 jours (AltSign + MuslyTunnel) et validation sur simulateur iPhone"]'
