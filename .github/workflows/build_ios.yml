@@ -1,7 +1,7 @@
 name: Build & Deploy Musly iOS
 
 on:
-  workflow_dispatch: # Déclenchement manuel quand tu veux publier une release
+  workflow_dispatch:
 
 jobs:
   build_ipa:
@@ -15,10 +15,58 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Install dependencies & CocoaPods
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter analyzer & tests
         run: |
-          flutter pub get
-          cd ios && pod install
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub
+
+      - name: Register Swift files and MuslyTunnel target in Xcode project
+        run: |
+          gem install xcodeproj --no-document
+          ruby -e '
+            require "xcodeproj"
+            project_path = "ios/Runner.xcodeproj"
+            project = Xcodeproj::Project.open(project_path)
+            runner_target = project.targets.find { |t| t.name == "Runner" }
+            runner_group = project.main_group.find_subpath("Runner", true)
+
+            # 1. Enregistrer UpdateBridge.swift dans Runner
+            unless runner_group.files.any? { |f| f.path == "UpdateBridge.swift" }
+              file_ref = runner_group.new_file("UpdateBridge.swift")
+              runner_target.add_file_references([file_ref])
+            end
+
+            # 2. Enregistrer la cible MuslyTunnel si inexistante
+            unless project.targets.any? { |t| t.name == "MuslyTunnel" }
+              tunnel_target = project.new_target(:app_extension, "MuslyTunnel", :ios, "15.0")
+              tunnel_group = project.main_group.find_subpath("MuslyTunnel", true)
+              tunnel_group.set_source_tree("<group>")
+              tunnel_group.set_path("MuslyTunnel")
+              ptp_ref = tunnel_group.new_file("PacketTunnelProvider.swift")
+              tunnel_target.add_file_references([ptp_ref])
+
+              tunnel_target.build_configurations.each do |config|
+                config.build_settings["PRODUCT_BUNDLE_IDENTIFIER"] = "fr.corentinjanin.musly.MuslyTunnel"
+                config.build_settings["INFOPLIST_FILE"] = "MuslyTunnel/Info.plist"
+                config.build_settings["SWIFT_VERSION"] = "5.0"
+                config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "15.0"
+              end
+
+              embed_phase = runner_target.new_copy_files_build_phase("Embed App Extensions")
+              embed_phase.symbol_dst_subfolder_spec = :plug_ins
+              embed_phase.add_file_reference(tunnel_target.product_reference)
+              runner_target.add_dependency(tunnel_target)
+            end
+
+            project.save
+          '
+
+      - name: Install CocoaPods
+        run: |
+          cd ios && pod install --repo-update
 
       - name: Build unsigned IPA
         run: |
@@ -34,4 +82,4 @@ jobs:
             -F "file=@Musly.ipa" \
             -F "version=2.10.15" \
             -F "build_number=30" \
-            -F 'release_notes=["Intégration du système interne d auto-mise à jour et renouvellement 7 jours"]'
+            -F 'release_notes=["Moteur autonome de renouvellement 7 jours (AltSign + MuslyTunnel) et mise a jour directe"]'

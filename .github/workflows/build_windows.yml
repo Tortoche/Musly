@@ -1,0 +1,40 @@
+name: Build & Deploy Musly Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows Executable
+        run: flutter build windows --release
+
+      - name: Package Release ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath Musly_Windows_v2.10.15.zip
+
+      - name: Deploy Windows Package to music.corentinjanin.fr
+        shell: pwsh
+        run: |
+          curl.exe -X POST "https://music.corentinjanin.fr/api/musly/deploy" `
+            -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" `
+            -F "file=@Musly_Windows_v2.10.15.zip" `
+            -F "version=2.10.15" `
+            -F "build_number=30" `
+            -F 'release_notes=["Version Windows v2.10.15+30 avec optimisations et synchronisation audio/cover"]'

@@ -1,0 +1,37 @@
+name: Build & Deploy Musly Android
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Deploy APK to music.corentinjanin.fr
+        run: |
+          curl -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
+            -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" \
+            -F "file=@build/app/outputs/flutter-apk/app-release.apk" \
+            -F "version=2.10.15" \
+            -F "build_number=30" \
+            -F 'release_notes=["Correctif de desynchronisation cover/audio et optimisations generales"]'
