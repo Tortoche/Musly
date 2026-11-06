@@ -212,47 +212,42 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
                   child: TvFocusableCard(
                     borderRadius: BorderRadius.circular(8),
                     onTap: () {
-                      final isTv = Provider.of<TvDetectionService>(context,
-                              listen: false)
-                          .isTvMode;
-                      if (isTv) {
-                        final subsonic = Provider.of<SubsonicService>(context,
-                            listen: false);
-                        final coverUrl = currentSong.coverArt != null
-                            ? subsonic.getCoverArtUrl(currentSong.coverArt,
-                                size: 800)
-                            : null;
-                        final imageProvider =
-                            (coverUrl != null && coverUrl.isNotEmpty)
-                                ? CachedNetworkImageProvider(coverUrl)
-                                    as ImageProvider
-                                : const AssetImage('assets/logo.png')
-                                    as ImageProvider;
+                      final subsonic = Provider.of<SubsonicService>(context,
+                          listen: false);
+                      final coverUrl = currentSong.coverArt != null
+                          ? subsonic.getCoverArtUrl(currentSong.coverArt,
+                              size: 800)
+                          : null;
+                      final imageProvider =
+                          (coverUrl != null && coverUrl.isNotEmpty)
+                              ? CachedNetworkImageProvider(coverUrl)
+                                  as ImageProvider
+                              : const AssetImage('assets/logo.png')
+                                  as ImageProvider;
 
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          useRootNavigator: true,
-                          backgroundColor: Colors.transparent,
-                          constraints:
-                              const BoxConstraints(maxWidth: double.infinity),
-                          builder: (ctx) => NowPlayingScreen(
-                            topPadding: MediaQuery.of(context).padding.top,
-                            image: imageProvider,
-                            title: currentSong.title,
-                            artist:
-                                (currentSong.artistParticipants?.isNotEmpty ==
-                                            true
-                                        ? currentSong.artistParticipants!
-                                            .map((a) => a.name)
-                                            .join(', ')
-                                        : currentSong.artist) ??
-                                    '',
-                            heroTag: 'cover_${currentSong.id}',
-                            song: currentSong,
-                          ),
-                        );
-                      }
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        useRootNavigator: true,
+                        backgroundColor: Colors.transparent,
+                        constraints:
+                            const BoxConstraints(maxWidth: double.infinity),
+                        builder: (ctx) => NowPlayingScreen(
+                          topPadding: MediaQuery.of(context).padding.top,
+                          image: imageProvider,
+                          title: currentSong.title,
+                          artist:
+                              (currentSong.artistParticipants?.isNotEmpty ==
+                                          true
+                                      ? currentSong.artistParticipants!
+                                          .map((a) => a.name)
+                                          .join(', ')
+                                      : currentSong.artist) ??
+                                  '',
+                          heroTag: 'cover_${currentSong.id}',
+                          song: currentSong,
+                        ),
+                      );
                     },
                     child: Row(
                       children: [

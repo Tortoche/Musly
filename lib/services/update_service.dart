@@ -188,10 +188,10 @@ class ReleaseInfo {
 }
 
 class UpdateService {
-  static String _currentVersion = '2.10.15';
+  static String _currentVersion = '2.10.16';
   static String get currentVersion => _currentVersion;
 
-  static int _currentBuildNumber = 30;
+  static int _currentBuildNumber = 31;
   static int get currentBuildNumber => _currentBuildNumber;
 
   /// Load real package version dynamically from platform bundle
