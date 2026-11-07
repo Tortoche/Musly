@@ -1,6 +1,14 @@
 name: Build & Deploy Musly Android
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/build_android.yml'
   workflow_dispatch:
 
 jobs:
@@ -32,11 +40,20 @@ jobs:
       - name: Build Android APK
         run: flutter build apk --release
 
+      - name: Extract version from pubspec
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d '\r')
+          NAME=$(echo $VERSION | cut -d'+' -f1)
+          BUILD=$(echo $VERSION | cut -d'+' -f2)
+          echo "version_name=$NAME" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD" >> $GITHUB_OUTPUT
+
       - name: Deploy APK to music.corentinjanin.fr
         run: |
           curl -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
             -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" \
             -F "file=@build/app/outputs/flutter-apk/app-release.apk" \
-            -F "version=2.10.15" \
-            -F "build_number=30" \
-            -F 'release_notes=["Correctif de desynchronisation cover/audio et optimisations generales"]'
+            -F "version=${{ steps.version.outputs.version_name }}" \
+            -F "build_number=${{ steps.version.outputs.build_number }}" \
+            -F 'release_notes=["Améliorations Android Auto: actualisation dynamique de la pochette sur l écran de bord, swipe et file d attente interactive, recherche enrichie"]'
