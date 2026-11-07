@@ -12,16 +12,16 @@ import 'android_auto_service.dart';
 class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   static const _loadConfig = AudioLoadConfiguration(
     androidLoadControl: AndroidLoadControl(
-      minBufferDuration: Duration(seconds: 15),
-      maxBufferDuration: Duration(seconds: 40),
-      bufferForPlaybackDuration: Duration(milliseconds: 350),
-      bufferForPlaybackAfterRebufferDuration: Duration(milliseconds: 1500),
+      minBufferDuration: Duration(seconds: 30),
+      maxBufferDuration: Duration(seconds: 90),
+      bufferForPlaybackDuration: Duration(milliseconds: 1200),
+      bufferForPlaybackAfterRebufferDuration: Duration(milliseconds: 2500),
       prioritizeTimeOverSizeThresholds: true,
-      backBufferDuration: Duration(seconds: 10),
+      backBufferDuration: Duration(seconds: 15),
     ),
     darwinLoadControl: DarwinLoadControl(
-      automaticallyWaitsToMinimizeStalling: false,
-      preferredForwardBufferDuration: Duration(seconds: 20),
+      automaticallyWaitsToMinimizeStalling: true,
+      preferredForwardBufferDuration: Duration(seconds: 30),
     ),
   );
 
@@ -208,6 +208,12 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> stop() async {
     await (onStop?.call() ?? _activePlayer.stop());
+    playbackState.add(
+      playbackState.value.copyWith(
+        processingState: AudioProcessingState.idle,
+        playing: false,
+      ),
+    );
     await super.stop();
   }
 
@@ -554,7 +560,7 @@ Future<MuslyAudioHandler> initAudioService() async {
         androidNotificationChannelId: 'com.devid.musly.channel.audio',
         androidNotificationChannelName: 'Musly',
         androidNotificationOngoing: false,
-        androidStopForegroundOnPause: false,
+        androidStopForegroundOnPause: true,
         androidNotificationIcon: 'mipmap/ic_launcher',
         notificationColor: Color(0xFF1DB954),
         preloadArtwork: true,

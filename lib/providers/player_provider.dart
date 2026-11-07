@@ -582,6 +582,8 @@ class PlayerProvider extends ChangeNotifier
   }
 
   int _queueWindowOffset = 0;
+  int _consecutivePlaybackErrors = 0;
+  Timer? _rollingPrecacheDebounce;
 
   String? _resolveAndroidAutoArtworkUrl(Song? song) {
     if (song == null) return null;
@@ -1102,6 +1104,7 @@ class PlayerProvider extends ChangeNotifier
       } else {
         debugPrint('[Player Network] 📴 Coupure réseau détectée : bascule transparente sur le cache local/pré-cache');
         _audioPrecacheService.cancelPending();
+    _rollingPrecacheDebounce?.cancel();
         _adaptQueueForOffline();
       }
       notifyListeners();
@@ -1201,14 +1204,19 @@ class PlayerProvider extends ChangeNotifier
     _checkAndRefillAutoQueue().catchError((_) {});
   }
 
-  void _triggerRollingPrecache() {
+  void _triggerRollingPrecache({Duration delay = const Duration(seconds: 6)}) {
     if (_queue.isEmpty || _currentIndex < 0) return;
-    _audioPrecacheService.syncQueueWindow(
-      queue: _queue,
-      currentIndex: _currentIndex,
-      subsonicService: _subsonicService,
-    ).catchError((e) {
-      debugPrint('[Player Precache] Erreur sync: ');
+    _rollingPrecacheDebounce?.cancel();
+    _rollingPrecacheDebounce = Timer(delay, () {
+      if (_isPlaying && _queue.isNotEmpty && _currentIndex >= 0) {
+        _audioPrecacheService.syncQueueWindow(
+          queue: _queue,
+          currentIndex: _currentIndex,
+          subsonicService: _subsonicService,
+        ).catchError((e) {
+          debugPrint('[Player Precache] Erreur sync: $e');
+        });
+      }
     });
   }
 
@@ -1955,6 +1963,22 @@ class PlayerProvider extends ChangeNotifier
           } finally {
             _isRecoveringError = false;
           }
+        }
+      } else if (!_isRecoveringError && _queue.length > 1) {
+        // Rcupration automatique en ligne si un morceau choue (stream mort, 404, format non support)
+        _isRecoveringError = true;
+        _consecutivePlaybackErrors++;
+        if (_consecutivePlaybackErrors <= 3) {
+          debugPrint(
+              '[Player] Morceau inaccessible ("${song.title}"), saut automatique vers le morceau suivant ($_consecutivePlaybackErrors/3)...');
+          Future.delayed(const Duration(milliseconds: 300), () async {
+            try {
+              await skipNext();
+            } catch (_) {} finally {
+              _isRecoveringError = false;
+            }
+          });
+          return;
         }
       }
       _isPlaying = false;
@@ -3340,6 +3364,7 @@ class PlayerProvider extends ChangeNotifier
 
         if (state.processingState == ProcessingState.ready ||
             (state.playing && !wasPlaying)) {
+          _consecutivePlaybackErrors = 0; // Succs de lecture rinitialise les compteurs d'erreur
           if (!_isFading) {
             _applyReplayGain(_currentSong).catchError((_) {});
           }
@@ -3382,6 +3407,20 @@ class PlayerProvider extends ChangeNotifier
             } finally {
               _isRecoveringError = false;
             }
+          }
+        } else if (!_isRecoveringError && _queue.length > 1) {
+          _isRecoveringError = true;
+          _consecutivePlaybackErrors++;
+          if (_consecutivePlaybackErrors <= 3) {
+            debugPrint(
+                '[Player] Coupure flux audio en ligne, saut automatique vers la piste suivante ($_consecutivePlaybackErrors/3)...');
+            Future.delayed(const Duration(milliseconds: 300), () async {
+              try {
+                await skipNext();
+              } catch (_) {} finally {
+                _isRecoveringError = false;
+              }
+            });
           }
         }
       },
@@ -3537,6 +3576,7 @@ class PlayerProvider extends ChangeNotifier
     WidgetsBinding.instance.removeObserver(this);
     _connectivitySub?.cancel();
     _audioPrecacheService.cancelPending();
+    _rollingPrecacheDebounce?.cancel();
     _sleepTimer?.cancel();
     _sleepTimerFadeTimer?.cancel();
     _sleepTimerFadePeriodicTimer?.cancel();
