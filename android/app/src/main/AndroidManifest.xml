@@ -43,7 +43,7 @@
     </queries>
     
     <application
-        android:label="Musly"
+        android:label="@string/app_name"
         android:appCategory="audio"
         android:name=".MuslyApplication"
         android:icon="@mipmap/ic_launcher"
@@ -136,7 +136,7 @@
         <activity-alias
             android:name=".MusliAlias"
             android:targetActivity=".MainActivity"
-            android:label="Musli"
+            android:label="@string/alias_musli"
             android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>
@@ -156,7 +156,7 @@
         <activity-alias
             android:name=".MuesliAlias"
             android:targetActivity=".MainActivity"
-            android:label="Muesli"
+            android:label="@string/alias_muesli"
             android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>
@@ -171,7 +171,7 @@
         <activity-alias
             android:name=".MusiqueAlias"
             android:targetActivity=".MainActivity"
-            android:label="Musique"
+            android:label="@string/alias_musique"
             android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>
@@ -191,7 +191,7 @@
         <activity-alias
             android:name=".MusicAlias"
             android:targetActivity=".MainActivity"
-            android:label="Music"
+            android:label="@string/alias_music"
             android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>

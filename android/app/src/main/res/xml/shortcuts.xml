@@ -24,8 +24,8 @@
         android:shortcutId="shortcut_musly_play"
         android:enabled="true"
         android:icon="@drawable/ic_auto_radio"
-        android:shortcutShortLabel="Musly"
-        android:shortcutLongLabel="Lire avec Musly">
+        android:shortcutShortLabel="@string/shortcut_musly_play"
+        android:shortcutLongLabel="@string/shortcut_musly_play_long">
         <intent
             android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
             android:targetPackage="com.devid.musly"

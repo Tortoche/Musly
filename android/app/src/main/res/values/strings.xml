@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Musly</string>
+    <string name="alias_musli">Musli</string>
+    <string name="alias_muesli">Muesli</string>
+    <string name="alias_musique">Musique</string>
+    <string name="alias_music">Music</string>
+    <string name="shortcut_musly_play">Musly</string>
+    <string name="shortcut_musly_play_long">Lire avec Musly</string>
     <string name="shortcut_discovery">Découverte</string>
     <string name="shortcut_discovery_long">Découverte du jour</string>
     <string name="shortcut_favorites">Favoris</string>
