@@ -14,6 +14,8 @@ on:
 jobs:
   build_apk:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,15 +39,18 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Android APK (ARM64 pour optimiser la taille sous les 100 Mo de Cloudflare)
-        run: flutter build apk --release --target-platform android-arm64
+      - name: Build Android Universal APK (compatible tous appareils: ARM64, ARMv7, x86_64)
+        run: flutter build apk --release
 
       - name: Check APK file
+        id: apk_info
         run: |
           ls -lh build/app/outputs/flutter-apk/
           APK_FILE=$(find build/app/outputs/flutter-apk/ -name "*.apk" | head -n 1)
+          FILE_SIZE=$(stat -c%s "$APK_FILE")
           echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
-        id: apk_info
+          echo "apk_size=$FILE_SIZE" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK_FILE ($FILE_SIZE bytes)"
 
       - name: Extract version from pubspec
         id: version
@@ -56,11 +61,51 @@ jobs:
           echo "version_name=$NAME" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD" >> $GITHUB_OUTPUT
 
-      - name: Deploy APK to music.corentinjanin.fr
+      - name: Deploy Universal APK to music.corentinjanin.fr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl --fail -sS -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
-            -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" \
-            -F "file=@${{ steps.apk_info.outputs.apk_path }}" \
-            -F "version=${{ steps.version.outputs.version_name }}" \
-            -F "build_number=${{ steps.version.outputs.build_number }}" \
-            -F 'release_notes=["Ameliorations Android Auto: actualisation dynamique de la pochette, navigation et swipe dans la file d attente, recherche et commandes vocales enrichies"]'
+          APK_PATH="${{ steps.apk_info.outputs.apk_path }}"
+          VERSION_NAME="${{ steps.version.outputs.version_name }}"
+          BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
+          FILE_SIZE="${{ steps.apk_info.outputs.apk_size }}"
+          RELEASE_NOTES='["Version universelle compatible avec tous les appareils (ARM64, ARMv7, x86)"]'
+
+          echo "Deploying Musly v${VERSION_NAME} (Build ${BUILD_NUMBER}) - Size: ${FILE_SIZE} bytes"
+
+          # Si le fichier fait moins de 95 Mo, upload direct multipart.
+          # S'il dépasse 95 Mo (cas du FAT APK universel ~124 Mo), publication sur GitHub Release
+          # et déploiement via download_url pour contourner la limite de 100 Mo de Cloudflare.
+          if [ "$FILE_SIZE" -lt 95000000 ]; then
+            echo "Direct upload via multipart POST (< 95 Mo)..."
+            curl --fail -sS -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
+              -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" \
+              -F "file=@$APK_PATH" \
+              -F "version=$VERSION_NAME" \
+              -F "build_number=$BUILD_NUMBER" \
+              -F "release_notes=$RELEASE_NOTES"
+          else
+            echo "Universal APK > 95 Mo (${FILE_SIZE} bytes). Publishing GitHub Release to bypass Cloudflare upload limit..."
+            RELEASE_TAG="v${VERSION_NAME}"
+            UNIVERSAL_FILENAME="Musly_v${VERSION_NAME}.apk"
+            cp "$APK_PATH" "$UNIVERSAL_FILENAME"
+
+            gh release create "$RELEASE_TAG" "$UNIVERSAL_FILENAME" \
+              --title "Musly v${VERSION_NAME} (Build ${BUILD_NUMBER})" \
+              --notes "Version universelle compatible avec tous les appareils Android (ARM64, ARMv7, x86)" \
+              --clobber
+
+            DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/${UNIVERSAL_FILENAME}"
+            echo "Release published successfully: $DOWNLOAD_URL"
+            echo "Notifying server to fetch and deploy the universal APK..."
+
+            curl --fail -sS -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
+              -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "version": "'"$VERSION_NAME"'",
+                "build_number": '"$BUILD_NUMBER"',
+                "download_url": "'"$DOWNLOAD_URL"'",
+                "release_notes": ["Version universelle compatible avec tous les appareils (ARM64, ARMv7, x86)"]
+              }'
+          fi
