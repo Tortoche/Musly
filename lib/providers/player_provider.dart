@@ -222,6 +222,10 @@ class PlayerProvider extends ChangeNotifier
     _audioHandler.onStop = stop;
     _audioHandler.onSkipNext = skipNext;
     _audioHandler.onSkipPrevious = skipPrevious;
+    _audioHandler.onSkipToQueueItem = (index) async {
+      final realIndex = _queueWindowOffset + index;
+      await skipToIndex(realIndex);
+    };
     _audioHandler.onSeekTo = seek;
     _audioHandler.onTogglePlayPause = togglePlayPause;
     _audioHandler.onSetRemoteVolume = _onRemoteVolumeChange;
@@ -577,10 +581,77 @@ class PlayerProvider extends ChangeNotifier
     }
   }
 
+  int _queueWindowOffset = 0;
+
+  String? _resolveAndroidAutoArtworkUrl(Song? song) {
+    if (song == null) return null;
+    if (song.isLocal) {
+      final path = song.coverArt ?? song.path;
+      if (path != null && path.isNotEmpty) {
+        return Uri.file(path).toString();
+      }
+      return null;
+    }
+    final coverId = song.coverArt ?? song.id;
+    final rawUrl = _subsonicService.getCoverArtUrl(coverId, size: 800);
+    if (rawUrl.isEmpty) return null;
+    try {
+      final uri = Uri.parse(rawUrl);
+      final q = Map<String, String>.from(uri.queryParameters);
+      q['musly_track'] = song.id;
+      return uri.replace(queryParameters: q).toString();
+    } catch (_) {
+      return rawUrl;
+    }
+  }
+
+  void _syncQueueWithAudioHandler() {
+    if (_queue.isEmpty) {
+      _queueWindowOffset = 0;
+      _audioHandler.setQueue(const [], currentIndex: 0);
+      return;
+    }
+
+    final total = _queue.length;
+    final int start;
+    final int end;
+
+    if (total <= 100) {
+      start = 0;
+      end = total;
+    } else {
+      start = (_currentIndex - 20).clamp(0, total - 100);
+      end = (start + 100).clamp(0, total);
+    }
+    _queueWindowOffset = start;
+
+    final items = <MediaItem>[];
+    for (var i = start; i < end; i++) {
+      final s = _queue[i];
+      final art = _resolveAndroidAutoArtworkUrl(s);
+      items.add(
+        MediaItem(
+          id: s.id,
+          title: s.title,
+          artist: s.artist,
+          album: s.album,
+          artUri: art != null ? Uri.tryParse(art) : null,
+          duration: s.duration != null ? Duration(seconds: s.duration!) : null,
+          playable: true,
+          extras: {'queueIndex': i},
+        ),
+      );
+    }
+
+    final localCurrentIndex =
+        (_currentIndex - start).clamp(0, items.isNotEmpty ? items.length - 1 : 0);
+    _audioHandler.setQueue(items, currentIndex: localCurrentIndex);
+  }
+
   void _updateAndroidAuto() {
     if (_currentSong == null) return;
 
-    final artworkUrl = _resolveArtworkUrl();
+    final artworkUrl = _resolveAndroidAutoArtworkUrl(_currentSong);
 
     final effectiveDuration = _duration.inMilliseconds > 0
         ? _duration
@@ -594,6 +665,8 @@ class PlayerProvider extends ChangeNotifier
       artworkUrl: artworkUrl,
       duration: effectiveDuration,
     );
+
+    _syncQueueWithAudioHandler();
 
     if (_isRenderingRemotely || _jukeboxService.enabled) {
       _audioHandler.updateRemotePlaybackState(

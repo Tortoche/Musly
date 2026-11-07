@@ -189,7 +189,16 @@ class AndroidAutoService {
 
       final result =
           await lib.search(query).timeout(const Duration(seconds: 15));
-      return result.songs.take(30).map(_songToMediaItem).toList();
+      final items = <MediaItem>[];
+      // 1. Chansons prioritaires (jusqu'a 25)
+      items.addAll(result.songs.take(25).map(_songToMediaItem));
+      // 2. Albums correspondants
+      items.addAll(result.albums.take(8).map(_albumToMediaItem));
+      // 3. Artistes correspondants
+      items.addAll(result.artists.take(5).map(_artistToMediaItem));
+      // 4. Playlists correspondantes
+      items.addAll(result.playlists.take(5).map(_playlistToMediaItem));
+      return items;
     } catch (e) {
       debugPrint('[AndroidAutoService] search error: $e');
       return const [];
@@ -239,35 +248,82 @@ class AndroidAutoService {
         return;
       }
 
-      final results = await search(query).timeout(const Duration(seconds: 15));
-      if (results.isEmpty) {
-        debugPrint(
-            '[AndroidAutoService] playFromSearch: no results for "$query"');
+      final lib = _libraryDelegate;
+      if (lib == null) return;
+
+      final result = await lib.search(query).timeout(const Duration(seconds: 15));
+
+      // 1. Si on a trouve des chansons directes, jouer la premiere avec le reste de la liste
+      if (result.songs.isNotEmpty) {
+        await player.playSong(
+          result.songs.first,
+          playlist: result.songs,
+          startIndex: 0,
+        );
         return;
       }
 
-      final lib = _libraryDelegate;
-      final firstId = results.first.id;
-      final songId = firstId.startsWith(_prefixSong)
-          ? firstId.substring(_prefixSong.length)
-          : firstId;
-      final allSongs = lib?.cachedAllSongs ?? [];
-      final song = allSongs.firstWhere(
-        (s) => s.id == songId,
-        orElse: () => _mediaItemToSong(results.first),
-      );
+      // 2. Si on a trouve un album, charger et jouer les chansons de l'album
+      if (result.albums.isNotEmpty) {
+        final albumSongs = await lib.getAlbumSongs(result.albums.first.id);
+        if (albumSongs.isNotEmpty) {
+          await player.playSong(
+            albumSongs.first,
+            playlist: albumSongs,
+            startIndex: 0,
+          );
+          return;
+        }
+      }
 
-      final playlist = results.map((item) {
-        final id = item.id.startsWith(_prefixSong)
-            ? item.id.substring(_prefixSong.length)
-            : item.id;
-        return allSongs.firstWhere(
-          (s) => s.id == id,
-          orElse: () => _mediaItemToSong(item),
+      // 3. Si on a trouve un artiste, charger son premier album
+      if (result.artists.isNotEmpty) {
+        final artistAlbums = await lib.getArtistAlbums(result.artists.first.id);
+        if (artistAlbums.isNotEmpty) {
+          final albumSongs = await lib.getAlbumSongs(artistAlbums.first.id);
+          if (albumSongs.isNotEmpty) {
+            await player.playSong(
+              albumSongs.first,
+              playlist: albumSongs,
+              startIndex: 0,
+            );
+            return;
+          }
+        }
+      }
+
+      // 4. Si on a trouve une playlist, la charger et la jouer
+      if (result.playlists.isNotEmpty) {
+        final pl = await lib.getPlaylist(result.playlists.first.id);
+        final plSongs = pl.songs ?? [];
+        if (plSongs.isNotEmpty) {
+          await player.playSong(
+            plSongs.first,
+            playlist: plSongs,
+            startIndex: 0,
+          );
+          return;
+        }
+      }
+
+      // 5. Fallback local dans cachedAllSongs
+      final q = query.toLowerCase();
+      final localHits = lib.cachedAllSongs
+          .where((s) =>
+              s.title.toLowerCase().contains(q) ||
+              (s.artist?.toLowerCase().contains(q) ?? false) ||
+              (s.album?.toLowerCase().contains(q) ?? false))
+          .toList();
+      if (localHits.isNotEmpty) {
+        await player.playSong(
+          localHits.first,
+          playlist: localHits,
+          startIndex: 0,
         );
-      }).toList();
+        return;
+      }
 
-      await player.playSong(song, playlist: playlist, startIndex: 0);
+      debugPrint('[AndroidAutoService] playFromSearch: no results for "$query"');
     } catch (e) {
       debugPrint('[AndroidAutoService] playFromSearch error: $e');
     }
@@ -620,11 +676,26 @@ class AndroidAutoService {
     final player = _playerDelegate;
     if (player == null || player.queue.isEmpty) return const [];
 
-    final lib = _libraryDelegate;
     return player.queue.asMap().entries.map((entry) {
       final i = entry.key;
       final song = entry.value;
-      final artUrl = lib?.getCoverArtUrl(song.coverArt) ?? '';
+      String? artUrl;
+      if (song.isLocal) {
+        if (song.coverArt != null) artUrl = Uri.file(song.coverArt!).toString();
+      } else {
+        final coverId = song.coverArt ?? song.id;
+        final raw = _subsonicService.getCoverArtUrl(coverId, size: _artworkSize);
+        if (raw.isNotEmpty) {
+          try {
+            final uri = Uri.parse(raw);
+            final q = Map<String, String>.from(uri.queryParameters);
+            q['musly_track'] = song.id;
+            artUrl = uri.replace(queryParameters: q).toString();
+          } catch (_) {
+            artUrl = raw;
+          }
+        }
+      }
       return MediaItem(
         id: '$_prefixSong${song.id}',
         title: i == player.currentIndex ? '▶ ${song.title}' : song.title,
@@ -839,18 +910,22 @@ class AndroidAutoService {
   MediaItem _songToMediaItem(Song song) {
     if (_songCache.length > 2000) _songCache.clear();
     _songCache[song.id] = song;
-    final lib = _libraryDelegate;
     String? artUrl;
 
     if (song.isLocal) {
       if (song.coverArt != null) artUrl = Uri.file(song.coverArt!).toString();
     } else {
-      final localCover = _offlineService.getLocalCoverArtPath(song.id);
-      if (localCover != null && File(localCover).existsSync()) {
-        artUrl = Uri.file(localCover).toString();
-      } else if (lib != null) {
-        artUrl =
-            _subsonicService.getCoverArtUrl(song.coverArt, size: _artworkSize);
+      final coverId = song.coverArt ?? song.id;
+      final raw = _subsonicService.getCoverArtUrl(coverId, size: _artworkSize);
+      if (raw.isNotEmpty) {
+        try {
+          final uri = Uri.parse(raw);
+          final q = Map<String, String>.from(uri.queryParameters);
+          q['musly_track'] = song.id;
+          artUrl = uri.replace(queryParameters: q).toString();
+        } catch (_) {
+          artUrl = raw;
+        }
       }
     }
 
@@ -926,20 +1001,6 @@ class AndroidAutoService {
       artUri: iconUri,
       playable: false,
       extras: extras,
-    );
-  }
-
-  Song _mediaItemToSong(MediaItem item) {
-    final rawId = item.id.startsWith(_prefixSong)
-        ? item.id.substring(_prefixSong.length)
-        : item.id;
-    return Song(
-      id: rawId,
-      title: item.title,
-      artist: item.artist,
-      album: item.album,
-      coverArt: item.artUri?.toString(),
-      duration: item.duration?.inSeconds,
     );
   }
 

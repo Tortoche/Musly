@@ -70,11 +70,34 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> Function()? onStop;
   Future<void> Function()? onSkipNext;
   Future<void> Function()? onSkipPrevious;
+  Future<void> Function(int index)? onSkipToQueueItem;
   Future<void> Function(Duration)? onSeekTo;
   Future<void> Function()? onTogglePlayPause;
   void Function(int volumePercent)? onSetRemoteVolume;
   void Function(AudioServiceRepeatMode repeatMode)? onSetRepeatMode;
   void Function(AudioServiceShuffleMode shuffleMode)? onSetShuffleMode;
+
+  int _currentQueueIndex = 0;
+  int get currentQueueIndex => _currentQueueIndex;
+
+  void updateQueueIndex(int index) {
+    if (_currentQueueIndex != index) {
+      _currentQueueIndex = index;
+      if (!_remotePlayback) {
+        playbackState.add(_buildPlaybackState(_activePlayer.playbackEvent));
+      }
+    }
+  }
+
+  void setQueue(List<MediaItem> newQueue, {int? currentIndex}) {
+    if (currentIndex != null) {
+      _currentQueueIndex = currentIndex;
+    }
+    queue.add(newQueue);
+    if (!_remotePlayback) {
+      playbackState.add(_buildPlaybackState(_activePlayer.playbackEvent));
+    }
+  }
 
   @override
   Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
@@ -201,6 +224,10 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> skipToPrevious() => onSkipPrevious?.call() ?? Future.value();
 
   @override
+  Future<void> skipToQueueItem(int index) =>
+      onSkipToQueueItem?.call(index) ?? Future.value();
+
+  @override
   Future<void> seek(Duration position) =>
       onSeekTo?.call(position) ?? _activePlayer.seek(position);
 
@@ -318,6 +345,9 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
           MediaAction.seekBackward,
           MediaAction.playFromMediaId,
           MediaAction.playFromSearch,
+          MediaAction.skipToNext,
+          MediaAction.skipToPrevious,
+          MediaAction.skipToQueueItem,
           MediaAction.setShuffleMode,
           MediaAction.setRepeatMode,
         },
@@ -428,6 +458,9 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
           MediaAction.seekBackward,
           MediaAction.playFromMediaId,
           MediaAction.playFromSearch,
+          MediaAction.skipToNext,
+          MediaAction.skipToPrevious,
+          MediaAction.skipToQueueItem,
           MediaAction.setShuffleMode,
           MediaAction.setRepeatMode,
         },
@@ -435,6 +468,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
         processingState: AudioProcessingState.ready,
         playing: playing,
         updatePosition: position,
+        queueIndex: _currentQueueIndex,
       ),
     );
   }
@@ -460,6 +494,9 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
         MediaAction.seekBackward,
         MediaAction.playFromMediaId,
         MediaAction.playFromSearch,
+        MediaAction.skipToNext,
+        MediaAction.skipToPrevious,
+        MediaAction.skipToQueueItem,
         MediaAction.setShuffleMode,
         MediaAction.setRepeatMode,
       },
@@ -470,7 +507,7 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
       updatePosition: _activePlayer.position,
       bufferedPosition: _activePlayer.bufferedPosition,
       speed: _activePlayer.speed,
-      queueIndex: event.currentIndex,
+      queueIndex: _currentQueueIndex,
       repeatMode: _activePlayer.loopMode == LoopMode.one
           ? AudioServiceRepeatMode.one
           : (_activePlayer.loopMode == LoopMode.all
