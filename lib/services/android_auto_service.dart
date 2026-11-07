@@ -238,7 +238,14 @@ class AndroidAutoService {
       final player = _playerDelegate;
       if (player == null) return;
 
-      if (query.trim().isEmpty) {
+      final cleanQ = query.trim().toLowerCase();
+      final isGeneric = cleanQ.isEmpty ||
+          cleanQ == 'musique' ||
+          cleanQ == 'de la musique' ||
+          cleanQ == 'music' ||
+          cleanQ == 'play music';
+
+      if (isGeneric) {
         final current = player.currentSong;
         if (current != null) {
           await player.play();

@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Android Universal APK (compatible tous appareils: ARM64, ARMv7, x86_64)
+      - name: "Build Android Universal APK (compatible tous appareils: ARM64, ARMv7, x86_64)"
         run: flutter build apk --release
 
       - name: Check APK file

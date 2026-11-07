@@ -75,6 +75,10 @@ android {
 chaquopy {
     defaultConfig {
         version = "3.11"
+        val py311 = file("C:/Users/coren/AppData/Local/Programs/Python/Python311/python.exe")
+        if (py311.exists()) {
+            buildPython(py311.absolutePath)
+        }
         pip {
             install("yt-dlp")
         }

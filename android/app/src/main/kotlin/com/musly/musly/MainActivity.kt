@@ -25,9 +25,12 @@ class MainActivity : AudioServiceFragmentActivity() {
     private val TV_CHANNEL = "com.devid.musly/tv_mode"
     private val APK_CHANNEL = "com.devid.musly/apk_installer"
     private val DEEP_LINK_CHANNEL = "com.devid.musly/deep_link"
+    private val VOICE_SEARCH_CHANNEL = "com.devid.musly/voice_search"
 
     private var initialLink: String? = null
     private var deepLinkChannel: MethodChannel? = null
+    private var initialVoiceQuery: String? = null
+    private var voiceSearchChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +56,17 @@ class MainActivity : AudioServiceFragmentActivity() {
             initialLink = link
             deepLinkChannel?.invokeMethod("onNewLink", link)
         }
+
+        if (intent.action == "android.media.action.MEDIA_PLAY_FROM_SEARCH" ||
+            intent.action == "android.intent.action.MEDIA_SEARCH") {
+            val query = intent.getStringExtra(android.app.SearchManager.QUERY)
+                ?: intent.getStringExtra("query")
+                ?: intent.getStringExtra(android.provider.MediaStore.EXTRA_MEDIA_TITLE)
+                ?: intent.getStringExtra(android.provider.MediaStore.EXTRA_MEDIA_ARTIST)
+                ?: ""
+            initialVoiceQuery = query
+            voiceSearchChannel?.invokeMethod("onVoiceSearch", query)
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -73,6 +87,23 @@ class MainActivity : AudioServiceFragmentActivity() {
         }
         if (!initialLink.isNullOrEmpty()) {
             deepLinkChannel?.invokeMethod("onNewLink", initialLink)
+        }
+
+        // Voice search channel for Google Assistant & Android Auto
+        val voiceChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, VOICE_SEARCH_CHANNEL)
+        voiceSearchChannel = voiceChannel
+        voiceChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getInitialVoiceQuery" -> {
+                    val q = initialVoiceQuery
+                    initialVoiceQuery = null
+                    result.success(q)
+                }
+                else -> result.notImplemented()
+            }
+        }
+        if (initialVoiceQuery != null) {
+            voiceSearchChannel?.invokeMethod("onVoiceSearch", initialVoiceQuery)
         }
 
         // Native APK installer channel

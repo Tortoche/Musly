@@ -218,6 +218,25 @@ void main() async {
   androidAutoService.setAuthProvider(authProvider);
   audioHandler.setAutoService(androidAutoService);
 
+  // Wire native voice search channel (Google Assistant / Android Auto)
+  const voiceChannel = MethodChannel('com.devid.musly/voice_search');
+  voiceChannel.setMethodCallHandler((call) async {
+    if (call.method == 'onVoiceSearch') {
+      final query = call.arguments as String?;
+      if (query != null) {
+        debugPrint('[VoiceSearch] Received native voice query: "$query"');
+        await audioHandler.playFromSearch(query);
+      }
+    }
+  });
+  try {
+    final initialQuery = await voiceChannel.invokeMethod<String>('getInitialVoiceQuery');
+    if (initialQuery != null) {
+      debugPrint('[VoiceSearch] Initial voice query: "$initialQuery"');
+      unawaited(audioHandler.playFromSearch(initialQuery));
+    }
+  } catch (_) {}
+
   playerProvider.onMilestone50Triggered = () {
     final ctx = navigatorKey.currentContext;
     if (ctx != null) {
