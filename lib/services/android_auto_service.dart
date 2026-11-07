@@ -71,7 +71,7 @@ class AndroidAutoService {
   static const _prefixSong = 'auto_song_';
   static const _prefixRadio = 'auto_radio_';
 
-  static const _artworkSize = 800;
+  static const _artworkSize = 500;
 
   static const _contentStyleBrowsable =
       'android.media.browse.CONTENT_STYLE_BROWSABLE_HINT';

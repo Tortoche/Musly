@@ -42,9 +42,10 @@ class _PlaybackProgressSliderState extends State<PlaybackProgressSlider> {
     final safeMax = maxDuration > 0 ? maxDuration : 1.0;
     final progress = (currentDuration / safeMax).clamp(0.0, 1.0);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+    return RepaintBoundary(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragStart: (details) {
@@ -111,6 +112,7 @@ class _PlaybackProgressSliderState extends State<PlaybackProgressSlider> {
           ],
         ),
       ],
+      ),
     );
   }
 }

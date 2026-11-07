@@ -20,6 +20,14 @@ class GeniusLyricsService {
   );
 
   final Map<String, String> _cache = {};
+  static const int _maxCacheSize = 100;
+
+  void _setCache(String key, String value) {
+    if (_cache.length >= _maxCacheSize) {
+      _cache.remove(_cache.keys.first);
+    }
+    _cache[key] = value;
+  }
 
   static String _unescapeHtml(String input) {
     return input
@@ -128,7 +136,7 @@ class GeniusLyricsService {
       lyrics = lyrics.trim();
 
       if (lyrics.isNotEmpty) {
-        _cache[cacheKey] = lyrics;
+        _setCache(cacheKey, lyrics);
         debugPrint('[Genius] Lyrics successfully retrieved for "$artist - $title"');
         return lyrics;
       }

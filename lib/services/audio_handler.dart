@@ -208,6 +208,9 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> stop() async {
     await (onStop?.call() ?? _activePlayer.stop());
+    try {
+      await standbyPlayer.stop();
+    } catch (_) {}
     playbackState.add(
       playbackState.value.copyWith(
         processingState: AudioProcessingState.idle,

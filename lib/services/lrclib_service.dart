@@ -21,6 +21,14 @@ class LrcLibService {
   );
 
   final Map<String, Map<String, dynamic>> _cache = {};
+  static const int _maxCacheSize = 150;
+
+  void _setCache(String key, Map<String, dynamic> value) {
+    if (_cache.length >= _maxCacheSize) {
+      _cache.remove(_cache.keys.first);
+    }
+    _cache[key] = value;
+  }
 
   static final List<RegExp> _noiseRegexes = [
     RegExp(
@@ -242,7 +250,7 @@ class LrcLibService {
           if (isTitleMatch(trackName, cleanedTitle) && isArtistMatch(artistName, pair.key)) {
             final res = _parseLrcLibResponse(data);
             if (res != null) {
-              _cache[cacheKey] = res;
+              _setCache(cacheKey, res);
               debugPrint('[LRCLIB] Exact match with duration for "${pair.key} - ${pair.value}"');
               return res;
             }
@@ -265,7 +273,7 @@ class LrcLibService {
         if (isTitleMatch(trackName, cleanedTitle) && isArtistMatch(artistName, pair.key)) {
           final res = _parseLrcLibResponse(data);
           if (res != null) {
-            _cache[cacheKey] = res;
+            _setCache(cacheKey, res);
             debugPrint('[LRCLIB] Exact match for "${pair.key} - ${pair.value}"');
             return res;
           }
@@ -321,7 +329,7 @@ class LrcLibService {
               targetDuration: durationSeconds,
             );
             if (parsed != null) {
-              _cache[cacheKey] = parsed;
+              _setCache(cacheKey, parsed);
               debugPrint('[LRCLIB] Structured search match for $params');
               return parsed;
             }
@@ -368,7 +376,7 @@ class LrcLibService {
             targetDuration: durationSeconds,
           );
           if (parsed != null) {
-            _cache[cacheKey] = parsed;
+            _setCache(cacheKey, parsed);
             debugPrint('[LRCLIB] Query match found for "$q"');
             return parsed;
           }
@@ -387,7 +395,7 @@ class LrcLibService {
           );
           if (geniusLyrics != null && geniusLyrics.trim().isNotEmpty) {
             final res = {'value': geniusLyrics};
-            _cache[cacheKey] = res;
+            _setCache(cacheKey, res);
             debugPrint('[Genius] Fallback lyrics captured for "$geniusArtist - $cleanedTitle"');
             return res;
           }

@@ -3,6 +3,7 @@ import 'package:palette_generator/palette_generator.dart';
 
 class PaletteService {
   static final Map<String, List<Color>> _colorCache = {};
+  static const int _maxColorCacheSize = 120;
 
   static Future<List<Color>> extractColors(
       ImageProvider imageProvider, String imageId) async {
@@ -67,6 +68,9 @@ class PaletteService {
             .toColor());
       }
 
+      if (_colorCache.length >= _maxColorCacheSize) {
+        _colorCache.remove(_colorCache.keys.first);
+      }
       _colorCache[imageId] = extracted;
       return extracted;
     } catch (e) {

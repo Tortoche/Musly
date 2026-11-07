@@ -595,7 +595,7 @@ class PlayerProvider extends ChangeNotifier
       return null;
     }
     final coverId = song.coverArt ?? song.id;
-    final rawUrl = _subsonicService.getCoverArtUrl(coverId, size: 800);
+    final rawUrl = _subsonicService.getCoverArtUrl(coverId, size: 500);
     if (rawUrl.isEmpty) return null;
     try {
       final uri = Uri.parse(rawUrl);

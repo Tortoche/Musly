@@ -548,10 +548,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         if (!showLyric || _fetchedLyrics.isEmpty || !LrcParser.hasTimestamps(_fetchedLyrics)) {
           return const SizedBox.shrink();
         }
-        return StreamBuilder<Duration>(
-          stream: provider.positionStream,
-          initialData: provider.position,
-          builder: (context, snapshot) {
+        return RepaintBoundary(
+          child: StreamBuilder<Duration>(
+            stream: provider.positionStream,
+            initialData: provider.position,
+            builder: (context, snapshot) {
             final currentTime = snapshot.data ?? Duration.zero;
             LyricLine? activeLine;
             for (int i = 0; i < _fetchedLyrics.length; i++) {
@@ -683,7 +684,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               ),
             );
           },
-        );
+        ),
+      );
       },
     );
   }

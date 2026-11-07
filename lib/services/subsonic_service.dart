@@ -41,7 +41,23 @@ class SubsonicService {
   SubsonicService() : _dio = Dio() {
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
+    _setupDefaultHttpClient(_dio);
     _addLogInterceptor(_dio);
+  }
+
+  void _setupDefaultHttpClient(Dio dio) {
+    if (!kIsWeb) {
+      final adapter = dio.httpClientAdapter;
+      if (adapter is IOHttpClientAdapter) {
+        adapter.createHttpClient = () {
+          final client = HttpClient();
+          client.idleTimeout = const Duration(seconds: 30);
+          client.connectionTimeout = const Duration(seconds: 15);
+          client.maxConnectionsPerHost = 12;
+          return client;
+        };
+      }
+    }
   }
 
   static String _sanitizeUrl(String url) {
@@ -290,6 +306,7 @@ class SubsonicService {
           createClient;
     } else {
       HttpOverrides.global = null;
+      _setupDefaultHttpClient(_dio);
     }
   }
 
