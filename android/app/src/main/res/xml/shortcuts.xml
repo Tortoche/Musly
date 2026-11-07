@@ -1,5 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Google Assistant / Gemini App Actions Built-In Intent for Media Playback -->
+    <capability android:name="actions.intent.PLAY_MEDIA">
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="com.devid.musly"
+            android:targetClass="com.devid.musly.MainActivity">
+            <parameter
+                android:name="media.name"
+                android:key="query" />
+        </intent>
+    </capability>
+
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.devid.musly"
+            android:targetClass="com.devid.musly.MainActivity"
+            android:data="musly://open" />
+    </capability>
+
+    <shortcut
+        android:shortcutId="shortcut_musly_play"
+        android:enabled="true"
+        android:icon="@drawable/ic_auto_radio"
+        android:shortcutShortLabel="Musly"
+        android:shortcutLongLabel="Lire avec Musly">
+        <intent
+            android:action="android.media.action.MEDIA_PLAY_FROM_SEARCH"
+            android:targetPackage="com.devid.musly"
+            android:targetClass="com.devid.musly.MainActivity" />
+        <capability-binding android:key="actions.intent.PLAY_MEDIA">
+            <parameter-binding
+                android:key="media.name"
+                android:value="@array/app_aliases" />
+        </capability-binding>
+    </shortcut>
+
     <shortcut
         android:shortcutId="shortcut_discovery"
         android:enabled="true"
@@ -8,8 +45,8 @@
         android:shortcutLongLabel="@string/shortcut_discovery_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.corentinjanin.musly"
-            android:targetClass="com.corentinjanin.musly.MainActivity"
+            android:targetPackage="com.devid.musly"
+            android:targetClass="com.devid.musly.MainActivity"
             android:data="musly://shortcut/discovery" />
     </shortcut>
     <shortcut
@@ -20,8 +57,8 @@
         android:shortcutLongLabel="@string/shortcut_favorites_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.corentinjanin.musly"
-            android:targetClass="com.corentinjanin.musly.MainActivity"
+            android:targetPackage="com.devid.musly"
+            android:targetClass="com.devid.musly.MainActivity"
             android:data="musly://shortcut/favorites" />
     </shortcut>
     <shortcut
@@ -32,8 +69,8 @@
         android:shortcutLongLabel="@string/shortcut_search_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.corentinjanin.musly"
-            android:targetClass="com.corentinjanin.musly.MainActivity"
+            android:targetPackage="com.devid.musly"
+            android:targetClass="com.devid.musly.MainActivity"
             android:data="musly://shortcut/search" />
     </shortcut>
 </shortcuts>

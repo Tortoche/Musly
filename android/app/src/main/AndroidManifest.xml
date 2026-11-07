@@ -70,7 +70,7 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <intent-filter>
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.MAIN"/>
                 <action android:name="android.intent.action.MUSIC_PLAYER"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -78,14 +78,24 @@
                 <category android:name="android.intent.category.APP_MUSIC"/>
             </intent-filter>
             
-            <!-- Voice search intents for Google Assistant, Gemini & Android Auto -->
-            <intent-filter>
+            <!-- High-priority Voice search intents for Google Assistant, Gemini & Android Auto -->
+            <intent-filter android:priority="999">
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
-            <intent-filter>
+            <intent-filter android:priority="999">
                 <action android:name="android.intent.action.MEDIA_SEARCH"/>
                 <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+
+            <!-- Intercept system-wide audio files & music triggers -->
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="audio/*"/>
+                <data android:mimeType="application/ogg"/>
+                <data android:mimeType="application/x-ogg"/>
+                <data android:mimeType="application/itunes"/>
             </intent-filter>
             <meta-data
                 android:name="android.app.shortcuts"
@@ -121,6 +131,78 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- Phonetic & generic aliases so Google Assistant & Gemini match every spoken variation -->
+        <activity-alias
+            android:name=".MusliAlias"
+            android:targetActivity=".MainActivity"
+            android:label="Musli"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.MEDIA_SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.MUSIC_PLAYER"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.APP_MUSIC"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MuesliAlias"
+            android:targetActivity=".MainActivity"
+            android:label="Muesli"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.MEDIA_SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MusiqueAlias"
+            android:targetActivity=".MainActivity"
+            android:label="Musique"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.MEDIA_SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.MUSIC_PLAYER"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.APP_MUSIC"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MusicAlias"
+            android:targetActivity=".MainActivity"
+            android:label="Music"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.MEDIA_SEARCH"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity-alias>
+
         
         <service
             android:name="com.ryanheise.audioservice.AudioService"

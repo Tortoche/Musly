@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="app_aliases">
+        <item>Musly</item>
+        <item>Musli</item>
+        <item>Muesli</item>
+        <item>Musi</item>
+        <item>Musique</item>
+        <item>Music</item>
+        <item>Ma musique</item>
+        <item>Lecteur de musique</item>
+    </string-array>
+</resources>
