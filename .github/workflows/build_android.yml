@@ -37,8 +37,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Android APK
-        run: flutter build apk --release
+      - name: Build Android APK (ARM64 pour optimiser la taille sous les 100 Mo de Cloudflare)
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Check APK file
+        run: |
+          ls -lh build/app/outputs/flutter-apk/
+          APK_FILE=$(find build/app/outputs/flutter-apk/ -name "*.apk" | head -n 1)
+          echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
+        id: apk_info
 
       - name: Extract version from pubspec
         id: version
@@ -51,9 +58,9 @@ jobs:
 
       - name: Deploy APK to music.corentinjanin.fr
         run: |
-          curl -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
+          curl --fail -sS -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
             -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" \
-            -F "file=@build/app/outputs/flutter-apk/app-release.apk" \
+            -F "file=@${{ steps.apk_info.outputs.apk_path }}" \
             -F "version=${{ steps.version.outputs.version_name }}" \
             -F "build_number=${{ steps.version.outputs.build_number }}" \
-            -F 'release_notes=["Améliorations Android Auto: actualisation dynamique de la pochette sur l écran de bord, swipe et file d attente interactive, recherche enrichie"]'
+            -F 'release_notes=["Ameliorations Android Auto: actualisation dynamique de la pochette, navigation et swipe dans la file d attente, recherche et commandes vocales enrichies"]'
