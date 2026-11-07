@@ -2,10 +2,25 @@ name: Build & Deploy Musly iOS
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version string (e.g. 2.10.16, leave empty to read from pubspec.yaml)'
+        required: false
+        type: string
+  push:
+    branches:
+      - master
+    paths:
+      - 'ios/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/build_ios.yml'
 
 jobs:
   build_ipa:
     runs-on: macos-14
+    timeout-minutes: 60
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -14,6 +29,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
@@ -53,6 +69,7 @@ jobs:
                 config.build_settings["INFOPLIST_FILE"] = "MuslyTunnel/Info.plist"
                 config.build_settings["SWIFT_VERSION"] = "5.0"
                 config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "15.0"
+                config.build_settings["CODE_SIGNING_ALLOWED"] = "NO"
               end
 
               embed_phase = runner_target.new_copy_files_build_phase("Embed App Extensions")
@@ -86,12 +103,38 @@ jobs:
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
           zip -r -y Musly.ipa Payload
+          ls -lh Musly.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Musly-iOS-IPA
+          path: Musly.ipa
+          if-no-files-found: error
+
+      - name: Determine Version
+        id: get_version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VER="${{ github.event.inputs.version }}"
+            BUILD="1"
+          else
+            RAW_VER=$(grep 'version: ' pubspec.yaml | sed 's/version: //' | tr -d '[:space:]')
+            VER=$(echo "$RAW_VER" | cut -d '+' -f 1)
+            BUILD=$(echo "$RAW_VER" | cut -d '+' -f 2)
+          fi
+          echo "musly_version=$VER" >> $GITHUB_OUTPUT
+          echo "musly_build=$BUILD" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VER, build: $BUILD"
 
       - name: Deploy IPA to music.corentinjanin.fr
         run: |
-          curl -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
+          VER="${{ steps.get_version.outputs.musly_version }}"
+          BUILD="${{ steps.get_version.outputs.musly_build }}"
+          echo "Déploiement de Musly.ipa v${VER}+${BUILD}..."
+          curl -f -s -S -X POST "https://music.corentinjanin.fr/api/musly/deploy" \
             -H "X-Musly-Auth: ${{ secrets.X_MUSLY_AUTH }}" \
             -F "file=@Musly.ipa" \
-            -F "version=2.10.15" \
-            -F "build_number=30" \
-            -F 'release_notes=["Moteur autonome de renouvellement 7 jours (AltSign + MuslyTunnel) et validation sur simulateur iPhone"]'
+            -F "version=${VER}" \
+            -F "build_number=${BUILD}" \
+            -F "release_notes=[\"Mise à jour v${VER} Musly iOS (AltSign + MuslyTunnel Reflector)\"]"

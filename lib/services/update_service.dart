@@ -559,7 +559,9 @@ class UpdateService {
         final bool hasCreds =
             await _iosSelfUpdateChannel.invokeMethod('hasCredentials') ?? false;
         if (hasCreds) {
-          return await downloadSignAndInstallIOS(onProgress: onProgress);
+          final success = await downloadSignAndInstallIOS(onProgress: onProgress);
+          if (success) return true;
+          debugPrint('UpdateService: in-app iOS install failed, falling back to SideStore/direct link.');
         }
       } catch (_) {}
 

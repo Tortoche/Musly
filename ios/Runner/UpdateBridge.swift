@@ -106,7 +106,7 @@ public class UpdateBridge: NSObject {
                         return
                     }
 
-                    // Attente de 3 secondes pour stabiliser l'interface 10.8.0.2 -> 127.0.0.1
+                    // Attente de 3 secondes pour stabiliser l'interface 10.8.0.2 -> 10.7.0.1
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                         // Étape 4 : Injection via le socket local lockdownd / installation_proxy
                         self.pushSignedIPAToLocalLockdownd(signedIPA: finalSignedURL) { installSuccess, installErr in
@@ -274,8 +274,8 @@ public class UpdateBridge: NSObject {
             completion(false, "Fichier de jumelage (mobiledevicepairing) absent.")
             return
         }
-        // Le socket lockdownd local (127.0.0.1:62078) reçoit le paquet signé via le profil de pairing
-        NSLog("[MuslyUpdate] Envoi de \(signedIPA.lastPathComponent) avec le pairing \(pairingPath) sur 127.0.0.1")
+        // Le socket lockdownd local (10.7.0.1:62078) reçoit le paquet signé via le profil de pairing
+        NSLog("[MuslyUpdate] Envoi de \(signedIPA.lastPathComponent) avec le pairing \(pairingPath) sur 10.7.0.1")
         completion(true, nil)
     }
 
@@ -294,7 +294,7 @@ public class UpdateBridge: NSObject {
 
             let proto = NETunnelProviderProtocol()
             proto.providerBundleIdentifier = Self.tunnelBundleId
-            proto.serverAddress = "127.0.0.1"
+            proto.serverAddress = "10.7.0.1"
             proto.disconnectOnSleep = false
 
             manager.protocolConfiguration = proto

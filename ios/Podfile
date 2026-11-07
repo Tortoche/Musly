@@ -34,7 +34,7 @@ target 'Runner' do
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
   # Moteur de signature Apple Developer & Anisette
-  pod 'AltSign', :git => 'https://github.com/SideStore/AltSign.git', :branch => 'main'
+  pod 'AltSign', :git => 'https://github.com/rileytestut/AltSign.git', :branch => 'master'
 
   target 'RunnerTests' do
     inherit! :search_paths
