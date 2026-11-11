@@ -46,45 +46,48 @@ class _PlaybackProgressSliderState extends State<PlaybackProgressSlider> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragStart: (details) {
-            HapticsService.selection();
-            setState(() {
-              _isDragging = true;
-            });
-          },
-          onHorizontalDragUpdate: (details) {
-            final box = context.findRenderObject() as RenderBox;
-            final dx = details.localPosition.dx.clamp(0.0, box.size.width);
-            setState(() {
-              _dragValue = (dx / box.size.width) * safeMax;
-            });
-          },
-          onHorizontalDragEnd: (details) {
-            HapticsService.selection();
-            setState(() {
-              _isDragging = false;
-            });
-            widget.onChanged(Duration(milliseconds: _dragValue.toInt()));
-          },
-          onTapDown: (details) {
-            HapticsService.selection();
-            final box = context.findRenderObject() as RenderBox;
-            final dx = details.localPosition.dx.clamp(0.0, box.size.width);
-            final tapValue = (dx / box.size.width) * safeMax;
-            widget.onChanged(Duration(milliseconds: tapValue.toInt()));
-          },
-          child: Container(
-            height: 30,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: CustomPaint(
-              size: const Size(double.infinity, 30),
-              painter: _SliderPainter(
-                progress: progress,
-                isDragging: _isDragging,
-                activeColor: widget.accentColor,
-                inactiveColor: Colors.white.withValues(alpha: 0.3),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: (details) {
+              HapticsService.selection();
+              setState(() {
+                _isDragging = true;
+              });
+            },
+            onHorizontalDragUpdate: (details) {
+              final box = context.findRenderObject() as RenderBox;
+              final dx = details.localPosition.dx.clamp(0.0, box.size.width);
+              setState(() {
+                _dragValue = (dx / box.size.width) * safeMax;
+              });
+            },
+            onHorizontalDragEnd: (details) {
+              HapticsService.selection();
+              setState(() {
+                _isDragging = false;
+              });
+              widget.onChanged(Duration(milliseconds: _dragValue.toInt()));
+            },
+            onTapDown: (details) {
+              HapticsService.selection();
+              final box = context.findRenderObject() as RenderBox;
+              final dx = details.localPosition.dx.clamp(0.0, box.size.width);
+              final tapValue = (dx / box.size.width) * safeMax;
+              widget.onChanged(Duration(milliseconds: tapValue.toInt()));
+            },
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: CustomPaint(
+                size: const Size(double.infinity, 30),
+                painter: _SliderPainter(
+                  progress: progress,
+                  isDragging: _isDragging,
+                  activeColor: widget.accentColor,
+                  inactiveColor: Colors.white.withValues(alpha: 0.3),
+                ),
               ),
             ),
           ),

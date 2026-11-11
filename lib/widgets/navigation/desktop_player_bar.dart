@@ -475,6 +475,7 @@ class _PlayPauseCircleState extends State<_PlayPauseCircle> {
       onTap: widget.onTap,
       borderRadius: BorderRadius.circular(20),
       child: MouseRegion(
+        cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         child: AnimatedScale(

@@ -34,8 +34,9 @@ class _QuickAccessTileState extends State<QuickAccessTile> {
 
     return RepaintBoundary(
       child: MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
       child: InkWell(
         onTap: () {
           HapticsService.light();

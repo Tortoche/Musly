@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:musly/widgets/common/blurred_gradient_background.dart';
@@ -398,10 +399,56 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
       data: playerTheme,
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: GestureDetector(
-          onVerticalDragUpdate: isLandscape ? null : _onVerticalDragUpdate,
-          onVerticalDragEnd: isLandscape ? null : _onVerticalDragEnd,
-          child: Stack(
+        body: Focus(
+          autofocus: true,
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent) {
+              final player = Provider.of<PlayerProvider>(context, listen: false);
+              if (event.logicalKey == LogicalKeyboardKey.space) {
+                player.togglePlayPause();
+                return KeyEventResult.handled;
+              } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                final current = player.position;
+                final target = current + const Duration(seconds: 5);
+                player.seek(target < player.duration ? target : player.duration);
+                return KeyEventResult.handled;
+              } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                final current = player.position;
+                final target = current - const Duration(seconds: 5);
+                player.seek(target > Duration.zero ? target : Duration.zero);
+                return KeyEventResult.handled;
+              } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                player.setVolume((player.volume + 0.05).clamp(0.0, 1.0));
+                return KeyEventResult.handled;
+              } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                player.setVolume((player.volume - 0.05).clamp(0.0, 1.0));
+                return KeyEventResult.handled;
+              } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+                if (_currentPage != 0) {
+                  _pageController.animateToPage(0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut);
+                } else {
+                  Navigator.of(context, rootNavigator: true).pop();
+                }
+                return KeyEventResult.handled;
+              }
+            }
+            return KeyEventResult.ignored;
+          },
+          child: Listener(
+            onPointerSignal: (pointerSignal) {
+              if (pointerSignal is PointerScrollEvent) {
+                final player = Provider.of<PlayerProvider>(context, listen: false);
+                final delta = pointerSignal.scrollDelta.dy < 0 ? 0.05 : -0.05;
+                final newVol = (player.volume + delta).clamp(0.0, 1.0);
+                player.setVolume(newVol);
+              }
+            },
+            child: GestureDetector(
+              onVerticalDragUpdate: isLandscape ? null : _onVerticalDragUpdate,
+              onVerticalDragEnd: isLandscape ? null : _onVerticalDragEnd,
+              child: Stack(
             children: [
               Positioned.fill(
                 child: RepaintBoundary(
@@ -536,7 +583,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildLiveLyricPill(PlayerProvider provider, Color accentColor,
@@ -1030,24 +1079,27 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                             horizontal: 12.0, vertical: 4.0),
                         child: AspectRatio(
                           aspectRatio: 1.0,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onHorizontalDragEnd: (details) {
-                              final vel = details.primaryVelocity;
-                              if (vel != null) {
-                                if (vel < -250) {
-                                  provider.skipNext();
-                                } else if (vel > 250) {
-                                  provider.skipPrevious();
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onHorizontalDragEnd: (details) {
+                                final vel = details.primaryVelocity;
+                                if (vel != null) {
+                                  if (vel < -250) {
+                                    provider.skipNext();
+                                  } else if (vel > 250) {
+                                    provider.skipPrevious();
+                                  }
                                 }
-                              }
-                            },
-                            child: AlbumArtView(
-                              song: currentSong,
-                              coverArt: currentSong?.coverArt,
-                              image: _currentImageProvider ?? widget.image,
-                              tag: 'cover_${currentSong?.id ?? widget.heroTag}',
-                              dominantColor: accentColor,
+                              },
+                              child: AlbumArtView(
+                                song: currentSong,
+                                coverArt: currentSong?.coverArt,
+                                image: _currentImageProvider ?? widget.image,
+                                tag: 'cover_${currentSong?.id ?? widget.heroTag}',
+                                dominantColor: accentColor,
+                              ),
                             ),
                           ),
                         ),
@@ -1229,25 +1281,28 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                     ),
                     child: AspectRatio(
                       aspectRatio: 1.0,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onHorizontalDragEnd: (details) {
-                          final vel = details.primaryVelocity;
-                          if (vel != null) {
-                            if (vel < -250) {
-                              provider.skipNext();
-                            } else if (vel > 250) {
-                              provider.skipPrevious();
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onHorizontalDragEnd: (details) {
+                            final vel = details.primaryVelocity;
+                            if (vel != null) {
+                              if (vel < -250) {
+                                provider.skipNext();
+                              } else if (vel > 250) {
+                                provider.skipPrevious();
+                              }
                             }
-                          }
-                        },
-                        child: AlbumArtView(
-                          key: ValueKey('now_playing_art_${currentSong?.id}'),
-                          song: currentSong,
-                          coverArt: currentSong?.coverArt,
-                          image: _currentImageProvider ?? widget.image,
-                          tag: 'cover_${currentSong?.id ?? widget.heroTag}',
-                          dominantColor: accentColor,
+                          },
+                          child: AlbumArtView(
+                            key: ValueKey('now_playing_art_${currentSong?.id}'),
+                            song: currentSong,
+                            coverArt: currentSong?.coverArt,
+                            image: _currentImageProvider ?? widget.image,
+                            tag: 'cover_${currentSong?.id ?? widget.heroTag}',
+                            dominantColor: accentColor,
+                          ),
                         ),
                       ),
                     ),

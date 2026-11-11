@@ -66,6 +66,7 @@ class _MediaCardState extends State<MediaCard> {
           ),
         },
         child: MouseRegion(
+          cursor: SystemMouseCursors.click,
           onEnter: (_) => setState(() => _isHovered = true),
           onExit: (_) => setState(() => _isHovered = false),
           child: GestureDetector(

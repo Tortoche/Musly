@@ -615,6 +615,7 @@ class _PlaylistTileState extends State<_PlaylistTile> {
     }
 
     return MouseRegion(
+      cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: InkWell(
@@ -711,6 +712,7 @@ class _DisconnectButtonState extends State<_DisconnectButton> {
     final defaultColor = const Color(0xFF9CA3AF);
 
     return MouseRegion(
+      cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: Tooltip(

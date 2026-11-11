@@ -35,6 +35,7 @@ class _AlbumCardState extends State<AlbumCard> {
 
     return RepaintBoundary(
       child: MouseRegion(
+        cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
@@ -200,8 +201,10 @@ class AlbumCardWide extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return GestureDetector(
-      onTap: onTap,
+    return MouseRegion(
+      cursor: onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: onTap,
       child: Container(
         width: width,
         height: height,
@@ -260,6 +263,7 @@ class AlbumCardWide extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

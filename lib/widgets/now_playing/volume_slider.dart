@@ -60,43 +60,46 @@ class _VolumeSliderState extends State<VolumeSlider> {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: (details) {
-              setState(() {
-                _isDragging = true;
-                _dragValue = baseVolume;
-              });
-            },
-            onHorizontalDragUpdate: (details) {
-              final box = context.findRenderObject() as RenderBox;
-              final dx = details.localPosition.dx.clamp(0.0, box.size.width);
-              final val = (dx / box.size.width).clamp(0.0, 1.0);
-              setState(() {
-                _dragValue = val;
-              });
-              _onVolumeChanged(val, player);
-            },
-            onHorizontalDragEnd: (details) {
-              setState(() => _isDragging = false);
-            },
-            onTapDown: (details) {
-              final box = context.findRenderObject() as RenderBox;
-              final dx = details.localPosition.dx.clamp(0.0, box.size.width);
-              final val = (dx / box.size.width).clamp(0.0, 1.0);
-              setState(() => _dragValue = val);
-              _onVolumeChanged(val, player);
-            },
-            child: Container(
-              height: 24,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: CustomPaint(
-                size: const Size(double.infinity, 24),
-                painter: _VolumeSliderPainter(
-                  volume: currentVolume,
-                  isDragging: _isDragging,
-                  activeColor: Colors.white,
-                  inactiveColor: Colors.white.withValues(alpha: 0.3),
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (details) {
+                setState(() {
+                  _isDragging = true;
+                  _dragValue = baseVolume;
+                });
+              },
+              onHorizontalDragUpdate: (details) {
+                final box = context.findRenderObject() as RenderBox;
+                final dx = details.localPosition.dx.clamp(0.0, box.size.width);
+                final val = (dx / box.size.width).clamp(0.0, 1.0);
+                setState(() {
+                  _dragValue = val;
+                });
+                _onVolumeChanged(val, player);
+              },
+              onHorizontalDragEnd: (details) {
+                setState(() => _isDragging = false);
+              },
+              onTapDown: (details) {
+                final box = context.findRenderObject() as RenderBox;
+                final dx = details.localPosition.dx.clamp(0.0, box.size.width);
+                final val = (dx / box.size.width).clamp(0.0, 1.0);
+                setState(() => _dragValue = val);
+                _onVolumeChanged(val, player);
+              },
+              child: Container(
+                height: 24,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: CustomPaint(
+                  size: const Size(double.infinity, 24),
+                  painter: _VolumeSliderPainter(
+                    volume: currentVolume,
+                    isDragging: _isDragging,
+                    activeColor: Colors.white,
+                    inactiveColor: Colors.white.withValues(alpha: 0.3),
+                  ),
                 ),
               ),
             ),
