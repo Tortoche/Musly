@@ -21,6 +21,9 @@ class BlurredGradientBackground extends StatelessWidget {
         ? colors[1]
         : primaryGlow;
 
+    final size = MediaQuery.sizeOf(context);
+    final isLandscape = size.width > size.height;
+
     return Stack(
       children: [
         // Pure black OLED base
@@ -30,47 +33,103 @@ class BlurredGradientBackground extends StatelessWidget {
 
         // Elegant subtle ambient radial glow behind the artwork
         if (hasColor) ...[
-          Positioned(
-            top: -60,
-            left: 0,
-            right: 0,
-            height: 480,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(0.0, -0.4),
-                    radius: 1.1,
-                    colors: [
-                      primaryGlow.withValues(alpha: 0.38),
-                      secondaryGlow.withValues(alpha: 0.18),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.55, 1.0],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // Fullscreen primary ambient glow - dynamically centered behind the artwork
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0.0, 0.45, 0.85, 1.0],
+                  gradient: RadialGradient(
+                    center: isLandscape
+                        ? const Alignment(-0.52, -0.05)
+                        : const Alignment(0.0, -0.42),
+                    radius: isLandscape ? 1.35 : 1.05,
                     colors: [
+                      primaryGlow.withValues(alpha: isLandscape ? 0.45 : 0.38),
+                      secondaryGlow.withValues(alpha: isLandscape ? 0.22 : 0.18),
+                      primaryGlow.withValues(alpha: 0.05),
                       Colors.transparent,
-                      Colors.black.withValues(alpha: 0.10),
-                      Colors.black.withValues(alpha: 0.85),
-                      Colors.black,
                     ],
+                    stops: const [0.0, 0.45, 0.80, 1.0],
                   ),
                 ),
               ),
             ),
           ),
+
+          // Secondary soft ambient glow for smooth depth in landscape
+          if (isLandscape)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(-0.25, 0.35),
+                      radius: 1.1,
+                      colors: [
+                        secondaryGlow.withValues(alpha: 0.14),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Smooth OLED vignette overlay - ensures flawless, seamless blend with black
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: isLandscape
+                      ? LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          stops: const [0.0, 0.40, 0.78, 1.0],
+                          colors: [
+                            Colors.transparent,
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.45),
+                            Colors.black.withValues(alpha: 0.88),
+                          ],
+                        )
+                      : LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 0.35, 0.75, 1.0],
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.10),
+                            Colors.black.withValues(alpha: 0.85),
+                            Colors.black,
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ),
+
+          // Edge softening vignette for desktop landscape
+          if (isLandscape)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.10, 0.90, 1.0],
+                      colors: [
+                        Colors.black.withValues(alpha: 0.50),
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.60),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
 
         RepaintBoundary(
