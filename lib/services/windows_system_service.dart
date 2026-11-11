@@ -91,7 +91,7 @@ class WindowsSystemService {
     required Duration duration,
     String? artworkUrl,
   }) async {
-    if (!kIsWeb && Platform.isWindows && _isInitialized) {
+    if (!kIsWeb && Platform.isWindows && _isInitialized && _smtc != null) {
       try {
         await _smtc?.setPlaybackStatus(
           isPlaying ? PlaybackStatus.playing : PlaybackStatus.paused,

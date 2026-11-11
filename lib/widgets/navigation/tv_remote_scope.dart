@@ -92,6 +92,8 @@ class _TvFocusableCardState extends State<TvFocusableCard> {
     final radius = widget.borderRadius ?? BorderRadius.circular(16);
 
     return FocusableActionDetector(
+      mouseCursor:
+          widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
       autofocus: widget.autoFocus,
       focusNode: widget.focusNode,
       onShowFocusHighlight: (focused) => setState(() => _isFocused = focused),

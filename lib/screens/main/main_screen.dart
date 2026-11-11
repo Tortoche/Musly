@@ -192,7 +192,9 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     if (_isLargeScreen(context)) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       final content = Scaffold(
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         body: Column(
           children: [
             Expanded(

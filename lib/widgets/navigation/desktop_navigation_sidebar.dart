@@ -310,6 +310,7 @@ class _NavItemState extends State<_NavItem> {
       message: widget.isCollapsed ? widget.label : '',
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
+        cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         child: TvFocusableCard(

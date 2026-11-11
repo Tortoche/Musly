@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
 import 'package:musly/l10n/app_localizations.dart';
@@ -33,13 +34,27 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
       builder: (context, data, _) {
         final (currentSong, radioStation, isPlayingRadio) = data;
 
+        Widget bar;
         if (isPlayingRadio && radioStation != null) {
-          return _buildRadioBar(context, radioStation);
+          bar = _buildRadioBar(context, radioStation);
+        } else if (currentSong != null) {
+          bar = _buildSongBar(context, currentSong);
+        } else {
+          return const SizedBox.shrink();
         }
 
-        if (currentSong == null) return const SizedBox.shrink();
-
-        return _buildSongBar(context, currentSong);
+        return Listener(
+          onPointerSignal: (pointerSignal) {
+            if (pointerSignal is PointerScrollEvent) {
+              final player = Provider.of<PlayerProvider>(context, listen: false);
+              // Scroller vers le haut (< 0) monte le son, vers le bas (> 0) le baisse
+              final delta = pointerSignal.scrollDelta.dy < 0 ? 0.05 : -0.05;
+              final newVol = (player.volume + delta).clamp(0.0, 1.0);
+              player.setVolume(newVol);
+            }
+          },
+          child: bar,
+        );
       },
     );
   }
@@ -50,7 +65,7 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
       height: 90,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF181818) : Colors.white,
+        color: isDark ? const Color(0xFF0C0C0E) : Colors.white,
         border: Border(
           top: BorderSide(
             color: isDark ? const Color(0x14FFFFFF) : const Color(0xFFE5E5EA),
@@ -194,7 +209,7 @@ class _DesktopPlayerBarState extends State<DesktopPlayerBar> {
       height: 90,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF181818) : Colors.white,
+        color: isDark ? const Color(0xFF0C0C0E) : Colors.white,
         border: Border(
           top: BorderSide(
             color: isDark ? const Color(0x14FFFFFF) : const Color(0xFFE5E5EA),
@@ -612,6 +627,7 @@ class _ProgressBar extends StatelessWidget {
                   child: SliderTheme(
                     data: SliderThemeData(
                       trackHeight: 3.5,
+                  mouseCursor: const WidgetStatePropertyAll(SystemMouseCursors.click),
                       thumbShape: const RoundSliderThumbShape(
                         enabledThumbRadius: 5,
                       ),
@@ -691,6 +707,7 @@ class _VolumeControl extends StatelessWidget {
               child: SliderTheme(
                 data: SliderThemeData(
                   trackHeight: 3.5,
+                  mouseCursor: const WidgetStatePropertyAll(SystemMouseCursors.click),
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 4.5,
                   ),
