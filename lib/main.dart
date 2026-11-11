@@ -102,11 +102,12 @@ void main() async {
     try {
       await windowManager.ensureInitialized();
       final hideTitlebar = await storageService.getHideWindowTitlebar();
-      const windowOptions = WindowOptions(
-        size: Size(1100, 750),
-        minimumSize: Size(800, 560),
+      final windowOptions = WindowOptions(
+        size: const Size(1100, 750),
+        minimumSize: const Size(800, 560),
         center: true,
-        titleBarStyle: TitleBarStyle.normal,
+        titleBarStyle:
+            hideTitlebar ? TitleBarStyle.hidden : TitleBarStyle.normal,
       );
       await windowManager.waitUntilReadyToShow(windowOptions, () async {
         await windowManager.show();

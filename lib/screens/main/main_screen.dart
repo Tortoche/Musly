@@ -22,6 +22,7 @@ import 'tv_main_screen.dart';
 import 'package:musly/screens/media/fantasy_screen.dart';
 import 'package:musly/services/haptics_service.dart';
 import 'package:musly/services/deep_link_service.dart';
+import 'package:musly/widgets/navigation/desktop_title_bar.dart';
 
 class PlayPauseIntent extends Intent {
   const PlayPauseIntent();
@@ -197,6 +198,7 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         body: Column(
           children: [
+            const DesktopTitleBar(),
             Expanded(
               child: Row(
                 children: [

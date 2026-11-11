@@ -545,7 +545,7 @@ class StorageService {
 
   Future<bool> getHideWindowTitlebar() async {
     final prefs = await _prefs;
-    return prefs.getBool('hide_window_titlebar') ?? false;
+    return prefs.getBool('hide_window_titlebar') ?? true;
   }
 
   Future<bool> isOnboardingCompleted() async {

@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:musly/widgets/navigation/desktop_title_bar.dart';
 import 'package:musly/widgets/common/blurred_gradient_background.dart';
 import 'package:musly/widgets/now_playing/album_art_view.dart';
 import 'package:musly/widgets/now_playing/marquee_text.dart';
@@ -542,7 +544,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                 left: isLandscape ? effectiveLeftPadding + 12.0 : 8.0,
                 right: isLandscape ? effectiveRightPadding + 12.0 : 8.0,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
                       icon: Icon(
@@ -563,6 +564,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                         }
                       },
                     ),
+                    Expanded(
+                      child: DragToMoveArea(
+                        child: Container(
+                          height: 48,
+                          color: Colors.transparent,
+                        ),
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.more_horiz_rounded,
                           color: Colors.white, size: 28),
@@ -576,6 +585,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                         );
                       },
                     ),
+                    if (isLandscape &&
+                        (Platform.isWindows ||
+                            Platform.isLinux ||
+                            Platform.isMacOS))
+                      const DesktopWindowControls(height: 32),
                   ],
                 ),
               ),
